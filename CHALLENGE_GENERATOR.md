@@ -165,9 +165,14 @@ repo, after emitting the block you MUST also:
    `oneshots/<kebab-case-title>.md`.
 2. Add a row to the Catalogue table in `README.md`:
 
-   `| <Title> | <tech used> | <label> | [prompt](oneshots/<kebab-case-title>.md) |`
+   `| <Title> | <tech used> | <label> | [prompt](oneshots/<kebab-case-title>.md) | <generator signature> |`
 
-   where `<label>` is: 🟢 Easy · 🟡 Medium · 🟠 Hard · 🔴 Extreme.
+   where `<label>` is: 🟢 Easy · 🟡 Medium · 🟠 Hard · 🔴 Extreme, and
+   `<generator signature>` is **your model name and, if known, your
+   thinking/reasoning effort** — e.g. `GPT-5 · thinking: high`,
+   `Claude Sonnet 4.5`, `Kimi K2 · thinking: medium`. Sign with your true
+   identity; if you don't know your thinking effort, omit that part —
+   never guess.
 3. If the table still contains the "_No prompts yet_" placeholder row,
    remove it.
 4. Never touch existing rows; append the new row at the end of the table.
