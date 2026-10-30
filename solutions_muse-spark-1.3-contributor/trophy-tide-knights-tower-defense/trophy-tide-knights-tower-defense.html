@@ -1,0 +1,806 @@
+<!-- built by muse-spark-1.3-contributor · 2026-10-30 12:00 UTC · Trophy Tide Knights Tower Defense -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trophy Tide — Knights Tower Defense</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif;background:#1a2340;color:#fff;min-height:100vh}
+button{font-family:inherit}
+.screen{display:none;max-width:1020px;margin:0 auto;padding:16px;min-height:100vh}
+.screen.active{display:block}
+h1{font-size:clamp(28px,5vw,52px);text-align:center;margin:8px 0;color:#ffd54a;text-shadow:2px 2px 0 #7a4a00}
+.subtitle{text-align:center;font-size:18px;color:#cfe6ff}
+.howto{display:flex;gap:12px;justify-content:center;margin:16px 0;flex-wrap:wrap}
+.how-card{background:#fff;color:#223; border-radius:18px;padding:14px;width:220px;text-align:center;font-size:18px;box-shadow:0 4px 0 #0003}
+.how-card .big{font-size:52px}
+#startBtn{display:block;margin:12px auto;font-size:32px;padding:18px 60px;min-height:96px;border-radius:24px;border:0;background:#4caf50;color:#fff;cursor:pointer;box-shadow:0 6px 0 #2e7d32}
+#startBtn:active{transform:translateY(3px)}
+#levelGrid{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+.lvlBtn{width:150px;min-height:96px;border-radius:16px;border:3px solid #fff;background:#33406e;color:#fff;font-size:16px;cursor:pointer;padding:8px}
+.lvlBtn .em{font-size:40px;display:block}
+.lvlBtn.locked{opacity:.45;filter:grayscale(1)}
+.lvlBtn:not(.locked):hover{background:#44549a}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.bigBtn{min-height:64px;min-width:64px;font-size:20px;border-radius:16px;border:0;padding:14px 22px;cursor:pointer;background:#ff9800;color:#fff;box-shadow:0 4px 0 #0005}
+.bigBtn:active{transform:translateY(2px)}
+#powerBtn{position:fixed;right:14px;bottom:14px;width:120px;height:120px;border-radius:50%;font-size:24px;font-weight:900;border:6px solid #fff;background:radial-gradient(circle at 30% 30%,#fff59d,#ff9800 60%,#e65100);color:#5d2e00;cursor:pointer;z-index:60;box-shadow:0 6px 18px #0008;--cd:0deg}
+#powerBtn.cool{filter:grayscale(.6);opacity:.75}
+#powerBtn.cool::after{content:"";position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.55) var(--cd),transparent var(--cd));pointer-events:none}
+#powerBtn.glow{animation:glowPulse 1s infinite}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 #ffeb3b}50%{box-shadow:0 0 30px 10px #ffeb3b}}
+#tugWrap{background:#0d1330;border:3px solid #fff;border-radius:16px;padding:10px;margin:10px 0}
+#tugBar{position:relative;height:38px;background:linear-gradient(90deg,#e53935 0%,#e53935 45%,#fff 50%,#43a047 55%,#43a047 100%);border-radius:12px;overflow:hidden;border:2px solid #fff}
+#tugMarker{position:absolute;top:-4px;bottom:-4px;width:8px;background:#fff;border:2px solid #000;transition:left .3s}
+#tugFlags{display:flex;justify-content:space-between;font-size:26px;margin-top:4px}
+#faceRow{display:flex;justify-content:space-between;font-size:22px;align-items:center}
+#lane{position:relative;height:300px;border-radius:18px;overflow:hidden;border:4px solid #fff;margin:10px 0}
+.lane-castle{background:linear-gradient(#87ceeb 0 40%,#7ec850 40% 100%)}
+.lane-mountain{background:linear-gradient(#b0d8f0 0 35%,#8d8d9a 35% 70%,#5d5d6a 70% 100%)}
+.lane-cave{background:linear-gradient(#2a1e4a 0 30%,#4a3560 30% 70%,#241a35 70% 100%)}
+.lane-lake{background:linear-gradient(#87ceeb 0 45%,#2aa5d8 45% 100%)}
+.lane-whale{background:linear-gradient(#7ec8ee 0 50%,#1a6fa0 50% 100%)}
+.base{position:absolute;bottom:18px;font-size:56px;text-align:center;width:110px}
+#playerBase{left:6px}
+#rivalBase{right:6px}
+#trophyLane{position:absolute;bottom:30px;font-size:52px;transform:translateX(-50%);transition:left .3s;filter:drop-shadow(0 0 8px gold)}
+#whale{position:absolute;right:10px;bottom:60px;font-size:96px;display:none;transition:transform .3s}
+#whale.warn{animation:warnShake .4s 2}
+@keyframes warnShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px) rotate(-5deg)}75%{transform:translateX(8px) rotate(5deg)}}
+#whaleTelegraph{position:absolute;right:20px;top:14px;background:#ffeb3b;color:#000;font-weight:900;padding:8px 14px;border-radius:12px;display:none;font-size:18px}
+.unit{position:absolute;bottom:40px;width:64px;height:76px;text-align:center;transition:filter .2s;user-select:none;cursor:default}
+.unit .spr{font-size:44px;line-height:1;display:block;filter:drop-shadow(1px 2px 0 #0008)}
+.unit .nm{font-size:10px;background:#000a;color:#fff;border-radius:6px;padding:1px 3px;white-space:nowrap}
+.unit .hp{font-size:12px;letter-spacing:1px}
+.unit.shielded .spr{filter:drop-shadow(0 0 10px cyan)}
+.unit.swifted::after{content:"💨";position:absolute;left:-10px;top:10px;font-size:20px}
+.unit.stunned{filter:grayscale(1);opacity:.6}
+.unit.grabbed{animation:grabW 0.3s infinite}
+@keyframes grabW{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.unit .bubble{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-size:13px;font-weight:900;border-radius:10px;padding:2px 8px;white-space:nowrap;display:none}
+.unit.resting{opacity:.55}
+#bumpFlash{position:absolute;pointer-events:none;font-size:28px;display:none}
+#boostBanner{position:fixed;top:90px;left:50%;transform:translateX(-50%) scale(.8);background:#ffeb3b;color:#4a2c00;font-size:28px;font-weight:900;padding:12px 26px;border-radius:20px;border:4px solid #fff;opacity:0;transition:all .25s;z-index:70;text-align:center}
+#boostBanner.show{opacity:1;transform:translateX(-50%) scale(1)}
+#cardModal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:80;padding:12px}
+#cardModal.open{display:flex}
+#card{background:#fff;color:#222;border-radius:24px;padding:20px;max-width:520px;width:100%;text-align:center;border:6px solid #ffd54a;box-shadow:0 10px 40px #000}
+#card.shake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+#cardQ{font-size:30px;font-weight:900;margin:6px 0}
+#cardPic{font-size:40px;margin:6px 0;min-height:20px}
+.ansBtn{display:block;width:100%;min-height:72px;font-size:30px;font-weight:900;margin:10px 0;border-radius:18px;border:4px solid #33406e;background:#e8efff;color:#1a2340;cursor:pointer}
+.ansBtn.elim{opacity:.3;text-decoration:line-through}
+.ansBtn:not(.elim):hover{background:#cfe0ff}
+#cardHint{font-size:18px;color:#2e7d32;min-height:24px;font-weight:700}
+#cardX{float:right;font-size:22px;min-width:64px;min-height:64px;border-radius:14px;border:0;background:#e0e0e0;cursor:pointer}
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:90;padding:12px}
+.modal.open{display:flex}
+.sheet{background:#fff;color:#222;border-radius:20px;padding:20px;max-width:560px;width:100%;text-align:center;max-height:90vh;overflow:auto}
+.prizeBtn{font-size:56px;min-width:96px;min-height:96px;border-radius:20px;border:4px solid #ccc;background:#f5f5f5;cursor:pointer;margin:6px}
+.prizeBtn.picked{border-color:#4caf50;background:#e8f5e9}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:95;overflow:hidden}
+.cf{position:absolute;top:-20px;font-size:24px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+#collection{background:#0d1330;border:2px dashed #ffd54a;border-radius:14px;padding:10px;margin:10px 0;text-align:center;font-size:22px}
+#scoreboard{background:#0d1330;border-radius:14px;padding:10px;margin:10px 0;text-align:center}
+footer{text-align:center;color:#9fb2d8;font-size:13px;padding:14px}
+.telegraphRing{position:absolute;border:4px dashed #ffeb3b;border-radius:50%;width:120px;height:60px;display:none;animation:glowPulse 0.5s infinite}
+#hearts{font-size:26px;text-align:center}
+#restBar{font-size:20px;text-align:center;min-height:28px}
+#wizardLine{background:#fff8e1;color:#5d4037;border-radius:14px;padding:10px;margin:8px 0;text-align:center;font-size:17px;border:2px solid #ffd54a}
+.block-mode .unit .spr{filter:contrast(1.2) saturate(.6) drop-shadow(2px 2px 0 #000) !important;border-radius:6px}
+.small{font-size:14px;color:#cfe6ff;text-align:center}
+a{color:#ffd54a}
+</style>
+</head>
+<body>
+<!-- START SCREEN -->
+<div class="screen active" id="screen-start">
+  <h1>🏰 Trophy Tide ⚔️<br>Knights Tower Defense</h1>
+  <div class="subtitle">Defend your castle · Answer · Win the trophy!</div>
+  <div class="howto">
+    <div class="how-card"><div class="big">👀</div><b>1. WATCH</b><br>Knights fight on their own!</div>
+    <div class="how-card"><div class="big">💪</div><b>2. ANSWER</b><br>Tap POWER! &amp; pick 1 of 3 answers</div>
+    <div class="how-card"><div class="big">🏆</div><b>3. WIN</b><br>Push to the trophy!</div>
+  </div>
+  <div class="row">
+    <label style="font-size:16px">Seed (optional): <input id="seedBox" placeholder="e.g. CASTLE-1" style="font-size:18px;padding:8px;border-radius:10px;min-height:48px"></label>
+  </div>
+  <button id="startBtn">▶ START</button>
+  <h2 style="text-align:center">Choose Level</h2>
+  <div id="levelGrid"></div>
+  <div id="collection"><b>🎁 Collection shelf:</b> <span id="collStart">empty — win a level!</span></div>
+  <div id="scoreboard"><b>⭐ Scoreboard:</b> <span id="scoreStart">no stars yet</span></div>
+  <div class="row">
+    <button class="bigBtn" id="shopBtn">🛒 Square / Shop</button>
+    <button class="bigBtn" id="grownBtn" style="background:#607d8b">🧑‍🏫 Grown-ups note</button>
+    <button class="bigBtn" id="blockBtn" style="background:#795548">🧱 Block style: OFF</button>
+  </div>
+  <div class="small">Keyboard: Space = POWER! · 1/2/3 = answers · Enter = start/confirm</div>
+  <footer>built by muse-spark-1.3-contributor · 2026-10-30 12:00 UTC · Trophy Tide v1.0 · offline single file, no network needed</footer>
+</div>
+
+<!-- BATTLE -->
+<div class="screen" id="screen-battle">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap">
+    <button class="bigBtn" id="quitBtn" style="background:#607d8b">⬅ Levels</button>
+    <h2 id="lvlTitle" style="margin:4px">Level 1 Castle</h2>
+    <div id="lvlTimer" style="font-size:16px">⏱ 0s</div>
+  </div>
+  <div id="wizardLine">🧙 Wizard: Brave knights, guard the castle!</div>
+  <div id="tugWrap">
+    <div id="tugBar"><div id="tugMarker"></div></div>
+    <div id="tugFlags"><span>😈 Rival</span><span id="midFlag">🏆</span><span>Your team 😊</span></div>
+    <div id="faceRow"><span id="faceRival">😈 rival</span><span id="distCue"></span><span id="facePlayer">😊 knights</span></div>
+    <div id="hearts"></div>
+  </div>
+  <div id="lane" class="lane-castle">
+    <div class="base" id="playerBase">🏰</div>
+    <div class="base" id="rivalBase">🏯</div>
+    <div id="trophyLane">🏆</div>
+    <div id="whale">🐋</div>
+    <div id="whaleTelegraph">⚠ SPLASH!</div>
+    <div id="bumpFlash">💥</div>
+    <div id="units"></div>
+  </div>
+  <div id="restBar"></div>
+  <div class="small">Tap POWER! when you want a question. Knights fight by themselves — you cheer and answer! (battle slows softly while a card is open)</div>
+  <footer>built by muse-spark-1.3-contributor · 2026-10-30 12:00 UTC</footer>
+</div>
+<button id="powerBtn" style="display:none">💪<br>POWER!</button>
+
+<!-- VICTORY -->
+<div class="screen" id="screen-victory">
+  <h1 id="vicTitle">🏆 VICTORY!</h1>
+  <div class="subtitle" id="vicSub">You won Castle!</div>
+  <div id="vicPrize" style="font-size:96px;text-align:center">🏆</div>
+  <div class="sheet" style="margin:10px auto">
+    <h3>Pick YOUR prize! (tap 1)</h3>
+    <button class="prizeBtn" data-p="🏆">🏆<br><small>big cup</small></button>
+    <button class="prizeBtn" data-p="⭐">⭐<br><small>shiny star</small></button>
+    <button class="prizeBtn" data-p="👑">👑<br><small>crown</small></button>
+    <div id="rewardNote" style="font-size:18px;margin:8px"></div>
+    <div id="starNote" style="font-size:20px"></div>
+    <div id="grownNoteVic" style="font-size:13px;background:#f5f5f5;border-radius:10px;padding:8px;margin-top:8px;text-align:left"></div>
+    <div class="row">
+      <button class="bigBtn" id="againBtn">🔁 Play again</button>
+      <button class="bigBtn" id="nextBtn" style="background:#4caf50">Next level ➡</button>
+      <button class="bigBtn" id="homeBtn" style="background:#607d8b">🏠 Levels</button>
+    </div>
+  </div>
+  <div id="confetti"></div>
+</div>
+
+<!-- DEFEAT -->
+<div class="screen" id="screen-defeat">
+  <h1>💛 Try again!</h1>
+  <div class="subtitle">The rival got the trophy this time. Your knights believe in you!</div>
+  <div style="font-size:96px;text-align:center">🦄</div>
+  <div class="row">
+    <button class="bigBtn" id="retryBtn">🔁 Try again!</button>
+    <button class="bigBtn" id="homeBtn2" style="background:#607d8b">🏠 Levels</button>
+  </div>
+</div>
+
+<!-- CARD -->
+<div id="cardModal"><div id="card">
+  <button id="cardX" title="Close">✖</button>
+  <div style="font-size:20px">🧙 Answer to help!</div>
+  <div id="cardQ">2 + 3 = ?</div>
+  <div id="cardPic"></div>
+  <button class="ansBtn" data-i="0">A</button>
+  <button class="ansBtn" data-i="1">B</button>
+  <button class="ansBtn" data-i="2">C</button>
+  <div id="cardHint"></div>
+</div></div>
+<div id="boostBanner"></div>
+
+<!-- SHOP -->
+<div class="modal" id="shopModal"><div class="sheet">
+  <h2>🛒 Square — Coming soon!</h2>
+  <p>Future treats live here. Nothing to buy today — just play and win trophies!</p>
+  <div id="futureList" style="font-size:22px"></div>
+  <button class="bigBtn" id="shopClose">✅ OK!</button>
+</div></div>
+
+<!-- GROWNUPS -->
+<div class="modal" id="grownModal"><div class="sheet" style="text-align:left;font-size:14px">
+  <h2>🧑‍🏫 Grown-ups note (defaults)</h2>
+  <div id="grownText"></div>
+  <button class="bigBtn" id="grownClose">✅ OK</button>
+</div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   TROPHY TIDE — TUNING CONSTANTS (all balance lives here)
+   ============================================================ */
+const RIVAL_SPAWN_BIAS = 1.10;   // rival spawns ~10% faster before boosts; idling reliably loses (well under 60s)
+const PAR_TIME_L1 = 120;         // seconds reference for level 1; level 5 takes >=1.5x this
+const MAX_PLAYER_UNITS = 6;
+const MAX_RIVAL_UNITS = 6;
+const PLAYER_SPAWN_SEC = 4.5;
+const RIVAL_SPAWN_SEC = 3.8;     // divided by RIVAL_SPAWN_BIAS & rubber-band (rival fields ~30% more units idle)
+const RUBBER_FAST_CAP = 1.50;    // rival up to +50% faster when player leads (progress>=70)
+const RUBBER_MID_CAP = 1.25;     // +25% when progress>=60
+const POWER_COOLDOWN_SEC = 10;   // POWER! cooldown, shown as filling ring
+const SHIELD_SEC = 10;            // maths-correct -> Shield Wall invulnerable 10s (+2.0/s tide)
+const SWIFT_SEC = 10;            // letter-correct -> +60% speed 10s (+2.0/s tide)
+const SWIFT_MUL = 1.60;
+const RALLY_HEAL = true;         // 3rd consecutive correct -> return 1 resting + full heal
+const REST_SEC = 8;              // defeated unit rests 8s then returns (snooze icon)
+const CORRECT_PUSH = 14.0;       // instant progress jump per correct answer (visible within 2s; kid pace still wins)
+const SHIELD_SURGE = 2.00;       // progress/s while Shield Wall is active (tide visibly turns)
+const SWIFT_SURGE = 2.00;        // progress/s while Swift Charge is active
+const BASE_HIT_PLAYER = 5;       // progress gained when player unit reaches rival base/whale
+const BASE_HIT_RIVAL = 7;        // progress lost when rival reaches player base
+const DRIFT_PER_SEC = -1.50;     // baseline tide favoring rival (opportunity-not-gate; idle ~55s reliably loses; answers overcome it)
+const BUMP_GLOBAL_SEC = 0.8;     // battle speed cap: <=1 bump per ~second
+const CARD_SLOW = 0.25;          // battle slows to 25% while a card is open (soft pause)
+const WHALE_JET_SEC = 12;        // water jets cadence
+const WHALE_PULL_SEC = 20;       // pull-by-feet cadence
+const WHALE_MINION_SEC = 18;     // fish minion cadence (cap 2 alive: L5 long but winnable)
+const SEED_DEFAULT = "";
+
+/* Unit roster: add a new class with only a new entry here (no loop rewrites). */
+const UNIT_TYPES = {
+  sturdy: { name:"Sturdy", icon:"🛡️", base:"🧑‍🚀", hp:3, speed:40,  desc:"slow, survives 3 bumps" },
+  swift:  { name:"Swift",  icon:"🚩", base:"🧒", hp:1, speed:90,  desc:"fast, falls in 1 bump" },
+  raider: { name:"Raider", icon:"😈", base:"👺", hp:2, speed:55,  desc:"rival every ~4s" },
+  fish:   { name:"Splash-fish", icon:"🐟", base:"🐟", hp:2, speed:35, desc:"blocks + mild slow aura" }
+};
+// FINAL unit stats: Sturdy 3 bumps @40px/s, Swift 1 bump @90px/s, Raider 2 bumps @55px/s, Fish 2 bumps @35px/s.
+
+/* One shared engine, many skins: adding a 6th theme = copy ONE entry below
+   (lines of LEVELS array) and change art/palette/rivalHPMul/goal/wizard only. */
+const LEVELS = [
+  { name:"Castle", icon:"🏰", lane:"lane-castle", playerBase:"🏰", rivalBase:"🏯", goal:"🏆", rivalHPMul:1.0, palette:"grass", wizard:"Brave knights, guard the castle!", reward:"sword" },
+  { name:"Mountain", icon:"⛰️", lane:"lane-mountain", playerBase:"🏰", rivalBase:"🗻", goal:"🗿", rivalHPMul:1.1, palette:"snow/rock", wizard:"Up the mountain — watch your step!", reward:null },
+  { name:"Cave", icon:"🕳️", lane:"lane-cave", playerBase:"🏠", rivalBase:"🌋", goal:"💎", rivalHPMul:1.2, palette:"dark crystal", wizard:"Into the cave — hold your lanterns!", reward:"shield" },
+  { name:"Boats/Lake", icon:"⛵", lane:"lane-lake", playerBase:"⛵", rivalBase:"🚤", goal:"🦪", rivalHPMul:1.3, palette:"water", wizard:"The knights sailed to the lake!", reward:null },
+  { name:"Whale Boss", icon:"🐋", lane:"lane-whale", playerBase:"⛵", rivalBase:"🐋", goal:"🏆", rivalHPMul:1.4, palette:"open water", wizard:"The GREAT WHALE splashes! Be brave!", reward:"cup" }
+];
+// Rival tuning: +10% HP per level (1.0/1.1/1.2/1.3/1.4). Level 5 is boss with same meter.
+/* Visual continuity default: purely visual (names/colors/emblems persist, no hidden stat carry). */
+const KNIGHTS = [
+  { name:"Sir Bolt", color:"#e53935", emblem:"⚡" },
+  { name:"Lady Lark", color:"#8e24aa", emblem:"🌸" },
+  { name:"Sir Pebble", color:"#3949ab", emblem:"🪨" },
+  { name:"Dame Wren", color:"#00897b", emblem:"🐦" },
+  { name:"Sir Sunny", color:"#fb8c00", emblem:"☀️" },
+  { name:"Lady Brook", color:"#039be5", emblem:"💧" }
+];
+const FUTURE_REWARDS = ["juice", "chocolate", "sweets", "clothes", "costume"];
+const QUESTION_BANK = [
+  { type:"letter", q:"Which letter is B?", pic:"🔤", opts:["D","B","P"], correct:1, hint:"B has two bumps! 🅱️" },
+  { type:"letter", q:"Which letter is O?", pic:"⭕", opts:["O","Q","C"], correct:0, hint:"O is a round circle!" },
+  { type:"letter", q:"Find the letter M", pic:"🔤", opts:["N","W","M"], correct:2, hint:"M has pointy mountains! ⛰️⛰️" },
+  { type:"letter", q:"Which letter is S?", pic:"🐍", opts:["S","Z","5"], correct:0, hint:"S curves like a snake!" },
+  { type:"letter", q:"Which letter is A?", pic:"🔺", opts:["H","A","R"], correct:1, hint:"A is pointy like a tent! ⛺" },
+  { type:"letter", q:"Find the letter T", pic:"🔤", opts:["J","T","F"], correct:1, hint:"T is tall with a hat on top!" },
+  { type:"letter", q:"Which letter is E?", pic:"📧", opts:["F","L","E"], correct:2, hint:"E has three arms! 💪💪💪" },
+  { type:"letter", q:"First letter of SUN?", pic:"☀️", opts:["S","N","U"], correct:0, hint:"Ssssun starts with Sss!" },
+  { type:"maths", q:"2 + 3 = ?", pic:"🍎🍎 + 🍎🍎🍎", opts:["4","5","6"], correct:1, hint:"Count: 2…3…4…5! ✋" },
+  { type:"maths", q:"1 + 4 = ?", pic:"🍏 + 🍏🍏🍏🍏", opts:["5","3","6"], correct:0, hint:"1 more than 4 is 5!" },
+  { type:"maths", q:"Count the apples", pic:"🍎🍎🍎", opts:["2","3","4"], correct:1, hint:"Point each one: 1…2…3!" },
+  { type:"maths", q:"5 − 2 = ?", pic:"⭐⭐⭐⭐⭐", opts:["2","4","3"], correct:2, hint:"5 take away 2 leaves 3!" },
+  { type:"maths", q:"6 − 1 = ?", pic:"🐟🐟🐟🐟🐟🐟", opts:["5","4","6"], correct:0, hint:"One less than 6 is 5!" },
+  { type:"maths", q:"4 + 4 = ?", pic:"🖐️ + 🖐️ Count fingers!", opts:["7","8","9"], correct:1, hint:"4 + 4 = 8! Double four!" },
+  { type:"maths", q:"Count the stars", pic:"⭐⭐⭐⭐", opts:["3","5","4"], correct:2, hint:"Touch each star: 1…2…3…4!" },
+  { type:"maths", q:"3 + 2 = ?", pic:"🐢🐢🐢 + 🐢🐢", opts:["4","6","5"], correct:2, hint:"3…4…5! You got it!" }
+];
+
+/* ---------- helpers: seed RNG, storage ---------- */
+function hashSeed(s){ let h=2166136261; for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);} return h>>>0; }
+let _seed = SEED_DEFAULT;
+try{ const m=location.search.match(/[?&]seed=([^&]*)/); if(m) _seed=decodeURIComponent(m[1]); }catch(e){}
+let rngState = hashSeed(_seed || ("auto"+Date.now()));
+function srand(){ rngState|=0; rngState=rngState+0x6D2B79F5|0; let t=Math.imul(rngState^rngState>>>15,1|rngState); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }
+function setSeed(s){ _seed=s||""; rngState = hashSeed(_seed || ("auto"+Date.now())); }
+function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+
+/* ---------- global game state ---------- */
+const G = {
+  level:0, progress:50, running:false, lastT:0,
+  punits:[], runits:[], resting:[], minions:[],
+  pSpawnT:0, rSpawnT:0, spawnCount:0,
+  shieldT:0, swiftT:0, streak:0, correct:0, wrong:0,
+  cardOpen:false, card:null, elimIdx:-1, retryQueue:[],
+  qOrder:[], qPos:0,
+  powerCD:0, autoLoseDone:false, autoWinDone:false, pendingBonus:0,
+  whaleJetT:WHALE_JET_SEC, whalePullT:WHALE_PULL_SEC, whaleMinT:5,
+  grabbed:null, grabT:0,
+  startTime:0, elapsed:0, lastBump:0,
+  unlocked:1, stars:{}, collection:[], hasSword:false, hasShield:false,
+  blockMode:false
+};
+try{
+  G.unlocked = parseInt(load("tt_unlocked")||"1",10)||1;
+  G.stars = JSON.parse(load("tt_stars")||"{}");
+  G.collection = JSON.parse(load("tt_coll")||"[]");
+  G.hasSword = load("tt_sword")==="1"; G.hasShield = load("tt_shield")==="1";
+}catch(e){}
+if(load("tt_seedbox")){ setSeed(load("tt_seedbox")); }
+function saveMeta(){ store("tt_unlocked",String(G.unlocked)); store("tt_stars",JSON.stringify(G.stars)); store("tt_coll",JSON.stringify(G.collection)); store("tt_sword",G.hasSword?"1":"0"); store("tt_shield",G.hasShield?"1":"0"); }
+
+/* ---------- DOM refs ---------- */
+const $=id=>document.getElementById(id);
+const lane=$("lane"), unitsEl=$("units");
+
+/* ---------- audio (tiny beeps, offline) ---------- */
+let AC=null;
+function beep(f,d){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); const o=AC.createOscillator(),g=AC.createGain(); o.frequency.value=f; o.connect(g); g.connect(AC.destination); g.gain.value=0.15; o.start(); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+(d||0.2)); o.stop(AC.currentTime+(d||0.2)); }catch(e){} }
+function fanfare(){ beep(523,.15); setTimeout(()=>beep(659,.15),150); setTimeout(()=>beep(784,.3),300); }
+
+/* ---------- screens ---------- */
+function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); $(id).classList.add("active"); $("powerBtn").style.display = (id==="screen-battle")?"block":"none"; }
+function renderLevels(){
+  const grid=$("levelGrid"); grid.innerHTML="";
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement("button"); b.className="lvlBtn"+(i+1>G.unlocked?" locked":"");
+    b.innerHTML="<span class='em'>"+L.icon+"</span>"+(i+1)+". "+L.name+(i+1>G.unlocked?" 🔒":"");
+    b.setAttribute("aria-label","Level "+(i+1)+" "+L.name);
+    b.onclick=()=>{ if(i+1<=G.unlocked){ startLevel(i); } else { beep(200,.2); alert("Finish the previous level to unlock this one! 🔒"); } };
+    grid.appendChild(b);
+  });
+  const c = G.collection.length? G.collection.join(" ") : "empty — win a level!";
+  $("collStart").textContent=c;
+  const st = Object.keys(G.stars).length? Object.keys(G.stars).map(k=>"L"+(+k+1)+":"+"⭐".repeat(G.stars[k])).join(" ") : "no stars yet";
+  $("scoreStart").textContent=st;
+  $("futureList").textContent = FUTURE_REWARDS.join(" · ") + "  (coming soon — not for sale!)";
+}
+function grownText(){
+  return "<ul><li>Continuous sim: units spawn/fight with no micromanagement (no selection UI).</li>"+
+  "<li>Opportunity-not-gate: victory NEVER hard-gated; RIVAL_SPAWN_BIAS="+RIVAL_SPAWN_BIAS+" (rival ~10% faster, idle ~60s loses, rare lucky win possible).</li>"+
+  "<li>Auto-return "+REST_SEC+"s (snooze icon at base, no permadeath).</li>"+
+  "<li>Rewards: sword=L1 (+1 bump dmg), shield=L3 (one free hit-block per unit per level); purely visual continuity otherwise (no stat carry).</li>"+
+  "<li>Sequential levels 1→5, unlock on win.</li>"+
+  "<li>Boosts: maths→Shield Wall "+SHIELD_SEC+"s invulnerable; letter→Swift Charge +60% "+SWIFT_SEC+"s; 3-in-a-row→Rally (return 1 resting + full heal). Each correct also +"+CORRECT_PUSH+" progress instantly (whale: same total via pool). Wrong = no boost.</li>"+
+  "<li>Retry: hint + eliminate 1 wrong + retry SAME question, dismissible X, resurfaces within next 3 cards.</li>"+
+  "<li>Whale victory = push same 0–100 meter to 100% (playful, no violence); PAR_TIME_L1="+PAR_TIME_L1+"s, L5 takes ≥1.5×.</li>"+
+  "<li>Classes: Sturdy 3 bumps/40px/s, Swift 1 bump/90px/s (minima met; see UNIT_TYPES).</li>"+
+  "<li>Prize-choice: child picks 1 of 3 presentations (🏆/⭐/👑) → Collection shelf (session + localStorage).</li>"+
+  "<li>Rubber-band: rival +25% @≥60%, +50% @≥70%; glowing POWER! offers bonus when trailing.</li>"+
+  "<li>Cards never expire; battle slows to 25% while card open; ≤1 bump/sec.</li></ul>";
+}
+
+/* ---------- level start ---------- */
+function startLevel(i){
+  G.level=i; G.progress=50; G.punits=[]; G.runits=[]; G.resting=[]; G.minions=[];
+  G.pSpawnT=0.5; G.rSpawnT=1.5; G.spawnCount=0;
+  G.shieldT=0; G.swiftT=0; G.streak=0; G.correct=0; G.wrong=0;
+  G.cardOpen=false; G.powerCD=0; G.autoLoseDone=false; G.autoWinDone=false; G.pendingBonus=0;
+  G.whaleJetT=WHALE_JET_SEC; G.whalePullT=WHALE_PULL_SEC; G.whaleMinT=2;
+  G.grabbed=null; G.elapsed=0; G.lastBump=0;
+  // question order: retry queue empty, shuffled order by seed
+  const sb=$("seedBox"); if(sb && sb.value){ setSeed(sb.value.trim()); store("tt_seedbox",sb.value.trim()); }
+  G.qOrder = QUESTION_BANK.map((_,k)=>k);
+  for(let k=G.qOrder.length-1;k>0;k--){ const j=Math.floor(srand()*(k+1)); const t=G.qOrder[k]; G.qOrder[k]=G.qOrder[j]; G.qOrder[j]=t; }
+  G.qPos=0; G.retryQueue=[];
+  const L=LEVELS[i];
+  lane.className=L.lane; lane.id="lane";
+  $("lvlTitle").textContent="Level "+(i+1)+" "+L.name+" "+L.icon;
+  $("playerBase").textContent=L.playerBase;
+  $("rivalBase").textContent=(i===4)?"":L.rivalBase;
+  $("whale").style.display=(i===4)?"block":"none";
+  $("trophyLane").textContent=L.goal;
+  $("wizardLine").textContent="🧙 Wizard: "+L.wizard;
+  if(L.reward==="sword" && !G.hasSword) $("wizardLine").textContent+=" (Win to earn a SWORD! ⚔️)";
+  if(L.reward==="shield" && !G.hasShield) $("wizardLine").textContent+=" (Win to earn a SHIELD! 🛡️)";
+  if(i===4) $("wizardLine").textContent+=" Hearts = how far the whale still blocks you!";
+  show("screen-battle");
+  G.running=true; G.lastT=performance.now(); G.startTime=G.lastT;
+  requestAnimationFrame(tick);
+  // level intro: brief wizard toast via banner
+  banner("Level "+(i+1)+": "+L.name+" "+L.icon, 1800);
+}
+
+/* ---------- unit spawn ---------- */
+function knightIdentity(n){ return KNIGHTS[n % KNIGHTS.length]; }
+function spawnPlayer(){
+  if(G.punits.filter(u=>!u.dead).length>=MAX_PLAYER_UNITS) return;
+  const alt = (G.spawnCount%2===0)?"sturdy":"swift";
+  const id = KNIGHTS[G.spawnCount%KNIGHTS.length];
+  const T=UNIT_TYPES[alt];
+  G.punits.push({ cls:alt, x:4+srand()*3, hp:T.hp, maxhp:T.hp, speed:T.speed, stun:0, dead:false, kid:G.spawnCount, ident:id, freeBlock:(G.hasShield?1:0), el:null });
+  G.spawnCount++;
+}
+function spawnRival(){
+  const isWhale=(G.level===4);
+  const alive=G.runits.filter(u=>!u.dead).length + G.minions.filter(u=>!u.dead).length;
+  if(alive>=MAX_RIVAL_UNITS) return;
+  const L=LEVELS[G.level];
+  if(isWhale && (G.minions.filter(u=>!u.dead).length<2 || srand()<0.5)){
+    const T=UNIT_TYPES.fish;
+    G.minions.push({ cls:"fish", x:88-srand()*5, hp:T.hp, maxhp:T.hp, speed:T.speed, stun:0, dead:false, el:null });
+  } else {
+    const T=UNIT_TYPES.raider;
+    const hp = T.hp*(L.rivalHPMul); // +10% per level (fractional HP)
+    G.runits.push({ cls:"raider", x:92-srand()*3, hp:hp, maxhp:hp, speed:T.speed*(G.level===3?0.9:1), stun:0, dead:false, el:null });
+  }
+}
+
+/* ---------- main tick ---------- */
+function tick(now){
+  if(!G.running) return;
+  let dt=Math.min(0.05,(now-G.lastT)/1000); G.lastT=now; G.elapsed=(now-G.startTime)/1000;
+  const slow = G.cardOpen?CARD_SLOW:1;
+  const eff=dt*slow;
+  // snapshot ALL tick gains for the whale pace cap (bumps + base hits + drift + surge + pool)
+  const beforeGain=G.progress;
+  // cooldowns
+  if(G.powerCD>0){ G.powerCD-=dt; if(G.powerCD<0)G.powerCD=0; }
+  if(G.shieldT>0)G.shieldT-=eff;
+  if(G.swiftT>0)G.swiftT-=eff;
+  // spawns with rubber-band + bias + seed jitter
+  G.pSpawnT-=eff;
+  if(G.pSpawnT<=0){ spawnPlayer(); G.pSpawnT=PLAYER_SPAWN_SEC*(0.9+srand()*0.2); }
+  let rb = 1; if(G.progress>=70)rb=RUBBER_FAST_CAP; else if(G.progress>=60)rb=RUBBER_MID_CAP;
+  const rivalInt = RIVAL_SPAWN_SEC/(RIVAL_SPAWN_BIAS*rb) * (G.level===4?1.5:1); // whale: slower raiders, minions are the blockers
+  G.rSpawnT-=eff;
+  if(G.rSpawnT<=0){ spawnRival(); G.rSpawnT=rivalInt*(0.9+srand()*0.2); }
+  // whale timers (level 5)
+  if(G.level===4){ whaleLogic(eff); }
+  // move
+  const swiftMul = G.swiftT>0?SWIFT_MUL:1;
+  const allP=G.punits.filter(u=>!u.dead), allR=G.runits.filter(u=>!u.dead), allM=G.minions.filter(u=>!u.dead);
+  // fish slow aura: 40% slow => speed *0.6 when near minion
+  allP.forEach(u=>{
+    if(u.stun>0){ u.stun-=eff; return; }
+    if(G.grabbed===u){ return; } // dragged by whale logic
+    let sp=u.speed*swiftMul;
+    for(const m of allM){ if(Math.abs(m.x-u.x)<10){ sp*=0.75; break; } } // whale minions: mild 25% slow aura
+    u.x+=sp*eff*(100/960)*1.6; // scale px/s to lane-%/s
+  });
+  allR.forEach(u=>{ if(u.stun>0){u.stun-=eff;return;} u.x-=u.speed*eff*(100/960)*1.6; });
+  allM.forEach(u=>{ if(u.stun>0){u.stun-=eff;return;} u.x-=u.speed*eff*(100/960)*1.2; });
+  // grabbed drag
+  if(G.grabbed){ const gb=G.grabbed; G.grabT-=eff; gb.x+=12*eff; gb.grabT=G.grabT; if(G.grabT<=0){ gb.hp-=1; releaseGrab(false); } }
+  // bumps (cap global rate)
+  handleBumps(allP,allR,allM,now);
+  // base reaches (measured by the whale pace-cap snapshot above)
+  // (whale: player +5, rival -4, minion -1 — mild so boss timing is predictable; elsewhere +5/-7)
+  const PW_HIT = (G.level===4)?5:BASE_HIT_PLAYER, RW_HIT = (G.level===4)?4:BASE_HIT_RIVAL;
+  for(const u of allP){ if(u.x>=90){ if(G.level===4){ whaleHit(); } G.progress+=PW_HIT; u.dead=true; removeEl(u); popAt(90,"🎉"); beep(700,.1);} }
+  for(const u of allR){ if(u.x<=8){ G.progress-=RW_HIT; u.dead=true; removeEl(u); popAt(8,"💥"); beep(180,.2);} }
+  for(const u of allM){ if(u.x<=8){ G.progress-=1; u.dead=true; removeEl(u);} }
+  // resting return
+  for(const r of G.resting){ r.t-=eff; if(r.t<=0){ r.done=true; } }
+  G.resting=G.resting.filter(r=>!r.done);
+  // prune dead (resting knights are tracked separately; no permadeath, no leak)
+  if(G.punits.length>24) G.punits=G.punits.filter(u=>!u.dead);
+  if(G.runits.length>24) G.runits=G.runits.filter(u=>!u.dead);
+  if(G.minions.length>24) G.minions=G.minions.filter(u=>!u.dead);
+  // passive drift + pressure (idling loses; whale drifts mildly -0.20 with capped gains so boss timing is predictable)
+  const drift = (G.level===4)? -0.20 : DRIFT_PER_SEC;
+  const pc=allP.length, rc=allR.length+allM.length;
+  G.progress += (pc*0.35 - rc*0.38 + drift)*eff;
+  // boost surges: each correct answer visibly turns the tide (FULL surge even in whale — the tick cap keeps boss timing)
+  const surgeMul = 1.0;
+  if(G.shieldT>0) G.progress += SHIELD_SURGE*surgeMul*eff;
+  if(G.swiftT>0) G.progress += SWIFT_SURGE*surgeMul*eff;
+  if(G.level===4){
+    // whale pace: pool (answer push) drains 1.5/s; ALL tick gains capped at +0.27/s (overflow banked, never lost),
+    // all tick losses floored at -0.50/s (excess forgiven: spongy boss, no death spirals).
+    // => L5 structurally takes >=50/0.27=185s (>=1.5x PAR_TIME_L1) at any skill/seed, yet always winnable.
+    const rel=Math.min(G.pendingBonus,1.5*dt); G.pendingBonus-=rel; G.progress+=rel;
+    const gainAll=G.progress-beforeGain, maxAll=0.27*dt, minAll=-0.50*dt;
+    if(gainAll>maxAll){ G.progress-=(gainAll-maxAll); G.pendingBonus+=(gainAll-maxAll); }
+    else if(gainAll<minAll){ G.progress=beforeGain+minAll; }
+  }
+  G.progress=Math.max(0,Math.min(100,G.progress));
+  // auto cards
+  if(!G.cardOpen && G.powerCD<=0){
+    if(G.progress<=35 && !G.autoLoseDone){ G.autoLoseDone=true; openCard(true,"The rival pushes! Answer to help! 🛡️"); }
+    else if(G.progress>=80 && !G.autoWinDone){ G.autoWinDone=true; openCard(true,"Almost there! One more push! 🏆"); }
+  }
+  updateUI();
+  // end?
+  if(G.progress>=100){ winLevel(); return; }
+  if(G.progress<=0){ loseLevel(); return; }
+  requestAnimationFrame(tick);
+}
+function popAt(xpct,txt){
+  const b=$("bumpFlash"); b.style.display="block"; b.style.left=xpct+"%"; b.style.bottom="120px"; b.textContent=txt;
+  setTimeout(()=>{b.style.display="none";},400);
+}
+function handleBumps(allP,allR,allM,now){
+  if(now-G.lastBump<BUMP_GLOBAL_SEC*1000) return;
+  // player vs rival
+  for(const p of allP){ for(const r of allR){
+    if(Math.abs(p.x-r.x)<4){
+      doBump(p,r); G.lastBump=now; return;
+    }}}
+  for(const p of allP){ for(const m of allM){
+    if(Math.abs(p.x-m.x)<4){
+      doBump(p,m); G.lastBump=now; return;
+    }}}
+}
+function doBump(p,foe){
+  popAt((p.x+foe.x)/2,"💥");
+  beep(300,.08);
+  // player damage taken
+  if(G.shieldT>0){ /* invulnerable */ }
+  else if(p.freeBlock>0){ p.freeBlock--; flashUnit(p,"🛡️"); }
+  else { p.hp-=1; }
+  // foe damage (sword bonus +1 every hit is +1 dmg; default sword=+1 bump damage)
+  let dmg=1+(G.hasSword?1:0);
+  // rival fractional HP: subtract
+  foe.hp-=1; if(G.hasSword) foe.hp-=0; // sword already +dmg vs integer foes: extra pop
+  if(G.hasSword) foe.hp-=0.0; // (kept simple: sword = +1 bump damage vs fish/minions: 1-hit pop)
+  // apply sword: fish have 2hp -> 1 bump pops with sword
+  if(G.hasSword && foe.cls==="fish") foe.hp=Math.min(foe.hp,0);
+  else if(G.hasSword) foe.hp-=1; // rival takes 2 per bump with sword
+  // bump score ticks (low-volatility in whale so boss timing is predictable)
+  const wBump=(G.level===4)?0.3:1.0, wLoss=(G.level===4)?0.3:0.5;
+  if(p.hp<=0){ defeatPlayer(p); G.progress-=wLoss; }
+  else { flashUnit(p,"✨"); }
+  if(foe.hp<=0){
+    foe.dead=true; removeEl(foe); G.progress+=wBump; popAt(foe.x,"🎉");
+  } else flashUnit(foe,"💢");
+}
+function defeatPlayer(p){
+  p.dead=true; removeEl(p);
+  G.resting.push({kid:p.kid, cls:p.cls, ident:p.ident, t:REST_SEC});
+  banner(p.ident.name+" is resting… 😴 ("+REST_SEC+"s)",1200);
+}
+function flashUnit(u,txt){
+  if(!u.el) return;
+  const b=u.el.querySelector(".bubble"); if(b){ b.textContent=txt; b.style.display="block"; setTimeout(()=>{if(b)b.style.display="none";},700); }
+  u.el.style.filter="brightness(2)"; setTimeout(()=>{if(u.el)u.el.style.filter="";},250);
+}
+function removeEl(u){ if(u.el&&u.el.parentNode)u.el.parentNode.removeChild(u.el); u.el=null; }
+
+/* ---------- whale logic ---------- */
+function whaleLogic(eff){
+  G.whaleJetT-=eff; G.whalePullT-=eff; G.whaleMinT-=eff;
+  const w=$("whale"), wt=$("whaleTelegraph");
+  if(G.whaleJetT<=0.8 && G.whaleJetT>0){ wt.style.display="block"; wt.textContent="⚠ WATER JETS! 💦"; w.classList.add("warn"); }
+  if(G.whaleJetT<=0){
+    wt.style.display="none"; w.classList.remove("warn");
+    // knockback one step / 2s stun
+    for(const u of G.punits.filter(u=>!u.dead)){ u.x=Math.max(4,u.x-5); u.stun=1.5; flashUnit(u,"💦"); }
+    banner("🌊 WATER JETS! Knights splashed back!",1500); beep(150,.4);
+    G.whaleJetT=WHALE_JET_SEC;
+  }
+  if(G.whalePullT<=0.8 && G.whalePullT>0 && !G.grabbed){ wt.style.display="block"; wt.textContent="⚠ GRAB! 🐋"; }
+  if(G.whalePullT<=0){
+    wt.style.display="none";
+    const cands=G.punits.filter(u=>!u.dead);
+    if(cands.length && !G.grabbed){
+      G.grabbed=cands[Math.floor(srand()*cands.length)];
+      G.grabT=3; flashUnit(G.grabbed,"🆘 HELP!");
+      banner("🐋 PULL BY THE FEET! Answer to FREE them!",2000); beep(120,.4);
+      if(G.powerCD>0)G.powerCD=0; // allow instant counter
+      $("powerBtn").classList.add("glow");
+    }
+    G.whalePullT=WHALE_PULL_SEC;
+  }
+  if(G.whaleMinT<=0){
+    const alive=G.minions.filter(u=>!u.dead).length;
+    if(alive<2){ const T=UNIT_TYPES.fish; for(let k=0;k<2 && G.minions.filter(u=>!u.dead).length<2;k++) G.minions.push({cls:"fish",x:85+srand()*5,hp:T.hp,maxhp:T.hp,speed:T.speed,stun:0,dead:false,el:null}); banner("🐟 Splash-friends block the way! (bump twice!)",1400); }
+    G.whaleMinT=WHALE_MINION_SEC;
+  }
+}
+function releaseGrab(freed){
+  if(!G.grabbed)return;
+  if(freed){ banner("🎉 FREED! Great answer!",1400); beep(880,.2); }
+  $("powerBtn").classList.remove("glow");
+  const g=G.grabbed; G.grabbed=null;
+  if(!freed && g.hp<=0){ defeatPlayer(g); }
+}
+function whaleHit(){ const w=$("whale"); w.style.transform="scale(1.15)"; setTimeout(()=>w.style.transform="",250); }
+
+/* ---------- UI ---------- */
+let uiTick=0;
+function updateUI(){
+  $("tugMarker").style.left="calc("+G.progress+"% - 4px)";
+  $("facePlayer").textContent = G.progress>=60?"😊 knights WINNING!":G.progress<=40?"😟 knights worried":"😐 knights fighting";
+  $("faceRival").textContent = G.progress<=40?"😈 rival winning":"😈 rival";
+  $("distCue").textContent = G.progress>=80?"🔥 SO CLOSE TO THE TROPHY!":G.progress<=25?"🆘 HELP! PUSH BACK!":"";
+  // trophy lerps with meter: trophy sits beyond rival base; front flag = progress
+  const tx = 8 + (G.progress/100)*80;
+  $("trophyLane").style.left=tx+"%";
+  $("trophyLane").style.transform="translateX(-50%) scale("+(0.8+G.progress/250)+")";
+  if(G.level===4){
+    const hearts=Math.ceil((100-G.progress)/20);
+    $("hearts").textContent="🐋 Whale hearts: "+"💙".repeat(Math.max(0,hearts))+"🤍".repeat(Math.max(0,5-hearts))+" (push to 100%!)";
+  } else $("hearts").textContent="";
+  // timer
+  $("lvlTimer").textContent="⏱ "+Math.floor(G.elapsed)+"s";
+  // POWER cooldown ring + glow when trailing
+  const pb=$("powerBtn");
+  if(G.powerCD>0){ pb.classList.add("cool"); pb.style.setProperty("--cd",(G.powerCD/POWER_COOLDOWN_SEC*360)+"deg"); }
+  else { pb.classList.remove("cool"); pb.style.setProperty("--cd","0deg"); }
+  if(G.progress<35 && G.powerCD<=0 && !G.cardOpen) pb.classList.add("glow"); else if(!G.grabbed) pb.classList.remove("glow");
+  // render units (cheap: rebuild positions each frame)
+  renderUnits();
+  // rest bar
+  $("restBar").textContent = G.resting.length? "😴 Resting: "+G.resting.map(r=>r.ident.name+" ("+Math.ceil(r.t)+"s)").join(" · ") : "";
+}
+function spriteFor(u){
+  let s = u.cls==="sturdy"?"🛡️":u.cls==="swift"?"🏃":u.cls==="fish"?"🐟":"👺";
+  // knights keep identity: show colored dot + emblem via name bar; swords/shields equipped
+  let extra="";
+  if(u.ident){ if(G.hasSword) extra+="⚔️"; if(G.hasShield) extra+="🛡️"; }
+  return {s,extra};
+}
+function renderUnits(){
+  const all=[...G.punits.filter(u=>!u.dead),...G.runits.filter(u=>!u.dead),...G.minions.filter(u=>!u.dead)];
+  // remove stale
+  const seen=new Set();
+  for(const u of all){
+    if(!u.el){
+      const d=document.createElement("div"); d.className="unit"+(G.shieldT>0&&u.ident?" shielded":"")+(G.swiftT>0&&u.ident?" swifted":"");
+      d.innerHTML="<div class='bubble'></div><span class='spr'></span><div class='nm'></div><div class='hp'></div>";
+      d.onclick=()=>{ beep(600,.08); flashUnit(u,"😊"); }; // clicking does nothing but ripple/smile (no selection)
+      unitsEl.appendChild(d); u.el=d;
+    }
+    seen.add(u.el);
+    const sp=spriteFor(u);
+    u.el.style.left="calc("+u.x+"% - 32px)";
+    u.el.style.bottom=(u.ident? "40px" : "70px");
+    if(G.grabbed===u){ u.el.classList.add("grabbed"); const b=u.el.querySelector(".bubble"); b.textContent="🆘 HELP!"; b.style.display="block"; }
+    else u.el.classList.remove("grabbed");
+    if(u.stun>0)u.el.classList.add("stunned"); else u.el.classList.remove("stunned");
+    if(u.cls==="fish")u.el.classList.add("stunned");
+    u.el.querySelector(".spr").textContent=sp.s;
+    const nm=u.el.querySelector(".nm");
+    if(u.ident){ nm.textContent=u.ident.emblem+" "+u.ident.name+" "+sp.extra; nm.style.background=u.ident.color; }
+    else nm.textContent=u.cls==="fish"?"splash-fish 🐟":"raider";
+    // hearts/pips (feedback, not stats sheet)
+    const full="❤️".repeat(Math.max(0,Math.ceil(u.hp)));
+    u.el.querySelector(".hp").textContent=full||"💔";
+    if(G.shieldT>0&&u.ident){ u.el.classList.add("shielded"); u.el.querySelector(".spr").textContent="🫧"; }
+    else if(u.el)u.el.classList.remove("shielded");
+    if(G.blockMode) u.el.classList.add("blk"); 
+  }
+  // cleanup removed
+  [...unitsEl.children].forEach(ch=>{ if(!seen.has(ch)) ch.remove(); });
+}
+function banner(txt,ms){
+  const b=$("boostBanner"); b.textContent=txt; b.classList.add("show");
+  clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove("show"),ms||1600);
+}
+
+/* ---------- cards ---------- */
+function nextQuestion(){
+  if(G.retryQueue.length && srand()<0.6) return G.retryQueue.shift();
+  if(G.qPos>=G.qOrder.length){ // reshuffle
+    G.qOrder=QUESTION_BANK.map((_,k)=>k);
+    for(let k=G.qOrder.length-1;k>0;k--){ const j=Math.floor(srand()*(k+1)); const t=G.qOrder[k];G.qOrder[k]=G.qOrder[j];G.qOrder[j]=t; }
+    G.qPos=0;
+  }
+  return G.qOrder[G.qPos++];
+}
+function openCard(auto,hint){
+  if(G.cardOpen)return;
+  G.cardOpen=true;
+  const qi=nextQuestion();
+  G.card={qi, wrongUsed:false};
+  G.elimIdx=-1;
+  const Q=QUESTION_BANK[qi];
+  $("cardQ").textContent=Q.q;
+  $("cardPic").textContent=Q.pic||"";
+  $("cardHint").textContent=hint||"";
+  const btns=document.querySelectorAll(".ansBtn");
+  btns.forEach((b,i)=>{ b.textContent=Q.opts[i]; b.classList.remove("elim"); });
+  $("cardModal").classList.add("open");
+}
+function closeCard(){ $("cardModal").classList.remove("open"); G.cardOpen=false; G.powerCD=POWER_COOLDOWN_SEC; if(G.grabbed&&G.card&&G.card.freedGrab){} updateUI(); }
+document.querySelectorAll(".ansBtn").forEach(b=>b.onclick=()=>answer(+b.dataset.i));
+function answer(i){
+  if(!G.cardOpen||!G.card)return;
+  const Q=QUESTION_BANK[G.card.qi];
+  if(i===Q.correct){ onCorrect(Q); }
+  else { onWrong(Q,i); }
+}
+function onWrong(Q,i){
+  G.wrong++; G.streak=0; beep(200,.25);
+  $("card").classList.add("shake"); setTimeout(()=>$("card").classList.remove("shake"),450);
+  const btns=document.querySelectorAll(".ansBtn");
+  // eliminate one wrong option OR show counting hint
+  if(G.elimIdx<0){
+    for(let k=0;k<3;k++){ if(k!==Q.correct&&k!==i){ btns[k].classList.add("elim"); G.elimIdx=k; break; } }
+  }
+  $("cardHint").textContent="💛 Try again! "+Q.hint;
+  // schedule spaced retry within next 3 cards
+  if(!G.retryQueue.includes(G.card.qi) && G.retryQueue.length<3) G.retryQueue.push(G.card.qi);
+}
+function onCorrect(Q){
+  G.correct++; G.streak++;
+  if(G.level===4){ G.pendingBonus+=6.0; } // whale: +6.0 per answer via pool (drains in-tick; floor+fairness via pace cap below)
+  else G.progress=Math.min(100,G.progress+CORRECT_PUSH);
+  fanfare();
+  if(Q.type==="maths"){ G.shieldT=SHIELD_SEC; banner("🛡️ SHIELDS UP! (maths power!)",1800); }
+  else { G.swiftT=SWIFT_SEC; banner("💨 KNIGHTS RUN FAST! (letter power!)",1800); }
+  if(G.streak%3===0){
+    // Rally: return one resting + heal all
+    const r=G.resting.shift();
+    if(r){ G.punits.push({cls:r.cls,x:5,hp:UNIT_TYPES[r.cls].hp,maxhp:UNIT_TYPES[r.cls].hp,speed:UNIT_TYPES[r.cls].speed,stun:0,dead:false,kid:r.kid,ident:r.ident,freeBlock:(G.hasShield?1:0),el:null}); }
+    for(const u of G.punits) if(!u.dead) u.hp=u.maxhp;
+    banner((Q.type==="maths"?"🛡️ SHIELDS UP! + ":"💨 SWIFT CHARGE! + ")+"🎺 RALLY! Resting knight returns!",2000);
+  }
+  if(G.grabbed){ const g=G.grabbed; releaseGrab(true); }
+  // visible change within 2s: progress bar jumps (above) + glow handled by render
+  closeCard();
+}
+$("cardX").onclick=()=>{ closeCard(); banner("No problem — knights keep fighting! 💛",1200); };
+$("powerBtn").onclick=()=>{ if(G.powerCD>0||G.cardOpen){beep(220,.15);return;} beep(500,.12); openCard(false,""); };
+
+/* ---------- win / lose ---------- */
+function starCount(){ if(G.wrong===0)return 3; if(G.correct>=3)return 2; return 1; }
+function winLevel(){
+  G.running=false; closeCardSilent(); fanfare();
+  // conquest: gather units at trophy (visual)
+  banner("🎉 CONQUEST! The trophy is YOURS!",2000);
+  confetti();
+  setTimeout(()=>{
+    const L=LEVELS[G.level];
+    show("screen-victory");
+    $("vicTitle").textContent="🏆 VICTORY! Level "+(G.level+1);
+    $("vicSub").textContent="You won "+L.name+"! "+L.icon;
+    $("vicPrize").textContent=L.goal;
+    document.querySelectorAll(".prizeBtn").forEach(b=>b.classList.remove("picked"));
+    let rw="";
+    if(L.reward==="sword"&&!G.hasSword){ G.hasSword=true; rw="⚔️ NEW SWORD! Knights now carry swords (+1 bump damage)! "; }
+    if(L.reward==="shield"&&!G.hasShield){ G.hasShield=true; rw="🛡️ NEW SHIELD! Knights now carry shields (one free block each)! "; }
+    if(G.level===4){ rw+="🏆 THE BIG CUP + 🐋 Whale Friend badge! "; if(!G.collection.includes("🐋"))G.collection.push("🐋 Whale Friend"); }
+    $("rewardNote").textContent=rw;
+    const s=starCount();
+    G.stars[G.level]=Math.max(G.stars[G.level]||0,s);
+    $("starNote").textContent="⭐".repeat(s)+" ("+s+" star"+(s>1?"s":"")+") · ✅ "+G.correct+" correct · 💛 "+G.wrong+" tries · ⏱ "+Math.floor(G.elapsed)+"s";
+    $("grownNoteVic").innerHTML="<b>Grown-up note:</b> RIVAL_SPAWN_BIAS="+RIVAL_SPAWN_BIAS+" · PAR_TIME_L1="+PAR_TIME_L1+"s · rest "+REST_SEC+"s · boosts maths→shield "+SHIELD_SEC+"s / letter→swift "+SWIFT_SEC+"s / 3-in-row→rally, each correct +"+CORRECT_PUSH+" progress · retry hint+retry+resurface≤3 · whale=push-to-100% · Sturdy/Swift minima · prize 1-of-3.";
+    if(G.level+1<5) G.unlocked=Math.max(G.unlocked,G.level+2);
+    saveMeta(); renderLevels();
+    $("nextBtn").style.display=(G.level+1<5)?"":"none";
+  },900);
+}
+function closeCardSilent(){ $("cardModal").classList.remove("open"); G.cardOpen=false; G.powerCD=0; }
+function loseLevel(){ G.running=false; closeCardSilent(); beep(180,.4); show("screen-defeat"); }
+function confetti(){
+  const c=$("confetti"); if(!c)return; c.innerHTML="";
+  const em=["🎉","⭐","🏆","🎊","💛","👑"];
+  for(let i=0;i<80;i++){ const s=document.createElement("span"); s.className="cf"; s.textContent=em[i%em.length]; s.style.left=(Math.random()*100)+"vw"; s.style.animationDuration=(1.5+Math.random()*2)+"s"; s.style.fontSize=(18+Math.random()*22)+"px"; c.appendChild(s); setTimeout(()=>s.remove(),4000); }
+}
+document.querySelectorAll(".prizeBtn").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".prizeBtn").forEach(x=>x.classList.remove("picked")); b.classList.add("picked");
+  const p=b.dataset.p; $("vicPrize").textContent=p+" "+LEVELS[G.level].goal;
+  if(!G.collection.includes(p+"-L"+(G.level+1))) G.collection.push(p+"-L"+(G.level+1));
+  saveMeta(); renderLevels(); fanfare(); banner("Added to Collection! 🎁",1200);
+});
+$("againBtn").onclick=()=>startLevel(G.level);
+$("nextBtn").onclick=()=>startLevel(Math.min(4,G.level+1));
+$("homeBtn").onclick=()=>{show("screen-start");renderLevels();};
+$("homeBtn2").onclick=()=>{show("screen-start");renderLevels();};
+$("retryBtn").onclick=()=>startLevel(G.level);
+$("quitBtn").onclick=()=>{G.running=false;closeCardSilent();show("screen-start");renderLevels();};
+
+/* ---------- start / shop / grownups / block ---------- */
+$("startBtn").onclick=()=>startLevel(Math.min(G.unlocked-1,4));
+$("shopBtn").onclick=()=>$("shopModal").classList.add("open");
+$("shopClose").onclick=()=>$("shopModal").classList.remove("open");
+$("grownBtn").onclick=()=>{ $("grownText").innerHTML=grownText(); $("grownModal").classList.add("open"); };
+$("grownClose").onclick=()=>$("grownModal").classList.remove("open");
+$("blockBtn").onclick=(e)=>{ G.blockMode=!G.blockMode; document.body.classList.toggle("block-mode",G.blockMode); e.target.textContent=G.blockMode?"🧱 Block style: ON":"🧱 Block style: OFF"; };
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown",e=>{
+  if($("screen-start").classList.contains("active") && e.key==="Enter"){ $("startBtn").click(); }
+  else if($("screen-battle").classList.contains("active")){
+    if(e.code==="Space"){ e.preventDefault(); $("powerBtn").click(); }
+    if(G.cardOpen){ if(e.key==="1")answer(0); if(e.key==="2")answer(1); if(e.key==="3")answer(2); if(e.key==="Escape")$("cardX").click(); }
+  } else if($("screen-victory").classList.contains("active")&&e.key==="Enter"){ $("nextBtn").style.display!=="none"?$("nextBtn").click():$("againBtn").click(); }
+  else if($("screen-defeat").classList.contains("active")&&e.key==="Enter"){ $("retryBtn").click(); }
+});
+
+/* ---------- init ---------- */
+$("grownText").innerHTML=grownText();
+renderLevels();
+</script>
+</body>
+</html>

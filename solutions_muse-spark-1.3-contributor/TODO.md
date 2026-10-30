@@ -59,3 +59,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Dungeon Deck Delve — Deckbuilding Crawler | 🟠 Hard | ✅ Done |
 | Sector-7 — From-Scratch Raycaster FPS | 🔴 Extreme | ✅ Done |
 | Conveyor Lab — Factory Automation Sim | 🔴 Extreme | ✅ Done |
+| Trophy Tide — Knights Tower Defense & Whale Boss | 🔴 Extreme | ✅ Done |
