@@ -1,0 +1,559 @@
+Game Concept Brief — Brainstorming, Initial Spec e PRD Seed
+
+O documento deve separar claramente o que já foi decidido, o que são ideias em exploração e o que ainda precisa de validação. O objetivo é transformar a conversa num ponto de partida útil para outro agente de desenvolvimento de jogos, acelerando a passagem de brainstorming para um brief de produto e, posteriormente, para um PRD.
+
+Também vale a pena incluir os vetores de otimização do jogo: diversão, aprendizagem, autonomia da criança, progressão, equilíbrio da dificuldade e simplicidade de implementação. Estes vetores devem orientar as decisões futuras sem obrigar a fechar já as mecânicas que ainda estão em aberto.
+
+1. Resumo executivo
+
+A ideia é criar um jogo single-player para uma criança de 6 anos, no primeiro ano de escolaridade, que combina mecânicas de Tower Defense com a sensação de competição e progressão de Capture the Flag.
+
+O jogo deverá ser divertido, visualmente apelativo e suficientemente simples para uma criança desta idade compreender. Ao mesmo tempo, deverá incorporar desafios educativos que influenciem diretamente o desenrolar da partida.
+
+A ideia diferenciadora é que a aprendizagem não seja uma atividade separada do jogo. Em vez disso, resolver pequenos desafios educativos permite obter vantagens concretas dentro do jogo, como reforçar defesas, ganhar velocidade, ultrapassar o adversário ou conquistar a taça.
+
+O resultado pretendido não é apenas um Tower Defense com elementos educativos. É um jogo em que a criança sente que está a competir, a tomar decisões e a tentar conquistar um prémio, enquanto pratica competências adequadas à sua idade.
+
+O conceito deve ser suficientemente flexível para suportar diferentes temas visuais, personagens, cenários e recompensas, mantendo uma base comum de mecânicas.
+
+1.1. Visão do produto
+
+Criar um jogo de estratégia acessível, com personagens adoráveis, objetivos claros, progressão visual e desafios educativos integrados na jogabilidade.
+
+A criança deverá conseguir:
+
+* Compreender rapidamente o objetivo de cada partida.
+* Perceber se está a ganhar, a perder ou se está perto de conseguir vencer.
+* Tomar decisões simples que influenciem o resultado.
+* Resolver desafios educativos para obter vantagens no jogo.
+* Sentir que o seu conhecimento e as suas decisões contribuem para a vitória.
+* Receber recompensas concretas e visualmente apelativas.
+
+1.2. Princípio fundamental
+
+A aprendizagem deve ser uma mecânica de jogo, não uma interrupção da experiência de jogo.
+
+Os desafios educativos devem ter consequências percetíveis no mundo do jogo. Uma resposta correta deverá proporcionar uma vantagem que a criança consiga compreender, observar e associar à sua ação.
+
+⸻
+
+2. Conceito central do jogo
+
+2.1. Género e mecânicas
+
+O jogo combina três conceitos:
+
+Conceito	Papel no jogo
+Tower Defense	Base estratégica: defender uma posição, gerir unidades e resistir a ataques.
+Capture the Flag	Objetivo competitivo: avançar para conquistar o objetivo do adversário antes que este consiga vencer.
+Educational Game	Camada educativa: resolver desafios para obter vantagens estratégicas.
+
+A referência a Capture the Flag descreve sobretudo a experiência e o objetivo competitivo, não necessariamente uma implementação literal das regras tradicionais desse género.
+
+O jogo deverá ser single-player. A competição pode ser simulada através de um adversário controlado pelo jogo, sem necessidade de multiplayer.
+
+2.2. A experiência pretendida
+
+A criança observa uma batalha entre duas forças.
+
+Tem de proteger a sua posição, ultrapassar as defesas adversárias e aproximar-se de um objetivo final, como uma grande taça.
+
+Ao longo da partida, a situação evolui. A criança consegue perceber visualmente quem está em vantagem e se a vitória está próxima.
+
+Quando precisa de ajuda para inverter uma situação desfavorável, ou quando está prestes a conquistar o prémio, podem surgir desafios educativos que permitem obter um impulso.
+
+A partida termina quando uma das forças consegue atingir o objetivo definido para o nível.
+
+A recompensa pode ser uma taça, um objeto especial ou outra conquista adequada ao tema.
+
+Nota de design: ainda não está decidido se o jogo decorrerá em ondas discretas, com pausas entre elas, ou como uma simulação contínua. Esta decisão deve permanecer em aberto durante a fase inicial de prototipagem.
+
+⸻
+
+3. Público-alvo e princípios de design
+
+3.1. Público-alvo inicial
+
+* Crianças de aproximadamente 6 anos.
+* Crianças no primeiro ano de escolaridade.
+* Jogadores com capacidade limitada para interpretar interfaces complexas e regras estratégicas abstratas.
+* Jogadores que beneficiam de feedback visual imediato e objetivos concretos.
+
+O jogo será inicialmente concebido para uma criança, embora possa posteriormente ser adaptado a outras idades.
+
+3.2. Princípios de design
+
+A. Clareza
+
+A criança deve compreender o que está a acontecer sem precisar de ler instruções longas.
+
+B. Feedback visual
+
+A vantagem de cada lado deve ser visível através das posições das unidades, do progresso no cenário e da proximidade ao objetivo.
+
+C. Recompensas concretas
+
+As vitórias devem produzir resultados que a criança compreenda: ganhar uma taça, desbloquear um elemento ou escolher uma recompensa.
+
+D. Aprendizagem integrada
+
+As perguntas educativas devem ter consequências na batalha, evitando a sensação de que a criança foi retirada do jogo para fazer um exercício escolar.
+
+E. Autonomia
+
+A criança deverá ter oportunidades para decidir quando utilizar determinados impulsos, em vez de depender exclusivamente de intervenções automáticas do jogo.
+
+F. Dificuldade adaptável
+
+O jogo deve poder criar situações desafiantes sem tornar a experiência frustrante ou exigir que a criança compreenda sistemas estratégicos complexos.
+
+G. Flexibilidade temática
+
+Os temas visuais e narrativos podem variar sem obrigar a reconstruir toda a lógica do jogo.
+
+⸻
+
+4. Direção artística e identidade visual
+
+Foram identificadas duas referências visuais principais, que não precisam de ser mutuamente exclusivas.
+
+4.1. Direção A — Personagens fofas e coloridas
+
+Referências de estilo: a simplicidade visual e o carácter amigável de séries infantis como Bluey e Peppa Pig.
+
+Características pretendidas:
+
+* Personagens expressivas e simpáticas.
+* Formas arredondadas.
+* Cores vivas.
+* Animações fáceis de interpretar.
+* Cenários acolhedores e imaginativos.
+* Conflitos apresentados de forma lúdica, sem violência gráfica.
+
+Estas referências servem apenas para comunicar a direção artística pretendida, não para reproduzir personagens, recursos gráficos ou propriedade intelectual de terceiros.
+
+4.2. Direção B — Construção estilizada
+
+Referências de estilo: a linguagem visual de LEGO e Minecraft.
+
+Características pretendidas:
+
+* Formas geométricas simples.
+* Objetos que parecem construídos com blocos.
+* Cenários modulares.
+* Elementos fáceis de reconhecer.
+* Potencial para construir, modificar ou expandir estruturas.
+* Identidade visual simples e legível.
+
+Também aqui se pretende inspiração estilística, não uma cópia dos jogos ou das marcas de referência.
+
+4.3. Decisão de arquitetura visual
+
+Uma hipótese importante é manter a mecânica central independente da direção artística.
+
+Assim, o mesmo sistema de jogo poderá suportar:
+
+* Uma versão com personagens fofas e cenários coloridos.
+* Uma versão com blocos de construção e estruturas geométricas.
+* Outros temas futuros, se o conceito justificar essa expansão.
+
+Ainda não está decidido se estas direções serão apresentadas como temas dentro do mesmo jogo ou como jogos distintos que partilham a mesma base técnica.
+
+Recomendação inicial: prototipar primeiro uma única direção artística. A segunda deve ser acrescentada quando a mecânica central estiver suficientemente validada.
+
+⸻
+
+5. Temas, cenários e níveis
+
+A conversa sugere que cada nível possa introduzir um tema diferente, mantendo as regras fundamentais do jogo.
+
+Os temas podem alterar o cenário, as personagens, as estruturas, o objetivo visual e as recompensas, sem necessariamente alterar a mecânica central.
+
+5.1. Tema A — Castelos e cavaleiros
+
+Elementos possíveis:
+
+* Dois castelos ou posições opostas.
+* Uma rainha ou outras personagens.
+* Cavaleiros.
+* Espadas e escudos.
+* Uma grande taça como objetivo final.
+* Uma batalha visualmente simples e divertida.
+
+Este tema constitui uma das primeiras ideias apresentadas pela criança.
+
+5.2. Tema B — Barcos e lago
+
+Elementos possíveis:
+
+* Um lago.
+* Barcos de cada lado.
+* Personagens a lutar.
+* Espadas e outros elementos visuais adaptados ao cenário.
+* Um objetivo ou prémio situado junto de um dos barcos ou numa zona central.
+
+A ideia original incluía barcos, um lago, uma batalha e uma taça especial.
+
+A implementação exata ainda está por definir.
+
+5.3. Tema C — Montanhas
+
+Foi sugerida a possibilidade de criar um nível de Tower Defense num ambiente de montanha.
+
+Este cenário poderá utilizar o mesmo sistema de defesa e progressão, mas com um ambiente visual distinto.
+
+5.4. Tema D — Praça, cavaleiros e recompensas
+
+Outra ideia envolve cavaleiros numa praça e recompensas como:
+
+* Um sumo.
+* Um chocolate.
+* Um doce.
+* Uma roupa ou fantasia.
+
+Neste contexto, o prémio pode ser apresentado como algo que a personagem recebe ou escolhe depois de vencer.
+
+5.5. Princípio de reutilização
+
+Os temas devem ser tratados, sempre que possível, como configurações de uma mesma estrutura de jogo.
+
+Por exemplo:
+
+Elemento	Tema do castelo	Tema do lago
+Posição a proteger	Castelo	Barco ou posição junto ao lago
+Unidades	Cavaleiros	Personagens ou unidades temáticas
+Progressão	Avanço em direção ao castelo adversário	Avanço em direção ao objetivo adversário
+Objetivo final	Conquistar a taça	Conquistar a taça
+Impulsos educativos	Melhorias de defesa ou ataque	Melhorias adaptadas ao cenário
+Recompensa	Taça ou prémio	Taça ou prémio
+
+Esta tabela é uma proposta de organização, não uma definição final das mecânicas de cada tema.
+
+⸻
+
+6. Loop principal de jogabilidade
+
+O loop principal deverá ser suficientemente simples para uma criança compreender e suficientemente flexível para acomodar desafios educativos.
+
+6.1. Loop proposto
+
+1. Iniciar um nível. A criança encontra um cenário, um adversário e um objetivo claro.
+2. Observar a batalha. As unidades avançam, atacam e defendem.
+3. Acompanhar o progresso. A criança consegue perceber qual dos lados está em vantagem.
+4. Reagir a uma situação. O jogo pode introduzir uma oportunidade ou necessidade de obter um impulso.
+5. Resolver um desafio educativo. A criança responde a uma pergunta ou completa uma atividade simples.
+6. Receber um impulso. Uma resposta correta proporciona uma vantagem dentro da batalha.
+7. Continuar a partida. A vantagem obtida altera o estado do jogo.
+8. Conquistar o objetivo. A criança ganha a partida ao cumprir a condição de vitória.
+9. Receber uma recompensa. O jogo apresenta a taça ou outro prémio associado ao nível.
+
+Este loop é uma hipótese inicial de design e deverá ser validado através de protótipos.
+
+6.2. O papel da simulação
+
+Um dos pontos mais importantes da conversa é que o jogo não deve ser apenas uma simulação automática de uma batalha engraçada.
+
+A simulação deve transmitir uma sensação real de competição e progresso.
+
+A criança precisa de perceber que:
+
+* As coisas estão a acontecer.
+* O adversário representa um desafio.
+* As suas ações podem alterar o resultado.
+* Pode estar perto de ganhar ou de perder.
+* Existe uma razão para tomar decisões.
+* A vitória depende, pelo menos em parte, das suas escolhas e da sua aprendizagem.
+
+O equilíbrio entre simulação automática e controlo direto da criança ainda precisa de ser explorado.
+
+⸻
+
+7. Mecânica educativa: desafios que proporcionam impulsos
+
+Esta é uma das funcionalidades mais importantes e diferenciadoras do conceito.
+
+7.1. Objetivo
+
+Integrar pequenas atividades educativas na progressão da batalha, de modo que a criança possa utilizar os conhecimentos que está a desenvolver na escola para obter vantagens concretas.
+
+Os desafios deverão ser adequados ao primeiro ano de escolaridade.
+
+7.2. Tipos de desafio considerados
+
+Letras e leitura inicial
+
+* Reconhecer uma letra.
+* Identificar uma letra apresentada no ecrã.
+* Escolher a letra que corresponde a uma pergunta.
+* Distinguir letras visualmente semelhantes, quando apropriado.
+
+Aritmética básica
+
+* Contar objetos.
+* Resolver somas simples.
+* Resolver subtrações simples.
+* Escolher o resultado correto entre algumas opções.
+
+Outros conceitos simples
+
+Poderão ser acrescentados futuramente outros conteúdos adequados à idade, desde que sejam compatíveis com o ritmo do jogo.
+
+Não é necessário decidir agora o catálogo completo de desafios.
+
+7.3. Formato dos desafios
+
+Foram considerados formatos semelhantes a:
+
+* Flashcards.
+* Minicards.
+* Pequenos minijogos.
+
+Uma carta poderá apresentar uma pergunta, uma imagem e várias respostas possíveis.
+
+Por exemplo:
+
+Pergunta: Quanto é 2 + 3?
+
+* 4
+* 5
+* 6
+
+Ao responder corretamente, a criança recebe um impulso que altera a batalha.
+
+Este é apenas um exemplo ilustrativo, não uma decisão sobre o formato final da interface.
+
+7.4. Os desafios podem surgir de duas formas
+
+Modo A — Desafio automático
+
+O jogo apresenta espontaneamente um desafio educativo num momento específico da partida.
+
+Por exemplo:
+
+* Quando a defesa começa a ceder.
+* Quando o adversário está em vantagem.
+* Quando surge uma oportunidade de melhorar uma unidade.
+* Quando a criança se aproxima do objetivo final.
+
+Modo B — Desafio iniciado pela criança
+
+A criança pode decidir recorrer a um desafio educativo para tentar obter uma vantagem.
+
+Por exemplo, pode optar por tentar resolver uma conta para conseguir reforçar as suas defesas ou acelerar o avanço das suas unidades.
+
+Esta opção introduz uma decisão estratégica: utilizar o impulso no momento presente ou continuar a batalha sem recorrer a ele.
+
+7.5. Relação entre resposta e consequência
+
+A resposta correta deverá ter uma consequência clara no jogo.
+
+Possíveis recompensas:
+
+* Reforçar uma defesa.
+* Aumentar temporariamente a força de uma unidade.
+* Acelerar o avanço.
+* Ganhar tempo.
+* Recuperar uma posição desfavorável.
+* Obter uma vantagem decisiva perto do objetivo final.
+
+A relação exata entre cada tipo de desafio e cada impulso ainda está por definir.
+
+7.6. O que acontece quando a resposta está errada?
+
+Este ponto continua em aberto.
+
+Algumas opções a testar:
+
+* A criança não recebe o impulso, mas pode continuar a jogar.
+* Recebe uma pista e tem oportunidade de tentar novamente.
+* O jogo apresenta a resposta correta de forma simples.
+* O desafio reaparece mais tarde, permitindo praticar novamente.
+
+A experiência não deve transformar um erro numa penalização desproporcionada.
+
+O objetivo é criar uma associação positiva entre aprender, tentar novamente e melhorar o desempenho no jogo.
+
+⸻
+
+8. Dificuldade dinâmica e momentos de intervenção educativa
+
+O pai introduziu um requisito particularmente importante: a dificuldade não deve ser apenas uma consequência passiva do estado do jogo.
+
+O sistema deverá poder criar situações em que os desafios educativos se tornam relevantes para a progressão.
+
+8.1. Dificuldade superior à capacidade atual da personagem
+
+Uma possibilidade é que, em certos momentos, a situação da batalha se torne demasiado difícil para a configuração atual da criança.
+
+Isto cria uma necessidade de recorrer a um impulso educativo.
+
+Por exemplo:
+
+1. A criança está a defender o castelo.
+2. O adversário começa a ganhar terreno.
+3. A defesa existente já não é suficiente.
+4. Surge uma oportunidade para obter um impulso através de um desafio educativo.
+5. A criança resolve o desafio.
+6. O impulso melhora a situação da batalha.
+7. A criança volta a sentir que tem hipóteses de vencer.
+
+A dificuldade serve, assim, para dar relevância à aprendizagem.
+
+8.2. Intervenção perto da vitória
+
+A mesma lógica poderá ser utilizada quando a criança está prestes a ganhar.
+
+Por exemplo:
+
+1. A criança aproxima-se da taça.
+2. O adversário consegue criar um último obstáculo.
+3. A criança precisa de uma vantagem adicional.
+4. Surge um desafio educativo.
+5. Ao resolvê-lo, recebe o impulso necessário para conquistar o prémio.
+
+A intenção é que a aprendizagem faça parte dos momentos mais importantes da partida.
+
+8.3. Distinção entre dificuldade e impossibilidade
+
+É importante distinguir uma situação desafiante de uma situação em que a vitória está artificialmente bloqueada.
+
+A ideia discutida inclui a possibilidade de a mecânica impedir temporariamente a vitória até surgir uma oportunidade de resolver um desafio educativo.
+
+Esta abordagem precisa de ser explorada cuidadosamente.
+
+Se o jogo impedir repetidamente uma vitória que a criança considera merecida, poderá parecer injusto ou imprevisível.
+
+Uma alternativa é criar situações em que o desafio educativo representa uma oportunidade real de superar um obstáculo, sem tornar obrigatória uma resposta correta para todas as vitórias.
+
+Estas duas abordagens devem ser comparadas durante a prototipagem.
+
+8.4. A criança não precisa de conhecer os números internos
+
+O sistema poderá utilizar indicadores internos de progresso para determinar quando apresentar um desafio.
+
+Por exemplo, poderá considerar:
+
+* A proximidade ao objetivo.
+* O estado das defesas.
+* A vantagem relativa entre os dois lados.
+* O tempo que falta para um dos lados vencer.
+
+A criança não precisa de ver percentagens ou métricas técnicas. Basta receber sinais visuais simples que comuniquem a situação.
+
+⸻
+
+9. Recompensas e progressão
+
+A recompensa é um elemento central do conceito original apresentado pela criança.
+
+9.1. A taça como objetivo principal
+
+A grande taça especial é a primeira recompensa claramente identificada.
+
+Deverá funcionar como um símbolo visual da vitória e da conclusão do nível.
+
+Pode ser apresentada através de:
+
+* Uma animação de conquista.
+* Uma celebração das personagens.
+* Um ecrã de vitória.
+* Uma taça que fica disponível na coleção da criança.
+
+Estas são possibilidades de implementação a validar.
+
+9.2. Recompensas adicionais
+
+Foram mencionadas recompensas concretas, como:
+
+* Sumo.
+* Chocolate.
+* Doces.
+* Roupas.
+* Fantasias.
+
+Estas recompensas podem ser representadas dentro do jogo, por exemplo através de uma loja, de uma praça ou de um sistema de personalização.
+
+Não é necessário implementar todas no primeiro protótipo.
+
+9.3. Escolha da recompensa
+
+Uma possibilidade é permitir que a criança escolha o prémio depois de vencer.
+
+Isto acrescenta uma pequena decisão à experiência e pode reforçar a sensação de autonomia.
+
+Contudo, é importante distinguir duas mecânicas diferentes:
+
+* A recompensa que assinala a vitória.
+* A recompensa que permite personalizar ou evoluir a personagem.
+
+O primeiro protótipo poderá limitar-se à taça, acrescentando outras recompensas mais tarde.
+
+⸻
+
+10. Vetores de otimização do produto
+
+Esta secção identifica os critérios que deverão orientar as decisões de design e desenvolvimento.
+
+Não são requisitos já validados. São hipóteses de otimização que devem ser transformadas em critérios observáveis durante os testes.
+
+Vetor	Objetivo	Como avaliar
+Diversão	A criança quer continuar a jogar.	Interesse, envolvimento e vontade de repetir.
+Compreensão	A criança percebe o objetivo e o estado da batalha.	Capacidade de explicar o que está a acontecer.
+Agência	As ações da criança influenciam o resultado.	Capacidade de associar decisões a consequências.
+Aprendizagem	Os desafios ajudam a praticar competências escolares.	Desempenho nos desafios e retenção em tentativas posteriores.
+Integração pedagógica	Os desafios parecem fazer parte do jogo.	Reação da criança aos desafios e continuidade do envolvimento.
+Equilíbrio	O jogo é desafiante sem ser excessivamente frustrante.	Frequência de vitórias, derrotas e pedidos de ajuda.
+Clareza visual	O estado do jogo é compreensível sem explicações extensas.	Capacidade de identificar quem está em vantagem.
+Autonomia	A criança consegue tomar decisões simples.	Utilização voluntária dos impulsos e escolhas de recompensa.
+Reutilização	Novos temas podem ser adicionados sem reconstruir a mecânica.	Esforço necessário para implementar um novo cenário.
+Simplicidade técnica	O protótipo permite testar rapidamente as hipóteses.	Tempo de implementação e facilidade de alteração das regras.
+
+10.1. Prioridades sugeridas
+
+Para o primeiro protótipo, sugere-se a seguinte ordem:
+
+Prioridade 1 — Validar a diversão e a compreensão.
+
+A criança deve perceber a batalha, compreender o objetivo e querer continuar a jogar.
+
+Prioridade 2 — Validar o impacto dos desafios educativos.
+
+É necessário perceber se resolver um desafio e obter um impulso cria uma experiência satisfatória.
+
+Prioridade 3 — Validar a dificuldade dinâmica.
+
+O jogo deve conseguir criar momentos em que a intervenção educativa seja útil, sem parecer injusto.
+
+Prioridade 4 — Validar a arquitetura temática.
+
+Só depois de a mecânica central funcionar deverá ser necessário investir na possibilidade de reutilizar o sistema em vários cenários.
+
+Prioridade 5 — Expandir recompensas e progressão.
+
+Novos prémios, personalização e sistemas de progressão podem ser introduzidos quando a experiência principal estiver validada.
+
+⸻
+
+11. Âmbito sugerido para o primeiro protótipo
+
+O objetivo do primeiro protótipo não deverá ser construir o jogo completo.
+
+Deverá ser demonstrar que a combinação de Tower Defense, competição visual e desafios educativos funciona para a criança.
+
+11.1. Funcionalidades mínimas
+
+Funcionalidade	Proposta inicial
+Modo de jogo	Single-player.
+Cenário	Um único cenário de castelo.
+Adversário	Controlado pelo jogo.
+Unidades	Um conjunto pequeno de unidades simples.
+Mecânica de batalha	Defesa e avanço em direção ao objetivo adversário.
+Objetivo	Conquistar uma taça.
+Indicador de progresso	Feedback visual sobre a vantagem de cada lado.
+Desafios educativos	Um conjunto reduzido de perguntas sobre letras ou aritmética básica.
+Impulsos	Uma ou duas vantagens associadas às respostas corretas.
+Ativação dos desafios	Pelo menos uma oportunidade automática e uma oportunidade iniciada pela criança, se viável.
+Dificuldade	Uma situação em que um impulso educativo ajuda a recuperar uma posição desfavorável.
+Recompensa	Animação simples de vitória e apresentação da taça.
+
+Esta proposta não implica que todas as funcionalidades tenham de estar presentes na primeira versão técnica. A seleção final
