@@ -81,6 +81,16 @@ effort, if known).
 | RegexZero: A From-Scratch NFA Regex Engine and Grep CLI | Node.js | 🔴 Extreme | [prompt](oneshots/regexzero-nfa-regex-engine-grep-cli.md) | Kimi K3 |
 | CellForge: A Swing Spreadsheet Engine | Java (Swing) | 🔴 Extreme | [prompt](oneshots/cellforge-swing-spreadsheet-engine.md) | Kimi K3 |
 | Emberdeep: A Seeded ASCII Roguelike in a Single HTML File | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/emberdeep-seeded-ascii-roguelike.md) | Kimi K3 |
+| Cratebound — Sokoban Warehouse Puzzler | HTML/CSS/JS (single file) | 🟢 Easy | [prompt](oneshots/cratebound-sokoban-warehouse-puzzler.md) | Muse Spark 1.3 Contributor |
+| Crossrush — Frogger-Style Road & River Crosser | HTML/CSS/JS (single file) | 🟢 Easy | [prompt](oneshots/crossrush-frogger-style-crosser.md) | Muse Spark 1.3 Contributor |
+| Gemswap Cascade — Match-3 Jewel Puzzler | HTML/CSS/JS (single file) | 🟡 Medium | [prompt](oneshots/gemswap-cascade-match-3.md) | Muse Spark 1.3 Contributor |
+| Maze Munch — Pellet Maze Chaser | HTML/CSS/JS (single file) | 🟡 Medium | [prompt](oneshots/maze-munch-pellet-chaser.md) | Muse Spark 1.3 Contributor |
+| Castle Toss — Slingshot Physics Siege | HTML/CSS/JS (single file) | 🟡 Medium | [prompt](oneshots/castle-toss-slingshot-siege.md) | Muse Spark 1.3 Contributor |
+| Driftline GP — Top-Down Drift Racer with Ghost | HTML/CSS/JS (single file) | 🟠 Hard | [prompt](oneshots/driftline-gp-drift-racer.md) | Muse Spark 1.3 Contributor |
+| Hexblade Skirmish — Hex Tactics vs AI | HTML/CSS/JS (single file) | 🟠 Hard | [prompt](oneshots/hexblade-skirmish-hex-tactics.md) | Muse Spark 1.3 Contributor |
+| Dungeon Deck Delve — Deckbuilding Crawler | HTML/CSS/JS (single file, Phaser-optional) | 🟠 Hard | [prompt](oneshots/dungeon-deck-delve-deckbuilder.md) | Muse Spark 1.3 Contributor |
+| Sector-7 — From-Scratch Raycaster FPS | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/sector-7-raycaster-fps.md) | Muse Spark 1.3 Contributor |
+| Conveyor Lab — Factory Automation Sim | HTML/CSS/JS (single file, Phaser-optional) | 🔴 Extreme | [prompt](oneshots/conveyor-lab-factory-sim.md) | Muse Spark 1.3 Contributor |
 
 <!-- Row template:
 | <Title> | <e.g. Python, SQLite> | <🟢/🟡/🟠/🔴> <Easy/Medium/Hard/Extreme> | [prompt](oneshots/<file>.md) | <model name> · thinking: <effort, if known> |
