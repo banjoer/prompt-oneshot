@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cratebound — Sokoban Warehouse Puzzler</title>
+<style>
+  :root { --cell: 44px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    background: #14171f; color: #e8eaf0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header { text-align: center; padding: 18px 12px 6px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+  header h1 .crate { color: #f5a623; }
+  header p { margin: 6px 0 0; color: #9aa0b2; font-size: 14px; }
+  #hud {
+    display: flex; gap: 12px; align-items: center; margin: 12px 0 8px;
+    background: #1e2330; border: 1px solid #333a4f; border-radius: 10px; padding: 8px 14px;
+    font-variant-numeric: tabular-nums; flex-wrap: wrap; justify-content: center;
+  }
+  #hud .pill { background: #2a3044; border-radius: 8px; padding: 4px 12px; font-size: 15px; }
+  #hud .pill b { color: #ffd75e; }
+  #levels { display: flex; gap: 8px; margin: 6px 0; flex-wrap: wrap; justify-content: center; }
+  .lvl-btn {
+    background: #232839; color: #e8eaf0; border: 2px solid #3a4260; border-radius: 10px;
+    padding: 6px 10px; cursor: pointer; font-size: 14px; min-width: 74px; text-align: center;
+  }
+  .lvl-btn small { display: block; font-size: 11px; color: #ffd75e; min-height: 14px; }
+  .lvl-btn.active { border-color: #f5a623; background: #2e3549; }
+  .lvl-btn:hover { border-color: #ffd75e; }
+  #controls { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; justify-content: center; }
+  button.action {
+    background: #f5a623; color: #1a1a1a; border: none; border-radius: 10px;
+    padding: 8px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  button.action.secondary { background: #39415a; color: #e8eaf0; }
+  button.action:hover { filter: brightness(1.1); }
+  #wrap { position: relative; margin: 8px 0 4px; }
+  #board {
+    display: grid; gap: 2px; background: #0c0e14; padding: 8px; border-radius: 12px;
+    border: 1px solid #333a4f;
+  }
+  .cell {
+    width: var(--cell); height: var(--cell); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * 0.62); line-height: 1; user-select: none;
+    transition: background-color .12s ease, transform .12s ease;
+  }
+  .t-wall  { background: #4a4f63; box-shadow: inset 0 3px 0 #62688a, inset 0 -3px 0 #33374c; }
+  .t-floor { background: #20242f; }
+  .t-dock  { background: #20242f; box-shadow: inset 0 0 0 3px #ffd75e; }
+  .t-crate { background: #b06a1b; box-shadow: inset 0 0 0 2px #7a4a10, inset 0 4px 0 #d68a2e; }
+  .t-crate-dock { background: #2e9e5b; box-shadow: inset 0 0 0 3px #ffd75e, inset 0 4px 0 #46c278; }
+  .t-player { background: #20242f; }
+  .t-player .p {
+    width: 72%; height: 72%; border-radius: 50%; background: #3fa7ff;
+    box-shadow: 0 0 0 3px #bfe2ff, 0 2px 6px #000; display: flex;
+    align-items: center; justify-content: center; font-size: calc(var(--cell)*0.4);
+    animation: pop .12s ease;
+  }
+  .t-player-on-dock { background: #20242f; box-shadow: inset 0 0 0 3px #ffd75e; }
+  .t-player-on-dock .p {
+    width: 72%; height: 72%; border-radius: 50%; background: #3fa7ff;
+    box-shadow: 0 0 0 3px #bfe2ff, 0 2px 6px #000;
+    display: flex; align-items: center; justify-content: center;
+    animation: pop .12s ease;
+  }
+  @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
+  #win {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(8,10,16,.82); border-radius: 12px; z-index: 5; text-align: center;
+  }
+  #win.show { display: flex; }
+  #win .card { background: #1e2330; border: 2px solid #ffd75e; border-radius: 14px; padding: 24px 32px; }
+  #win h2 { margin: 0 0 8px; color: #ffd75e; }
+  #msg { min-height: 20px; color: #9aa0b2; font-size: 13px; margin: 4px 0; }
+  #share { margin: 10px 0; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  #share input { width: 220px; padding: 6px 8px; border-radius: 8px; border: 1px solid #3a4260; background: #0c0e14; color: #e8eaf0; font-size: 12px; }
+  #dpad { display: none; gap: 6px; margin: 8px 0; }
+  #dpad button { width: 52px; height: 52px; font-size: 20px; border-radius: 10px; border: 1px solid #3a4260; background: #232839; color: #fff; }
+  @media (pointer: coarse) { #dpad { display: grid; grid-template-columns: repeat(3,52px); } }
+  footer { margin: 14px 0 22px; color: #9aa0b2; font-size: 13px; text-align: center; padding: 0 12px; }
+  kbd { background: #2a3044; border: 1px solid #4a5478; border-radius: 4px; padding: 0 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="crate">📦 CRATEBOUND</span> — Sokoban Warehouse Puzzler</h1>
+  <p>Push every crate onto a dock. You can push but never pull — plan ahead! <kbd>←↑↓→</kbd>/<kbd>WASD</kbd> move · <kbd>U</kbd> undo · <kbd>R</kbd> restart</p>
+</header>
+
+<div id="hud">
+  <span class="pill">Level <b id="h-level">1</b></span>
+  <span class="pill">Moves <b id="h-moves">0</b></span>
+  <span class="pill">Pushes <b id="h-pushes">0</b></span>
+  <span class="pill">Best <b id="h-best">—</b></span>
+</div>
+
+<div id="levels"></div>
+
+<div id="controls">
+  <button class="action secondary" id="btn-undo" title="Undo (U)">↩ Undo</button>
+  <button class="action secondary" id="btn-restart" title="Restart (R)">⟳ Restart</button>
+  <button class="action secondary" id="btn-sound">🔊 Sound: on</button>
+</div>
+
+<div id="wrap">
+  <div id="board" role="grid" aria-label="Sokoban board"></div>
+  <div id="win">
+    <div class="card">
+      <h2>🎉 Level complete!</h2>
+      <p id="win-stats">Moves: 0 · Pushes: 0</p>
+      <p id="win-best" style="color:#ffd75e"></p>
+      <button class="action" id="btn-next">Next level →</button>
+      <div><button class="action secondary" id="btn-replay" style="margin-top:8px">Replay</button></div>
+    </div>
+  </div>
+</div>
+<div id="msg"></div>
+
+<div id="dpad">
+  <span></span><button data-dx="0" data-dy="-1">↑</button><span></span>
+  <button data-dx="-1" data-dy="0">←</button><button data-dx="0" data-dy="1">↓</button><button data-dx="1" data-dy="0">→</button>
+</div>
+
+<div id="share">
+  <input id="share-code" placeholder="paste base64 level code…">
+  <button class="action secondary" id="btn-copy-code">Copy level code</button>
+  <button class="action secondary" id="btn-load-code">Load code</button>
+</div>
+
+<footer id="signoff">Cratebound · vanilla HTML/CSS/JS · </footer>
+
+<script>
+"use strict";
+/* ================= Levels (inline ASCII) =================
+   # wall, ' ' floor, . dock, $ crate, @ player, * crate-on-dock, + player-on-dock */
+var LEVELS = [
+  { name: "Warm-up", map: [
+    "#####",
+    "#.# #",
+    "# $ #",
+    "#@  #",
+    "#####"
+  ]},
+  { name: "Twin Shift", map: [
+    "#######",
+    "#     #",
+    "# . . #",
+    "# $ $ #",
+    "#  @  #",
+    "#     #",
+    "#######"
+  ]},
+  { name: "Triple Stack", map: [
+    "########",
+    "#      #",
+    "# ...  #",
+    "# $$$  #",
+    "#  @   #",
+    "#      #",
+    "#      #",
+    "########"
+  ]},
+  { name: "Pillar Hall", map: [
+    "#########",
+    "#       #",
+    "# . . . #",
+    "# $ $ $ #",
+    "#   @   #",
+    "#       #",
+    "#  ###  #",
+    "#       #",
+    "#########"
+  ]},
+  { name: "Grand Depot", map: [
+    "###########",
+    "#         #",
+    "# . . . . #",
+    "# $ $ $ $ #",
+    "#    @    #",
+    "#         #",
+    "#  #####  #",
+    "#         #",
+    "###########"
+  ]}
+];
+
+var LS_KEY = "cratebound_best_v1";
+var state = null;      // {w,h,walls:Set,docks:Set,crates:Map key->true,px,py,moves,pushes,levelIndex}
+var history = [];
+var soundOn = true;
+var audioCtx = null;
+
+function key(x, y) { return x + "," + y; }
+function loadBest() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveBest(b) { try { localStorage.setItem(LS_KEY, JSON.stringify(b)); } catch (e) {} }
+function bestLabel(i) {
+  var b = loadBest()[i];
+  return b ? b.moves + "m·" + b.pushes + "p" : "—";
+}
+
+function parseLevel(idx) {
+  var rows = LEVELS[idx].map;
+  var h = rows.length, w = Math.max.apply(null, rows.map(function(r){return r.length;}));
+  var walls = {}, docks = {}, crates = {};
+  var px = 0, py = 0;
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var c = (rows[y][x] || " ");
+      if (c === "#") walls[key(x,y)] = true;
+      else if (c === ".") docks[key(x,y)] = true;
+      else if (c === "$") crates[key(x,y)] = true;
+      else if (c === "@") { px = x; py = y; }
+      else if (c === "*") { docks[key(x,y)] = true; crates[key(x,y)] = true; }
+      else if (c === "+") { docks[key(x,y)] = true; px = x; py = y; }
+    }
+  }
+  state = { w: w, h: h, walls: walls, docks: docks, crates: crates,
+            px: px, py: py, moves: 0, pushes: 0, levelIndex: idx };
+  history = [];
+}
+
+function isWall(x, y) {
+  if (x < 0 || y < 0 || x >= state.w || y >= state.h) return true;
+  return !!state.walls[key(x,y)];
+}
+function isCrate(x, y) { return !!state.crates[key(x,y)]; }
+
+function snapshot() {
+  return { px: state.px, py: state.py, crates: Object.keys(state.crates),
+           moves: state.moves, pushes: state.pushes };
+}
+function restore(s) {
+  state.px = s.px; state.py = s.py;
+  state.crates = {}; s.crates.forEach(function(k){ state.crates[k] = true; });
+  state.moves = s.moves; state.pushes = s.pushes;
+}
+
+function tryMove(dx, dy) {
+  var nx = state.px + dx, ny = state.py + dy;
+  if (isWall(nx, ny)) { blip(90, 0.03, true); return false; }
+  if (isCrate(nx, ny)) {
+    var bx = nx + dx, by = ny + dy;
+    if (isWall(bx, by) || isCrate(bx, by)) { blip(90, 0.05, true); flashMsg("Blocked! Can't push two crates or push into a wall."); return false; }
+    history.push(snapshot());  // unlimited
+    delete state.crates[key(nx,ny)];
+    state.crates[key(bx,by)] = true;
+    state.px = nx; state.py = ny;
+    state.moves++; state.pushes++;
+    blip(330, 0.07, false);
+  } else {
+    history.push(snapshot());
+    state.px = nx; state.py = ny;
+    state.moves++;
+  }
+  render();
+  checkWin();
+  return true;
+}
+
+function undo() {
+  var s = history.pop();
+  if (!s) { flashMsg("Nothing to undo."); return; }
+  restore(s);
+  document.getElementById("win").classList.remove("show");
+  render();
+}
+function restart() { parseLevel(state.levelIndex); document.getElementById("win").classList.remove("show"); render(); }
+
+function isWin() {
+  for (var k in state.docks) if (!state.crates[k]) return false;
+  return true;
+}
+function checkWin() {
+  if (!isWin()) return;
+  var b = loadBest(), i = state.levelIndex;
+  var prev = b[i], isRecord = false;
+  if (!prev || state.moves < prev.moves || state.pushes < prev.pushes) {
+    b[i] = { moves: !prev ? state.moves : Math.min(prev.moves, state.moves),
+             pushes: !prev ? state.pushes : Math.min(prev.pushes, state.pushes) };
+    saveBest(b); isRecord = true;
+  }
+  document.getElementById("win-stats").textContent =
+    "Moves: " + state.moves + " · Pushes: " + state.pushes;
+  document.getElementById("win-best").textContent =
+    (isRecord ? "★ New best!" : "Best: " + bestLabel(i));
+  document.getElementById("win").classList.add("show");
+  winJingle();
+  buildLevelBar();
+}
+
+/* ================= Render ================= */
+var TILE_EMOJI = { wall: "🧱", crate: "📦", crateDock: "✅" };
+function render() {
+  var board = document.getElementById("board");
+  var cell = Math.max(22, Math.min(52, Math.floor(440 / Math.max(state.w, state.h))));
+  document.documentElement.style.setProperty("--cell", cell + "px");
+  board.style.gridTemplateColumns = "repeat(" + state.w + ", var(--cell))";
+  var html = "";
+  for (var y = 0; y < state.h; y++) {
+    for (var x = 0; x < state.w; x++) {
+      var k = key(x,y), cls, inner = "";
+      var onDock = !!state.docks[k];
+      if (state.walls[k]) { cls = "t-wall"; inner = TILE_EMOJI.wall; }
+      else if (x === state.px && y === state.py) {
+        cls = onDock ? "t-player-on-dock" : "t-player";
+        inner = '<div class="p">🧑</div>';
+      }
+      else if (state.crates[k]) {
+        cls = onDock ? "t-crate-dock" : "t-crate";
+        inner = onDock ? TILE_EMOJI.crateDock : TILE_EMOJI.crate;
+      }
+      else if (onDock) { cls = "t-dock"; inner = "◎"; }
+      else { cls = "t-floor"; }
+      html += '<div class="cell ' + cls + '">' + inner + "</div>";
+    }
+  }
+  board.innerHTML = html;
+  document.getElementById("h-level").textContent = (state.levelIndex + 1) + " · " + LEVELS[state.levelIndex].name;
+  document.getElementById("h-moves").textContent = state.moves;
+  document.getElementById("h-pushes").textContent = state.pushes;
+  document.getElementById("h-best").textContent = bestLabel(state.levelIndex);
+  var btns = document.querySelectorAll(".lvl-btn");
+  btns.forEach(function(el, i){ el.classList.toggle("active", i === state.levelIndex); });
+}
+
+function buildLevelBar() {
+  var bar = document.getElementById("levels");
+  bar.innerHTML = "";
+  LEVELS.forEach(function(L, i) {
+    var b = document.createElement("button");
+    b.className = "lvl-btn" + (state && i === state.levelIndex ? " active" : "");
+    b.innerHTML = (i + 1) + " · " + L.name + "<small>" + bestLabel(i) + "</small>";
+    b.title = "Load level " + (i + 1);
+    b.onclick = function() { parseLevel(i); document.getElementById("win").classList.remove("show"); render(); };
+    bar.appendChild(b);
+  });
+}
+
+var msgTimer = null;
+function flashMsg(t) {
+  var m = document.getElementById("msg");
+  m.textContent = t;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(function(){ m.textContent = ""; }, 1600);
+}
+
+/* ================= Sound (WebAudio, no assets) ================= */
+function ensureAudio() {
+  if (!soundOn) return null;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  } catch (e) { return null; }
+}
+function blip(freq, dur, low) {
+  if (!soundOn) return;
+  var ctx = ensureAudio(); if (!ctx) return;
+  try {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = low ? "sawtooth" : "square"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.06, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+function winJingle() {
+  if (!soundOn) return;
+  [523, 659, 784].forEach(function(f, i) {
+    setTimeout(function(){ blip(f, 0.12, false); }, i * 110);
+  });
+}
+
+/* ================= Share-code (base64 of ASCII map) ================= */
+function levelToCode(i) {
+  return btoa(LEVELS[i].map.join("\n"));
+}
+document.getElementById("btn-copy-code").onclick = function() {
+  var code = levelToCode(state.levelIndex);
+  var box = document.getElementById("share-code");
+  box.value = code;
+  try { box.select(); document.execCommand("copy"); } catch (e) {}
+  flashMsg("Level code copied (base64).");
+};
+document.getElementById("btn-load-code").onclick = function() {
+  var code = document.getElementById("share-code").value.trim();
+  try {
+    var text = atob(code);
+    var rows = text.split("\n");
+    if (rows.length < 3 || rows.join("").indexOf("@") < 0) throw new Error("bad map");
+    LEVELS.push({ name: "Custom " + LEVELS.length, map: rows });
+    parseLevel(LEVELS.length - 1);
+    document.getElementById("win").classList.remove("show");
+    buildLevelBar(); render();
+    flashMsg("Custom level loaded!");
+  } catch (e) { flashMsg("Invalid level code."); }
+};
+
+/* ================= Input ================= */
+var DIRS = {
+  ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0],
+  w: [0,-1], s: [0,1], a: [-1,0], d: [1,0],
+  W: [0,-1], S: [0,1], A: [-1,0], D: [1,0]
+};
+document.addEventListener("keydown", function(e) {
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+  if (DIRS[e.key]) { e.preventDefault(); ensureAudio(); tryMove(DIRS[e.key][0], DIRS[e.key][1]); }
+  else if (e.key === "u" || e.key === "U") undo();
+  else if (e.key === "r" || e.key === "R") restart();
+});
+document.getElementById("btn-undo").onclick = undo;
+document.getElementById("btn-restart").onclick = restart;
+document.getElementById("btn-next").onclick = function() {
+  parseLevel((state.levelIndex + 1) % LEVELS.length);
+  document.getElementById("win").classList.remove("show");
+  buildLevelBar(); render();
+};
+document.getElementById("btn-replay").onclick = function() {
+  document.getElementById("win").classList.remove("show");
+  restart();
+};
+document.getElementById("btn-sound").onclick = function() {
+  soundOn = !soundOn;
+  this.textContent = soundOn ? "🔊 Sound: on" : "🔇 Sound: off";
+};
+document.querySelectorAll("#dpad button").forEach(function(b) {
+  b.addEventListener("click", function() {
+    tryMove(parseInt(b.dataset.dx, 10), parseInt(b.dataset.dy, 10));
+  });
+});
+
+/* ================= Boot ================= */
+document.getElementById("signoff").textContent =
+  "Cratebound · vanilla HTML/CSS/JS · no dependencies · best scores stored in localStorage · " +
+  "Produced on 30 Oct 2026, 12:00 UTC by Muse Spark 1.3 Contributor (OpenCode agent).";
+parseLevel(0);
+buildLevelBar();
+render();
+</script>
+</body>
+</html>

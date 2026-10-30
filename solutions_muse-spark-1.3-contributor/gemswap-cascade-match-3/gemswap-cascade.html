@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemswap Cascade — Match-3 Jewel Puzzler</title>
+<style>
+:root{
+  --bg:#0f1420; --panel:#1a2233; --panel2:#222d45; --text:#eef2ff; --muted:#9aa7c7;
+  --accent:#56B4E9; --gold:#E69F00; --good:#009E73; --bad:#D55E00;
+  --cell:64px;
+  --c0:#E69F00; --c1:#D55E00; --c2:#009E73; --c3:#56B4E9; --c4:#CC79A7; --c5:#F0E442;
+}
+body.high-contrast{
+  --c0:#FFD700; --c1:#FF2E2E; --c2:#00E676; --c3:#40C4FF; --c4:#EA80FC; --c5:#FFFFFF;
+  --bg:#000; --panel:#0a0a0a; --panel2:#1a1a1a;
+}
+*{box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent;}
+body{margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:radial-gradient(1200px 800px at 50% -10%,#223052 0%,var(--bg) 60%); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center;}
+header{width:100%; max-width:720px; padding:16px 16px 8px; text-align:center;}
+header h1{margin:0; font-size:clamp(22px,4vw,32px); letter-spacing:.5px;}
+header h1 span{background:linear-gradient(90deg,var(--c0),var(--c3),var(--c4)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+header p{margin:4px 0 0; color:var(--muted); font-size:13px;}
+#modes{display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;}
+button{font:inherit; cursor:pointer; border:1px solid #ffffff22; background:var(--panel2); color:var(--text); border-radius:10px; padding:8px 14px; transition:transform .08s, background .15s;}
+button:hover{background:#2c3a5c;} button:active{transform:scale(.96);}
+button.primary{background:linear-gradient(180deg,#3a7bd5,#2a5cb0); border-color:#ffffff33;}
+button:disabled{opacity:.45; cursor:not-allowed;}
+#hud{width:100%; max-width:720px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:8px 16px;}
+.hud-card{background:var(--panel); border:1px solid #ffffff14; border-radius:12px; padding:8px 10px; text-align:center;}
+.hud-card .label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);}
+.hud-card .val{font-size:20px; font-weight:800; font-variant-numeric:tabular-nums;}
+#comboBar{height:6px; background:#ffffff18; border-radius:99px; margin-top:6px; overflow:hidden;}
+#comboFill{height:100%; width:0%; background:linear-gradient(90deg,var(--gold),#ff5e62); transition:width .25s;}
+#comboFill.hot{background:linear-gradient(90deg,#ff5e62,#ff2e88);}
+#main{width:100%; max-width:720px; padding:0 16px; display:flex; flex-direction:column; align-items:center;}
+#boardWrap{position:relative; width:min(92vw,480px); aspect-ratio:1/1; margin:8px auto;}
+#board{display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr); gap:4px; width:100%; height:100%; background:var(--panel); padding:8px; border-radius:16px; border:1px solid #ffffff14; box-shadow:0 12px 40px #0008;}
+.tile{position:relative; border-radius:10px; background:#ffffff0d; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .15s, background .15s, box-shadow .15s; touch-action:none;}
+.tile svg{width:78%; height:78%; filter:drop-shadow(0 2px 3px #0009); pointer-events:none;}
+.tile.selected{outline:2px solid #fff; background:#ffffff26; transform:scale(1.06); box-shadow:0 0 14px #fff6;}
+.tile.matched{outline:2px solid #fff; background:#ffffff33; animation:pulse .3s infinite alternate;}
+.tile.popping{animation:pop .28s forwards;}
+.tile.hint{animation:hintPulse .5s 3; outline:3px solid #fff; z-index:2;}
+.tile.illegal{animation:shake .32s;}
+.tile.drop-in{animation:dropIn .3s;}
+.tile .blast{position:absolute; top:1px; right:3px; font-size:13px; pointer-events:none; text-shadow:0 1px 4px #000;}
+body.hammer-mode #boardWrap{cursor:crosshair;}
+body.hammer-mode .tile{cursor:crosshair;}
+@keyframes pulse{from{transform:scale(1);} to{transform:scale(1.12);}}
+@keyframes pop{to{transform:scale(0) rotate(90deg); opacity:0;}}
+@keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 50%{transform:translateX(6px);} 75%{transform:translateX(-4px);}}
+@keyframes hintPulse{0%,100%{box-shadow:0 0 0 0 #fff;} 50%{box-shadow:0 0 18px 6px #fff; transform:scale(1.1);}}
+@keyframes dropIn{from{transform:translateY(-18px) scale(.8); opacity:.2;} to{transform:none; opacity:1;}}
+@keyframes floatUp{from{transform:translate(-50%,0); opacity:1;} to{transform:translate(-50%,-56px); opacity:0;}}
+#fx{position:absolute; inset:0; pointer-events:none; z-index:5;}
+#popups{position:absolute; inset:0; pointer-events:none; z-index:6; overflow:visible;}
+.popup{position:absolute; font-weight:900; font-size:18px; text-shadow:0 2px 8px #000; animation:floatUp .9s forwards; white-space:nowrap;}
+#toast{position:absolute; left:50%; top:10px; transform:translateX(-50%); background:#000d; border:1px solid #fff3; padding:8px 16px; border-radius:99px; font-weight:700; opacity:0; transition:opacity .25s; z-index:9; pointer-events:none; white-space:nowrap;}
+#toast.show{opacity:1;}
+#controls{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:8px 0;}
+.overlay{position:absolute; inset:0; z-index:10; background:#0b101dd9; backdrop-filter:blur(6px); border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;}
+.overlay[hidden]{display:none;}
+.overlay h2{margin:0 0 8px;}
+.overlay p{color:var(--muted); margin:4px 0 12px; max-width:340px; font-size:14px;}
+.row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+#seedLine{font-size:12px; color:var(--muted); margin-top:8px;}
+#seedLine code{background:#ffffff14; padding:2px 6px; border-radius:6px;}
+footer{margin-top:auto; width:100%; max-width:720px; padding:14px 16px 20px; text-align:center; color:var(--muted); font-size:12px; border-top:1px solid #ffffff10;}
+footer strong{color:var(--text);}
+.low-time{color:#ff6b6b !important; animation:pulse .5s infinite alternate;}
+</style>
+</head>
+<body>
+<header>
+  <h1>💎 <span>Gemswap Cascade</span></h1>
+  <p>Swap adjacent jewels • match 3+ • chain cascades • match-4 builds a row-blaster ⚡</p>
+  <div id="modes">
+    <button id="btnZen" class="primary">🧘 Zen (30 moves)</button>
+    <button id="btnBlitz">⚡ Blitz (60s)</button>
+    <button id="btnPause">⏸ Pause</button>
+  </div>
+</header>
+<div id="hud">
+  <div class="hud-card"><div class="label">Score</div><div class="val" id="score">0</div><div class="label" id="bestLine">Best: 0</div></div>
+  <div class="hud-card"><div class="label" id="movesLabel">Moves left</div><div class="val" id="moves">30</div><div id="comboBar"><div id="comboFill"></div></div></div>
+  <div class="hud-card"><div class="label">Combo</div><div class="val" id="combo">×1</div><div class="label" id="maxCombo">max ×1</div></div>
+</div>
+<div id="main">
+  <div id="boardWrap">
+    <div id="board" aria-label="8 by 8 gem board"></div>
+    <canvas id="fx"></canvas>
+    <div id="popups"></div>
+    <div id="toast"></div>
+    <div class="overlay" id="menuOverlay">
+      <h2>Choose a mode</h2>
+      <p>Zen: 30 moves, relaxed. Blitz: 60 seconds, +2s every 50 gems popped. Match-4 clears a whole line and forges a ⚡ row-blaster.</p>
+      <div class="row">
+        <button class="primary" id="startZen">🧘 Play Zen</button>
+        <button class="primary" id="startBlitz">⚡ Play Blitz</button>
+      </div>
+      <div id="seedLine">Seed: <code id="seedCode">?</code> • <span id="bestMenu"></span></div>
+    </div>
+    <div class="overlay" id="pauseOverlay" hidden>
+      <h2>⏸ Paused</h2>
+      <p>Take a breath. The gems wait for you.</p>
+      <div class="row"><button class="primary" id="btnResume">▶ Resume</button><button id="btnRestartP">↻ Restart</button></div>
+    </div>
+    <div class="overlay" id="overOverlay" hidden>
+      <h2 id="overTitle">Game over</h2>
+      <p id="overStats"></p>
+      <div class="row"><button class="primary" id="btnRestartO">↻ Play again</button><button id="btnMenu">Menu</button></div>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="btnHint">💡 Hint (<span id="hintN">3</span>)</button>
+    <button id="btnHammer">🔨 Hammer (<span id="hamN">1</span>)</button>
+    <button id="btnContrast">◐ Contrast</button>
+    <button id="btnNewSeed">🎲 New board</button>
+  </div>
+</div>
+<footer>
+  Scored 60 / 120 / 240 for match-3/4/5 (× combo) + 30/gem line bonus &nbsp;•&nbsp;
+  <strong id="signoff">Solution produced 2026-10-30 ~09:30 UTC • by Muse Spark 1.3 Contributor (OpenCode)</strong>
+</footer>
+<script>
+"use strict";
+/* Seeded RNG */
+function mulberry32(seed){ let a = seed >>> 0; return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+const ROWS = 8, COLS = 8, NTYPES = 6;
+const SCORE3 = 60, SCORE4 = 120, SCORE5 = 240, LINE_BONUS = 30;
+const params = new URLSearchParams(location.search);
+let seed = params.has("seed") ? (parseInt(params.get("seed"),10) >>> 0 || 1) : ((Date.now() % 2147483647) >>> 0 || 7);
+let rng = mulberry32(seed);
+const randInt = n => Math.floor(rng() * n);
+
+const TYPES = [
+  {code:'D', name:'Diamond', colorVar:'--c0'},
+  {code:'R', name:'Ruby',    colorVar:'--c1'},
+  {code:'E', name:'Emerald', colorVar:'--c2'},
+  {code:'S', name:'Sapphire',colorVar:'--c3'},
+  {code:'T', name:'Topaz',   colorVar:'--c4'},
+  {code:'O', name:'Onyx',    colorVar:'--c5'},
+];
+function gemColor(i){ return getComputedStyle(document.body).getPropertyValue(TYPES[i].colorVar).trim() || '#fff'; }
+function shapeSVG(t){
+  const c = `var(${TYPES[t].colorVar})`;
+  const stroke = 'rgba(0,0,0,.45)';
+  switch(t){
+    case 0: return `<svg viewBox="0 0 100 100"><polygon points="50,6 90,50 50,94 10,50" fill="${c}" stroke="${stroke}" stroke-width="4"/></svg>`;
+    case 1: return `<svg viewBox="0 0 100 100"><rect x="14" y="14" width="72" height="72" rx="10" fill="${c}" stroke="${stroke}" stroke-width="4"/><rect x="30" y="30" width="20" height="20" rx="4" fill="#ffffff88"/></svg>`;
+    case 2: return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="${c}" stroke="${stroke}" stroke-width="4"/><circle cx="38" cy="36" r="10" fill="#ffffff88"/></svg>`;
+    case 3: return `<svg viewBox="0 0 100 100"><polygon points="50,6 86,28 86,72 50,94 14,72 14,28" fill="${c}" stroke="${stroke}" stroke-width="4"/><circle cx="50" cy="50" r="12" fill="#ffffff66"/></svg>`;
+    case 4: return `<svg viewBox="0 0 100 100"><polygon points="50,10 92,88 8,88" fill="${c}" stroke="${stroke}" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="66" r="9" fill="#00000055"/></svg>`;
+    default: return `<svg viewBox="0 0 100 100"><polygon points="50,5 89,36 74,88 26,88 11,36" fill="${c}" stroke="${stroke}" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="52" r="11" fill="#ffffff55"/></svg>`;
+  }
+}
+
+const $ = id => document.getElementById(id);
+const boardEl=$('board'), scoreEl=$('score'), movesEl=$('moves'), movesLabel=$('movesLabel'),
+  comboEl=$('combo'), maxComboEl=$('maxCombo'), comboFill=$('comboFill'), bestLine=$('bestLine'),
+  toastEl=$('toast'), popupsEl=$('popups'), fx=$('fx'), fctx=fx.getContext('2d');
+
+const S = {
+  board:[], mode:'zen', score:0, combo:1, maxCombo:1,
+  movesLeft:30, timeLeft:60, totalPopped:0, nextBonus:50,
+  hints:3, hammers:1, hammerMode:false,
+  selected:null, busy:false, paused:false, over:false, started:false,
+  lastSwap:null,
+};
+const bestKey = m => m==='zen' ? 'gemswap_best_zen' : 'gemswap_best_blitz';
+const getBest = m => parseInt(localStorage.getItem(bestKey(m))||'0',10)||0;
+function refreshBest(){ bestLine.textContent = 'Best: '+getBest(S.mode); $('bestMenu').textContent = `Best Zen ${getBest('zen')} • Best Blitz ${getBest('blitz')}`; }
+
+/* ---------- board gen ---------- */
+function emptyBoard(){ return Array.from({length:ROWS},()=>Array.from({length:COLS},()=>null)); }
+function avoidsMatch(grid,r,c,t){
+  if(c>=2 && grid[r][c-1]?.t===t && grid[r][c-2]?.t===t) return true;
+  if(r>=2 && grid[r-1]?.[c]?.t===t && grid[r-2]?.[c]?.t===t) return true;
+  return false;
+}
+function genBoard(){
+  for(let attempt=0; attempt<500; attempt++){
+    const g = emptyBoard();
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      let t = randInt(NTYPES), guard=0;
+      while(avoidsMatch(g,r,c,t) && guard++<50) t = randInt(NTYPES);
+      g[r][c] = {t, special:null, id:Math.floor(rng()*1e9)+r*8+c};
+    }
+    S.board = g;
+    if(findMatches().groups.length===0 && findHintMove()) return;
+  }
+}
+function inB(r,c){ return r>=0&&r<ROWS&&c>=0&&c<COLS; }
+function key(r,c){ return r*8+c; }
+
+/* ---------- matching ---------- */
+function findMatches(){
+  const groups=[];
+  for(let r=0;r<ROWS;r++){ let c=0;
+    while(c<COLS){ const cell=S.board[r][c]; if(!cell){c++;continue;}
+      let len=1; while(c+len<COLS && S.board[r][c+len] && S.board[r][c+len].t===cell.t) len++;
+      if(len>=3){ const cells=[]; for(let i=0;i<len;i++) cells.push([r,c+i]); groups.push({cells,dir:'h',len,type:cell.t}); }
+      c+=len;
+    }
+  }
+  for(let c=0;c<COLS;c++){ let r=0;
+    while(r<ROWS){ const cell=S.board[r][c]; if(!cell){r++;continue;}
+      let len=1; while(r+len<ROWS && S.board[r+len]?.[c] && S.board[r+len][c].t===cell.t) len++;
+      if(len>=3){ const cells=[]; for(let i=0;i<len;i++) cells.push([r+i,c]); groups.push({cells,dir:'v',len,type:cell.t}); }
+      r+=len;
+    }
+  }
+  const clear = new Map(); // key -> [r,c]
+  const add = (r,c)=>{ if(inB(r,c)&&S.board[r][c]) clear.set(key(r,c),[r,c]); };
+  // base group cells
+  for(const g of groups) for(const [r,c] of g.cells) add(r,c);
+  // line clears for 4+ and special triggers (1 pass + chain specials)
+  const extras = new Set();
+  for(const g of groups){
+    if(g.len>=4){
+      const [ar,ac] = g.cells[Math.floor(g.cells.length/2)];
+      if(g.dir==='h' && g.len===4) for(let c=0;c<COLS;c++){ if(!clear.has(key(ar,c))) extras.add(key(ar,c)); add(ar,c); }
+      else if(g.dir==='v' && g.len===4) for(let r=0;r<ROWS;r++){ if(!clear.has(key(r,ac))) extras.add(key(r,ac)); add(r,ac); }
+      else { for(let c=0;c<COLS;c++){ if(!clear.has(key(ar,c))) extras.add(key(ar,c)); add(ar,c);} for(let r=0;r<ROWS;r++){ if(!clear.has(key(r,ac))) extras.add(key(r,ac)); add(r,ac);} }
+    }
+  }
+  // specials caught in blast: clear their whole row (chain once)
+  let chained=true, guard=0;
+  while(chained && guard++<4){ chained=false;
+    for(const [k,[r,c]] of [...clear]){ const cell=S.board[r][c];
+      if(cell && cell.special==='row' && !cell._rowAdded){ cell._rowAdded=true; chained=true;
+        for(let cc=0;cc<COLS;cc++){ if(!clear.has(key(r,cc))) extras.add(key(r,cc)); add(r,cc); }
+      }
+    }
+  }
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) if(S.board[r][c]) delete S.board[r][c]._rowAdded;
+  return {groups, clear:[...clear.values()], extras:[...extras].map(k=>[Math.floor(k/8),k%8])};
+}
+function matchAtLocal(r,c){
+  const cell=S.board[r][c]; if(!cell) return false;
+  const t=cell.t; let h=1;
+  for(let i=c-1;i>=0&&S.board[r][i]?.t===t;i--)h++;
+  for(let i=c+1;i<COLS&&S.board[r][i]?.t===t;i++)h++;
+  if(h>=3)return true;
+  let v=1;
+  for(let i=r-1;i>=0&&S.board[i]?.[c]?.t===t;i--)v++;
+  for(let i=r+1;i<ROWS&&S.board[i]?.[c]?.t===t;i++)v++;
+  return v>=3;
+}
+function wouldBeLegal(r1,c1,r2,c2){
+  if(!inB(r1,c1)||!inB(r2,c2)) return false;
+  const a=S.board[r1][c1], b=S.board[r2][c2];
+  if(!a||!b) return false;
+  if(a.special==='row'||b.special==='row') return true; // blaster always swaps
+  [S.board[r1][c1],S.board[r2][c2]]=[b,a];
+  const ok = matchAtLocal(r1,c1)||matchAtLocal(r2,c2);
+  [S.board[r1][c1],S.board[r2][c2]]=[a,b];
+  return ok;
+}
+function hasLegalMove(){ return !!findHintMove(); }
+function findHintMove(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(c+1<COLS && wouldBeLegal(r,c,r,c+1)) return [[r,c],[r,c+1]];
+    if(r+1<ROWS && wouldBeLegal(r,c,r+1,c)) return [[r,c],[r+1,c]];
+  }
+  return null;
+}
+
+/* ---------- render ---------- */
+function render(dropSet){
+  boardEl.innerHTML='';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cell=S.board[r][c];
+    const d=document.createElement('div');
+    d.className='tile'; d.dataset.r=r; d.dataset.c=c;
+    if(S.selected && S.selected[0]===r&&S.selected[1]===c) d.classList.add('selected');
+    if(!cell){ boardEl.appendChild(d); continue; }
+    d.innerHTML = shapeSVG(cell.t) + (cell.special==='row'?'<span class="blast">⚡</span>':'');
+    if(dropSet && dropSet.has(key(r,c))) d.classList.add('drop-in');
+    boardEl.appendChild(d);
+  }
+  scoreEl.textContent=S.score;
+  comboEl.textContent='×'+S.combo;
+  maxComboEl.textContent='max ×'+S.maxCombo;
+  comboFill.style.width=Math.min(100,(S.combo-1)*25)+'%';
+  comboFill.classList.toggle('hot',S.combo>=3);
+  if(S.mode==='zen'){ movesLabel.textContent='Moves left'; movesEl.textContent=S.movesLeft; movesEl.classList.remove('low-time'); }
+  else { movesLabel.textContent='Time left'; movesEl.textContent=Math.ceil(S.timeLeft)+'s'; movesEl.classList.toggle('low-time',S.timeLeft<=10); }
+  $('hintN').textContent=S.hints; $('hamN').textContent=S.hammers;
+  $('btnHint').disabled=S.hints<=0||S.busy; $('btnHammer').disabled=S.hammers<=0||S.busy;
+  document.body.classList.toggle('hammer-mode',S.hammerMode);
+  refreshBest();
+}
+function tileCenter(r,c){
+  const t=boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  const w=boardEl.getBoundingClientRect(), p=popupsEl.getBoundingClientRect();
+  if(!t) return {x:p.width/2,y:p.height/2};
+  const b=t.getBoundingClientRect();
+  return {x:b.left-w.left+(b.width/2), y:b.top-w.top+(b.height/2)};
+}
+function popup(text,r,c,color){
+  const {x,y}=tileCenter(r,c);
+  const d=document.createElement('div'); d.className='popup'; d.textContent=text;
+  d.style.left=x+'px'; d.style.top=y+'px'; d.style.color=color||'#fff';
+  popupsEl.appendChild(d); setTimeout(()=>d.remove(),950);
+  while(popupsEl.children.length>24) popupsEl.firstChild.remove();
+}
+let toastT=null;
+function toast(msg,ms=1600){ toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>toastEl.classList.remove('show'),ms); }
+
+/* ---------- particles (capped pool 300, rAF) ---------- */
+const parts=[];
+function sizeFx(){ const b=boardEl.getBoundingClientRect(); const d=Math.min(devicePixelRatio||1,2); fx.width=b.width*d; fx.height=b.height*d; }
+addEventListener('resize',sizeFx);
+function burst(r,c,color,n=14){
+  const wrap=boardEl.getBoundingClientRect();
+  const t=boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  let x=wrap.width/2,y=wrap.height/2;
+  if(t){ const b=t.getBoundingClientRect(); x=b.left-wrap.left+b.width/2; y=b.top-wrap.top+b.height/2; }
+  const d=Math.min(devicePixelRatio||1,2);
+  for(let i=0;i<n;i++){ if(parts.length>=300) parts.shift();
+    const a=Math.random()*Math.PI*2, sp=(1+Math.random()*3);
+    parts.push({x:x*d,y:y*d,vx:Math.cos(a)*sp*d,vy:Math.sin(a)*sp*d-1,life:1,decay:.02+Math.random()*.02,color,r:(2+Math.random()*3)*d});
+  }
+}
+function stepFx(){
+  const d=Math.min(devicePixelRatio||1,2);
+  fctx.clearRect(0,0,fx.width,fx.height);
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.08*d; p.life-=p.decay;
+    if(p.life<=0){ parts.splice(i,1); continue; }
+    fctx.globalAlpha=Math.max(0,p.life); fctx.fillStyle=p.color;
+    fctx.beginPath(); fctx.arc(p.x,p.y,p.r*p.life+0.5,0,7); fctx.fill();
+  }
+  fctx.globalAlpha=1;
+}
+
+/* ---------- game flow ---------- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function markMatchCells(cells){ for(const [r,c] of cells){ const el=boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`); if(el) el.classList.add('matched'); } }
+function markPop(cells){ for(const [r,c] of cells){ const el=boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`); if(el) el.classList.remove('matched'), el.classList.add('popping'); } }
+
+async function trySwap(r1,c1,r2,c2){
+  if(S.busy||S.paused||S.over||!S.started) return;
+  if(!inB(r2,c2)||Math.abs(r1-r2)+Math.abs(c1-c2)!==1){
+    const el=boardEl.querySelector(`[data-r="${r1}"][data-c="${c1}"]`);
+    if(el){ el.classList.add('illegal'); setTimeout(()=>el.classList.remove('illegal'),350); }
+    S.selected=null; render(); return;
+  }
+  if(!wouldBeLegal(r1,c1,r2,c2)){
+    S.selected=null; render();
+    const a=boardEl.querySelector(`[data-r="${r1}"][data-c="${c1}"]`), b=boardEl.querySelector(`[data-r="${r2}"][data-c="${c2}"]`);
+    [a,b].forEach(el=>el&&el.classList.add('illegal'));
+    setTimeout(()=>[a,b].forEach(el=>el&&el.classList.remove('illegal')),350);
+    return;
+  }
+  S.busy=true; S.selected=null;
+  { const tmp=S.board[r1][c1]; S.board[r1][c1]=S.board[r2][c2]; S.board[r2][c2]=tmp; }
+  S.lastSwap=[[r1,c1],[r2,c2]];
+  render();
+  if(S.mode==='zen'){ S.movesLeft=Math.max(0,S.movesLeft-1); }
+  S.combo=1; render();
+  await resolveCascades();
+  S.busy=false;
+  endCheck();
+  render();
+}
+
+async function resolveCascades(){
+  let combo=1, guard=0;
+  while(guard++<40){
+    const {groups,clear,extras}=findMatches();
+    if(!groups.length) break;
+    S.combo=combo; S.maxCombo=Math.max(S.maxCombo,combo); render();
+    markMatchCells(clear); await sleep(240);
+    markPop(clear); await sleep(260);
+    // scoring
+    let gain=0; const scoredCells=new Set();
+    for(const g of groups){
+      const base=g.len===3?SCORE3:g.len===4?SCORE4:SCORE5;
+      gain+=base*combo;
+      // anchor popup
+      const [ar,ac]=g.cells[Math.floor(g.cells.length/2)];
+      popup(`+${base*combo}`,ar,ac,gemColor(g.type));
+      for(const [r,c] of g.cells) scoredCells.add(key(r,c));
+    }
+    if(extras.length){ gain+=extras.length*LINE_BONUS*combo; const [er,ec]=extras[0]; popup(`line +${extras.length*LINE_BONUS*combo}`,er,ec,'#fff'); }
+    S.score+=gain;
+    // special creation: one row-blaster per 4+ group (anchor kept)
+    const keep=new Map();
+    for(const g of groups){
+      if(g.len>=4){
+        let anchor=g.cells[Math.floor(g.cells.length/2)];
+        if(S.lastSwap){ for(const s of S.lastSwap){ if(g.cells.some(([r,c])=>r===s[0]&&c===s[1])){ anchor=s; break; } } }
+        const [ar,ac]=anchor;
+        if(S.board[ar]&&S.board[ar][ac]&&!S.board[ar][ac].special) keep.set(key(ar,ac),{r:ar,c:ac,t:g.type});
+      }
+    }
+    // pop + effects
+    for(const [r,c] of clear){
+      const cell=S.board[r]?.[c]; if(cell) burst(r,c,gemColor(cell.t),cell.special?22:12);
+      if(!keep.has(key(r,c))) S.board[r][c]=null;
+    }
+    for(const [k,v] of keep){ S.board[v.r][v.c]={t:v.t,special:'row',id:Math.floor(rng()*1e9)}; burst(v.r,v.c,'#ffffff',18); popup('⚡ blaster!',v.r,v.c,'#ffe45e'); }
+    S.totalPopped+=clear.length;
+    if(S.mode==='blitz'){ while(S.totalPopped>=S.nextBonus){ S.timeLeft+=2; S.nextBonus+=50; toast('⏱ +2s burst bonus!'); popup('+2s',4,3,'#7dffb2'); } }
+    render();
+    // gravity + refill
+    const dropped=new Set();
+    for(let c=0;c<COLS;c++){
+      let write=ROWS-1;
+      for(let r=ROWS-1;r>=0;r--){ if(S.board[r][c]){ if(write!==r){ S.board[write][c]=S.board[r][c]; S.board[r][c]=null; dropped.add(key(write,c)); } write--; } }
+      for(let r=write;r>=0;r--){ S.board[r][c]={t:randInt(NTYPES),special:null,id:Math.floor(rng()*1e9)}; dropped.add(key(r,c)); }
+    }
+    render(dropped);
+    await sleep(180);
+    combo++;
+  }
+  S.combo=1;
+  await reshuffleIfDead();
+}
+
+async function reshuffleIfDead(){
+  if(findMatches().groups.length) return;
+  if(hasLegalMove()) return;
+  // collect & shuffle until valid, no pre-matches
+  const flat=S.board.flat();
+  for(let a=0;a<200;a++){
+    for(let i=flat.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [flat[i],flat[j]]=[flat[j],flat[i]]; }
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) S.board[r][c]=flat[r*COLS+c];
+    if(findMatches().groups.length===0 && hasLegalMove()){ render(); toast('🔀 Shuffled! No moves — fresh board'); return; }
+  }
+  genBoard(); render(); toast('🔀 Shuffled! No moves — fresh board');
+}
+
+function endCheck(){
+  if(S.over||!S.started) return;
+  let done=false;
+  if(S.mode==='zen'&&S.movesLeft<=0) done=true;
+  if(S.mode==='blitz'&&S.timeLeft<=0){ S.timeLeft=0; done=true; }
+  if(done){
+    S.over=true; render();
+    const best=getBest(S.mode);
+    if(S.score>best) localStorage.setItem(bestKey(S.mode),String(S.score));
+    $('overTitle').textContent=S.mode==='zen'?'🧘 Zen complete!':'⚡ Time up!';
+    $('overStats').textContent=`Score ${S.score} • popped ${S.totalPopped} gems • max combo ×${S.maxCombo} • best ${Math.max(best,S.score)}`;
+    $('overOverlay').hidden=false;
+  }
+}
+
+function newGame(mode,keepSeed){
+  if(!keepSeed){ seed=(Date.now()%2147483647)>>>0||7; rng=mulberry32(seed); params.set('seed',seed); history.replaceState(null,'','?seed='+seed); }
+  S.mode=mode; S.score=0; S.combo=1; S.maxCombo=1;
+  S.movesLeft=30; S.timeLeft=60; S.totalPopped=0; S.nextBonus=50;
+  S.hints=3; S.hammers=1; S.hammerMode=false; S.selected=null; S.busy=false;
+  S.paused=false; S.over=false; S.started=true; S.lastSwap=null;
+  genBoard();
+  $('seedCode').textContent=seed;
+  $('menuOverlay').hidden=true; $('overOverlay').hidden=true; $('pauseOverlay').hidden=true;
+  render(); sizeFx(); toast(mode==='zen'?'🧘 Zen — 30 moves':'⚡ Blitz — 60 seconds!');
+}
+
+/* ---------- input ---------- */
+let dragStart=null, suppressClick=false;
+boardEl.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.tile'); if(!t||S.busy||S.paused||S.over||!S.started) return;
+  dragStart=[+t.dataset.r,+t.dataset.c];
+});
+boardEl.addEventListener('pointerup',e=>{
+  if(!dragStart) return;
+  const t=e.target.closest('.tile');
+  const [sr,sc]=dragStart;
+  if(!t){ dragStart=null; return; }
+  const r=+t.dataset.r,c=+t.dataset.c;
+  if(sr===r&&sc===c){ dragStart=null; return; } // tap: let click handler own it
+  dragStart=null; suppressClick=true; setTimeout(()=>suppressClick=false,50);
+  if(S.hammerMode){ useHammer(r,c); return; }
+  trySwap(sr,sc,r,c);
+});
+boardEl.addEventListener('click',e=>{
+  if(suppressClick) return;
+  const t=e.target.closest('.tile'); if(!t) return;
+  // fallback for keyboard/AT clicks without drag
+  if(S.busy||S.paused||S.over||!S.started) return;
+  const r=+t.dataset.r,c=+t.dataset.c;
+  if(S.hammerMode){ useHammer(r,c); return; }
+  if(!S.selected) { S.selected=[r,c]; render(); }
+  else { const [pr,pc]=S.selected;
+    if(pr===r&&pc===c){ S.selected=null; render(); }
+    else if(Math.abs(pr-r)+Math.abs(pc-c)===1){ const a=[pr,pc]; S.selected=null; trySwap(a[0],a[1],r,c); }
+    else { S.selected=[r,c]; render(); }
+  }
+});
+
+async function useHammer(r,c){
+  if(S.hammers<=0||S.busy||!S.board[r][c]) return;
+  S.hammers--; S.hammerMode=false; S.busy=true; S.combo=1;
+  const cell=S.board[r][c];
+  burst(r,c,gemColor(cell.t),24);
+  if(cell.special==='row'){ for(let cc=0;cc<COLS;cc++){ if(S.board[r][cc]) burst(r,cc,gemColor(S.board[r][cc].t),10); S.board[r][cc]=null; } popup('HAMMER ROW!',r,c,'#ffd166'); S.score+=100; }
+  else { S.board[r][c]=null; popup('+30',r,c,'#ffd166'); S.score+=30; }
+  S.totalPopped+=1; render();
+  for(let cc=0;cc<COLS;cc++){ let write=ROWS-1; for(let rr=ROWS-1;rr>=0;rr--){ if(S.board[rr][cc]){ if(write!==rr){S.board[write][cc]=S.board[rr][cc];S.board[rr][cc]=null;} write--; } } for(let rr=write;rr>=0;rr--) S.board[rr][cc]={t:randInt(NTYPES),special:null,id:Math.floor(rng()*1e9)}; }
+  render(); await sleep(150);
+  await resolveCascades();
+  S.busy=false; endCheck(); render();
+}
+
+$('btnHint').onclick=()=>{
+  if(S.hints<=0||S.busy||S.paused||S.over||!S.started) return;
+  const m=findHintMove();
+  if(!m){ reshuffleIfDead(); return; }
+  S.hints--;
+  for(const [r,c] of m){ const el=boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`); if(el){ el.classList.remove('hint'); void el.offsetWidth; el.classList.add('hint'); setTimeout(()=>el.classList.remove('hint'),1600);} }
+  render();
+};
+$('btnHammer').onclick=()=>{ if(S.hammers<=0||S.busy||!S.started) return; S.hammerMode=!S.hammerMode; render(); toast(S.hammerMode?'🔨 Tap a tile to smash it':'🔨 Hammer off'); };
+$('btnContrast').onclick=()=>{ document.body.classList.toggle('high-contrast'); render(); };
+$('btnNewSeed').onclick=()=>newGame(S.mode,false);
+$('btnZen').onclick=()=>newGame('zen',true);
+$('btnBlitz').onclick=()=>newGame('blitz',true);
+$('startZen').onclick=()=>newGame('zen',true);
+$('startBlitz').onclick=()=>newGame('blitz',true);
+$('btnPause').onclick=()=>{ if(!S.started||S.over) return; S.paused=true; $('pauseOverlay').hidden=false; };
+$('btnResume').onclick=()=>{ S.paused=false; $('pauseOverlay').hidden=true; };
+$('btnRestartP').onclick=()=>{ S.paused=false; newGame(S.mode,true); };
+$('btnRestartO').onclick=()=>newGame(S.mode,true);
+$('btnMenu').onclick=()=>{ $('overOverlay').hidden=true; S.started=false; $('menuOverlay').hidden=false; refreshBest(); };
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ if(S.hammerMode){S.hammerMode=false;render();} else if(!S.paused&&S.started&&!S.over){S.paused=true;$('pauseOverlay').hidden=false;} }
+  if(e.key==='p'||e.key==='P') $('btnPause').click();
+});
+
+/* ---------- rAF main loop: wall-clock timer + particles (logic not frame-bound) ---------- */
+let lastT=performance.now();
+function loop(now){
+  const dt=Math.min(0.1,(now-lastT)/1000); lastT=now;
+  if(S.started&&!S.paused&&!S.over&&S.mode==='blitz'){
+    S.timeLeft-=dt;
+    if(S.timeLeft<=0){ S.timeLeft=0; endCheck(); }
+    movesEl.textContent=Math.ceil(S.timeLeft)+'s';
+    movesEl.classList.toggle('low-time',S.timeLeft<=10);
+  }
+  stepFx();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- boot ---------- */
+(function boot(){
+  rng=mulberry32(seed);
+  $('seedCode').textContent=seed;
+  const d=new Date();
+  const stamp=d.toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+  $('signoff').textContent=`Solution produced 2026-10-30 • viewed ${stamp} • by Muse Spark 1.3 Contributor (OpenCode)`;
+  refreshBest();
+  genBoard(); render(); sizeFx();
+  setTimeout(sizeFx,100);
+  requestAnimationFrame(t=>{lastT=t; requestAnimationFrame(loop);});
+})();
+</script>
+</body>
+</html>

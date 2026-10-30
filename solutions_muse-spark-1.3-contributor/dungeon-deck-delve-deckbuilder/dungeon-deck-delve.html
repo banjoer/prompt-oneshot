@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeon Deck Delve — Deckbuilding Crawler</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0a14;--panel:#1a1428;--panel2:#241b3a;--gold:#e8b64c;--red:#e05252;--green:#6fcf73;--blue:#5aa9e6;--purp:#b388ff;--ink:#efe9dc}
+body{background:radial-gradient(1200px 800px at 50% -10%,#2b1f4d,#0d0a14 70%);color:var(--ink);font-family:Georgia,'Times New Roman',serif;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+#app{max-width:1100px;margin:0 auto;padding:12px 14px 40px}
+.topbar{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid #4a3a6e;border-radius:10px;padding:8px 12px;margin-bottom:10px;flex-wrap:wrap;font-size:15px}
+.topbar b{color:var(--gold)}
+.pill{background:#0f0b1c;border:1px solid #4a3a6e;border-radius:20px;padding:3px 10px}
+.pill.hp{border-color:#7a2e2e}.pill.en{border-color:#2e5a7a}.pill.gold{border-color:#7a642e}
+.btn{background:linear-gradient(#3a2c5e,#241b3a);color:var(--ink);border:1px solid #6b57a3;border-radius:8px;padding:8px 14px;font-size:15px}
+.btn:hover{border-color:var(--gold);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:linear-gradient(#8a6a1f,#5e4612);border-color:var(--gold)}
+.btn.danger{background:linear-gradient(#7a2e2e,#4a1a1a);border-color:var(--red)}
+.screen{display:none}.screen.on{display:block}
+h1{font-size:38px;letter-spacing:1px;text-align:center;color:var(--gold);text-shadow:0 2px 0 #000,0 0 24px #6b57a355;margin:18px 0 4px}
+.sub{text-align:center;opacity:.85;margin-bottom:12px}
+.titlecard{background:var(--panel);border:1px solid #4a3a6e;border-radius:14px;padding:22px;max-width:640px;margin:12px auto;text-align:center}
+.titlecard p{margin:8px 0;line-height:1.5}
+.signoff{margin-top:14px;font-size:13px;opacity:.8;border-top:1px dashed #4a3a6e;padding-top:10px}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+/* map */
+#mapWrap{display:flex;gap:6px;justify-content:space-between;background:var(--panel);border:1px solid #4a3a6e;border-radius:12px;padding:14px;overflow-x:auto}
+.layer{display:flex;flex-direction:column;gap:14px;justify-content:center;min-width:90px;align-items:center}
+.layer .llab{font-size:11px;opacity:.7}
+.node{width:64px;height:64px;border-radius:50%;border:2px solid #6b57a3;background:#0f0b1c;font-size:22px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:default;position:relative;opacity:.45}
+.node .nt{font-size:9px}
+.node.avail{opacity:1;border-color:var(--gold);box-shadow:0 0 12px #e8b64c66;cursor:pointer;animation:pulse 1.4s infinite}
+.node.done{opacity:.9;border-color:var(--green)}
+.node.cur{opacity:1;border-color:#fff;box-shadow:0 0 14px #fff}
+@keyframes pulse{50%{transform:scale(1.07)}}
+svg#mapSvg{position:absolute;pointer-events:none}
+/* combat */
+#foeRow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;min-height:170px;margin:8px 0}
+.foe{background:var(--panel);border:1px solid #4a3a6e;border-radius:12px;width:170px;padding:8px;text-align:center;position:relative;transition:transform .15s}
+.foe.targetable{border-color:var(--gold);box-shadow:0 0 12px #e8b64c88;cursor:crosshair}
+.foe .art{font-size:44px}
+.foe .nm{font-weight:bold;font-size:14px}
+.foe .hpbar{height:12px;background:#000;border-radius:6px;margin:6px 0;overflow:hidden;border:1px solid #444}
+.foe .hpbar i{display:block;height:100%;background:linear-gradient(90deg,#c0392b,#e05252)}
+.foe .intent{background:#0f0b1c;border:1px solid #555;border-radius:8px;font-size:12px;padding:3px 6px;margin:4px 0;min-height:24px}
+.foe .sts{font-size:11px;min-height:16px;color:#ffb}
+.foe.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.dmgfloat{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:22px;font-weight:bold;color:#ff6b6b;text-shadow:0 2px 0 #000;animation:floatup 1s forwards;pointer-events:none;z-index:5}
+.dmgfloat.block{color:#7ec8ff}.dmgfloat.heal{color:#7dff8a}.dmgfloat.burn{color:#ff9a3c}
+@keyframes floatup{to{transform:translate(-50%,-46px);opacity:0}}
+#midbar{display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0;flex-wrap:wrap}
+#turnBanner{position:fixed;top:34%;left:0;right:0;text-align:center;font-size:44px;color:var(--gold);text-shadow:0 3px 0 #000,0 0 30px #000;opacity:0;pointer-events:none;z-index:60;letter-spacing:3px}
+#turnBanner.show{animation:banner 1.4s}
+@keyframes banner{15%{opacity:1;transform:scale(1.05)}75%{opacity:1}100%{opacity:0}}
+#hand{display:flex;gap:8px;justify-content:center;align-items:flex-end;flex-wrap:wrap;min-height:190px;background:linear-gradient(#141021,#0f0b1c);border:1px solid #4a3a6e;border-radius:12px;padding:12px}
+.card{width:138px;min-height:172px;background:linear-gradient(#f3e9d2,#d9c9a3);color:#221a10;border-radius:10px;border:2px solid #6b57a3;padding:6px;position:relative;cursor:pointer;transition:transform .15s;box-shadow:0 4px 10px #000a}
+.card:hover{transform:translateY(-10px) rotate(-1deg)}
+.card.sel{border-color:var(--gold);box-shadow:0 0 16px var(--gold);transform:translateY(-12px)}
+.card .cost{position:absolute;top:-8px;left:-8px;width:30px;height:30px;border-radius:50%;background:#2b6cb0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid #fff}
+.card .cn{font-weight:bold;font-size:13px;text-align:center;margin-top:4px;min-height:30px}
+.card .ct{font-size:10px;text-align:center;opacity:.7;font-style:italic}
+.card .cd{font-size:11.5px;line-height:1.3;text-align:center;margin-top:4px}
+.card .up{position:absolute;top:-8px;right:-6px;background:var(--green);color:#000;font-size:10px;border-radius:6px;padding:1px 5px;font-weight:bold}
+.card.attack{border-color:#a33}.card.skill{border-color:#2b6cb0}.card.power{border-color:#6b57a3}
+.card.playing{transition:all .45s;z-index:50}
+#piles{display:flex;gap:10px;justify-content:center;margin:8px 0;font-size:13px;flex-wrap:wrap}
+.pile{background:var(--panel);border:1px solid #4a3a6e;border-radius:8px;padding:5px 12px;cursor:pointer}
+/* overlays */
+.overlay{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:40;padding:14px}
+.overlay.on{display:flex}
+.panel{background:var(--panel2);border:1px solid var(--gold);border-radius:14px;padding:20px;max-width:760px;width:100%;max-height:90vh;overflow:auto;text-align:center}
+.panel h2{color:var(--gold);margin-bottom:10px}
+.draftrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.shoprow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.relicgrid{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+.relic{background:#0f0b1c;border:1px solid var(--purp);border-radius:8px;padding:4px 8px;font-size:12px;cursor:help}
+.log{background:#0a0714;border:1px solid #333;border-radius:8px;height:92px;overflow:auto;font-size:12px;text-align:left;padding:6px 8px;margin-top:8px;font-family:monospace}
+.log div{margin:1px 0}
+.kv{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:14px;margin:6px 0}
+small.dim{opacity:.65}
+a{color:var(--blue)}
+.codex{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.codex .card{width:auto;cursor:default}
+.helptext{text-align:left;line-height:1.55;font-size:14px}
+.helptext h3{color:var(--gold);margin:10px 0 4px}
+#flyLayer{position:fixed;inset:0;pointer-events:none;z-index:70}
+.flycard{position:fixed;width:138px;z-index:71;transition:all .45s ease-in}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar" id="topbar" style="display:none">
+    <span class="pill hp">❤ <b id="tHp">70/70</b></span>
+    <span class="pill en">⚡ <b id="tEn">3/3</b></span>
+    <span class="pill gold">🪙 <b id="tGold">0</b></span>
+    <span class="pill">Act <b id="tAct">1</b> · <span id="tFloor">—</span></span>
+    <span class="pill">Seed <b id="tSeed">—</b></span>
+    <span style="flex:1"></span>
+    <button class="btn" id="bHelp" style="padding:4px 10px">❓ Help / Pause</button>
+    <button class="btn" id="bAbandon" style="padding:4px 10px">🏳 Abandon</button>
+  </div>
+  <div class="relicgrid" id="relicBar" style="display:none"></div>
+
+  <!-- TITLE -->
+  <div class="screen on" id="scr-title">
+    <h1>⚔ DUNGEON DECK DELVE ⚔</h1>
+    <div class="sub">A 3-act Slay-lite · map · draft · relics · merchants · bosses</div>
+    <div class="titlecard">
+      <p>Delve 3 acts of branching dungeon. Fight with a <b>5-card hand</b> and <b>3 energy</b> per turn. Draft new cards, grab relics, rest, trade — and slay 3 phased bosses.</p>
+      <p>Starting deck: 4× Strike · 4× Guard · 1× Sear · 1× Leech &nbsp;·&nbsp; HP 70 · Gold 40</p>
+      <div class="kv">
+        <label><input type="checkbox" id="optAsc"> Ascension (+25% foe HP)</label>
+        <label>Seed: <input id="optSeed" size="8" placeholder="random"></label>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="bStart" style="font-size:18px;padding:10px 26px">▶ Begin the Delve</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="bCodex">📖 Card Codex</button>
+        <button class="btn" id="bBest">🏆 Best: <span id="bestLine">—</span></button>
+      </div>
+      <div class="signoff" id="signoff">Credits: produced <b>2026-10-30 12:00 UTC</b> by <b>Muse Spark 1.3 Contributor (OpenCode agent)</b> · vanilla HTML/CSS/JS, no dependencies.</div>
+      <div><small class="dim" id="winsLine"></small></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="screen" id="scr-map">
+    <h1 style="font-size:26px" id="mapTitle">Act 1 — Choose your path</h1>
+    <div class="sub" id="mapSub"></div>
+    <div id="mapWrap"></div>
+    <div class="row"><button class="btn" id="bMapHeal" disabled></button></div>
+    <div class="log" id="mapLog"></div>
+  </div>
+
+  <!-- COMBAT -->
+  <div class="screen" id="scr-combat">
+    <div id="foeRow"></div>
+    <div id="midbar">
+      <span class="pill hp">🧍 You: ❤ <b id="cHp">70</b> <span id="cBlock"></span> <span id="cStatus"></span></span>
+      <span class="pill en">⚡ Energy <b id="cEn">3</b></span>
+      <span class="pill">Turn <b id="cTurn">1</b></span>
+      <button class="btn primary" id="bEnd">End Turn ⏭</button>
+    </div>
+    <div id="hand"></div>
+    <div id="piles">
+      <span class="pile" id="pDraw">🂠 Draw: <b>0</b></span>
+      <span class="pile" id="pDisc">🗑 Discard: <b>0</b></span>
+      <span class="pile" id="pExh">✨ Exhaust: <b>0</b></span>
+    </div>
+    <div class="log" id="combatLog"></div>
+  </div>
+</div>
+
+<div id="turnBanner"></div>
+<div id="flyLayer"></div>
+
+<!-- DRAFT / REWARD -->
+<div class="overlay" id="ov-draft"><div class="panel">
+  <h2 id="draftTitle">⚔ Victory! Draft a card</h2>
+  <div id="draftInfo"></div>
+  <div class="draftrow" id="draftRow"></div>
+  <div class="row"><button class="btn" id="bDraftSkip">Skip (+5 🪙)</button></div>
+</div></div>
+
+<!-- REST -->
+<div class="overlay" id="ov-rest"><div class="panel">
+  <h2>🔥 Rest Site</h2><p>Catch your breath. Choose one:</p>
+  <div class="row">
+    <button class="btn primary" id="bRestHeal">😴 Rest — heal 30%</button>
+    <button class="btn" id="bRestUp">⚒ Smith — upgrade a card</button>
+  </div>
+  <div id="restUpList" class="shoprow"></div>
+  <div class="row"><button class="btn" id="bRestLeave">Continue ➜</button></div>
+</div></div>
+
+<!-- SHOP -->
+<div class="overlay" id="ov-shop"><div class="panel">
+  <h2>🛒 Merchant</h2><div id="shopGold"></div>
+  <h3 style="color:var(--gold)">Cards</h3><div class="shoprow" id="shopCards"></div>
+  <h3 style="color:var(--gold);margin-top:8px">Relic</h3><div class="shoprow" id="shopRelic"></div>
+  <h3 style="color:var(--gold);margin-top:8px">Service</h3><div class="row"><button class="btn" id="bRemove">🗑 Remove a card (50🪙)</button></div>
+  <div id="removeList" class="shoprow"></div>
+  <div class="row"><button class="btn primary" id="bShopLeave">Leave ➜</button></div>
+</div></div>
+
+<!-- GAMEOVER -->
+<div class="overlay" id="ov-over"><div class="panel">
+  <h2 id="overTitle">💀 You Died</h2><div id="overBody"></div>
+  <div class="row"><button class="btn primary" id="bAgain">↻ New Run</button> <button class="btn" id="bTitleBtn">Title</button></div>
+  <div id="endlessRow" class="row" style="display:none"><button class="btn" id="bEndless">♾ Continue (Endless, foes +30%/act)</button></div>
+</div></div>
+
+<!-- HELP -->
+<div class="overlay" id="ov-help"><div class="panel helptext">
+  <h2 style="text-align:center">❓ Rules & Help (pauses nothing — foes wait politely)</h2>
+  <h3>Goal</h3><div>Clear 3 acts × 8 floors. HP persists. Death ends the run; score = floors×100 + kills×25 + gold.</div>
+  <h3>Map</h3><div>⚔ fight · 💀 elite (harder, better loot) · 🔥 rest (heal 30% <i>or</i> upgrade) · 🛒 shop (buy/remove) · 👹 boss. Click a glowing node connected to your position.</div>
+  <h3>Combat</h3><div>Each turn: gain 3⚡, draw to <b>5 cards</b>. Block 🛡 resets at the start of your turn. Click a card, then a foe if it needs a target. End Turn to let foes act. Intent icons above foes show their next move (⚔ attack value · 🛡 block · ▲ buff · ▼ debuff · 🔥 burn).</div>
+  <h3>Statuses</h3><div>🔥 <b>Burn</b>: take N damage at start of turn, then Burn −1. 🌀 <b>Weak</b>: deal −25% damage (X turns). 💔 <b>Frail</b>: take +25% damage (X turns).</div>
+  <h3>Cards</h3><div>Strike 6 dmg · Guard 5 block · Sear applies Burn · Leech heals on hit · plus 12 more (Cleave hits ALL, Haste gives energy, etc). Upgraded cards (+ suffix) hit harder.</div>
+  <h3>Seed</h3><div>Run id in <b>?seed=NNN</b> reproduces map + draft + foe moves. Enter a seed on the title screen or copy the URL mid-run.</div>
+  <h3>Sound</h3><div>WebAudio bleeps for hits/coins/cards. <button class="btn" id="bMute" style="padding:2px 8px">🔊 toggle</button></div>
+  <div class="row"><button class="btn primary" id="bHelpClose">Resume ▶</button></div>
+</div></div>
+
+<!-- CODEX -->
+<div class="overlay" id="ov-codex"><div class="panel">
+  <h2>📖 Card Codex</h2>
+  <div class="row"><label>Filter: <select id="codexFilter"><option value="">all</option><option value="0">cost 0</option><option value="1">cost 1</option><option value="2">cost 2</option><option value="3">cost 3</option><option value="attack">attack</option><option value="skill">skill</option></select></label></div>
+  <div class="codex" id="codexGrid"></div>
+  <div class="row"><button class="btn" id="bCodexClose">Close</button></div>
+</div></div>
+
+<!-- PILE VIEW -->
+<div class="overlay" id="ov-pile"><div class="panel">
+  <h2 id="pileTitle">Pile</h2><div class="shoprow" id="pileGrid"></div>
+  <div class="row"><button class="btn" id="bPileClose">Close</button></div>
+</div></div>
+
+<script>
+"use strict";
+/* ============ utils ============ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function banner(t){const b=$("turnBanner");b.textContent=t;b.classList.remove("show");void b.offsetWidth;b.classList.add("show");}
+/* ============ audio ============ */
+let AC=null,muted=false;
+function tone(f,d,type,g){if(muted)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),v=AC.createGain();o.type=type||"square";o.frequency.value=f;v.gain.value=g||0.06;o.connect(v);v.connect(AC.destination);o.start();v.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+const SFX={hit(){tone(140,.18,"sawtooth",.09);tone(90,.25,"square",.07)},block(){tone(300,.12,"triangle",.08)},coin(){tone(880,.09,"square",.05);setTimeout(()=>tone(1320,.12,"square",.05),80)},card(){tone(520,.07,"triangle",.06)},heal(){tone(440,.2,"sine",.07);setTimeout(()=>tone(660,.25,"sine",.06),120)},win(){[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.2,"square",.06),i*130))},lose(){[400,300,200].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sawtooth",.07),i*180))},click(){tone(600,.05,"square",.04)}};
+/* ============ seeded RNG ============ */
+function xmur3(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return()=>{h=Math.imul(h^(h>>>16),2246822507);h=Math.imul(h^(h>>>13),3266489909);return(h^=h>>>16)>>>0;};}
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let RS=mulberry32(7);
+function reseed(s){const f=xmur3(String(s));RS=mulberry32(f());G.seed=String(s);try{history.replaceState(null,"","?seed="+encodeURIComponent(String(s)));}catch(e){}}
+const R=()=>RS(),ri=(a,b)=>a+Math.floor(R()*(b-a+1)),pick=a=>a[Math.floor(R()*a.length)];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+/* ============ data: cards ============ */
+const CARDS={
+ strike:{name:"Strike",cost:1,type:"attack",target:"enemy",text:"Deal 6 damage.",dmg:6,up:{dmg:9}},
+ guard:{name:"Guard",cost:1,type:"skill",target:"self",text:"Gain 5 Block.",block:5,up:{block:8}},
+ sear:{name:"Sear",cost:1,type:"attack",target:"enemy",text:"Deal 3 damage. Apply 3 Burn.",dmg:3,burn:3,up:{dmg:5,burn:4}},
+ leech:{name:"Leech",cost:1,type:"attack",target:"enemy",text:"Deal 5 damage. Heal 3 on hit.",dmg:5,heal:3,up:{dmg:8,heal:4}},
+ cleave:{name:"Cleave",cost:2,type:"attack",target:"all",text:"Deal 4 to ALL foes.",dmg:4,up:{dmg:7}},
+ haste:{name:"Haste",cost:0,type:"skill",target:"self",text:"Gain 2 energy. Draw 1.",energy:2,draw:1,up:{energy:2,draw:2}},
+ smash:{name:"Smash",cost:2,type:"attack",target:"enemy",text:"Deal 11 damage.",dmg:11,up:{dmg:15}},
+ ironwall:{name:"Ironwall",cost:2,type:"skill",target:"self",text:"Gain 9 Block.",block:9,up:{block:13}},
+ quickslash:{name:"Quick Slash",cost:1,type:"attack",target:"enemy",text:"Deal 3. Draw 1.",dmg:3,draw:1,up:{dmg:5,draw:1}},
+ cinder:{name:"Cinder Rain",cost:2,type:"attack",target:"all",text:"Deal 3 + 2 Burn to ALL.",dmg:3,burn:2,up:{dmg:5,burn:3}},
+ warcry:{name:"War Cry",cost:1,type:"skill",target:"self",text:"Apply 2 Weak to ALL. Gain 4 Block.",block:4,weakAll:2,up:{block:7,weakAll:3}},
+ expose:{name:"Expose",cost:1,type:"attack",target:"enemy",text:"Deal 5. Apply 2 Frail.",dmg:5,frail:2,up:{dmg:8,frail:3}},
+ secondwind:{name:"Second Wind",cost:2,type:"skill",target:"self",text:"Heal 6. Gain 6 Block.",heal:6,block:6,up:{heal:9,block:9}},
+ frenzy:{name:"Frenzy",cost:2,type:"attack",target:"enemy",text:"Deal 2 four times.",dmg:2,hits:4,up:{dmg:3,hits:4}},
+ focus:{name:"Focus",cost:0,type:"skill",target:"self",text:"Gain 1 energy. Apply 1 Weak to strongest foe.",energy:1,weakOne:1,up:{energy:2,weakOne:2}},
+ plague:{name:"Plague Edge",cost:1,type:"attack",target:"enemy",text:"Deal 4. Apply 1 Weak + 1 Frail.",dmg:4,weak:1,frail:1,up:{dmg:7,weak:2,frail:2}},
+};
+const CARD_POOL=Object.keys(CARDS).filter(k=>!["strike","guard"].includes(k));
+function cardText(id,up){const c=CARDS[id];let t=c.text;if(up)t+=" (+)";return t;}
+/* ============ data: foes ============ */
+const FOES=[
+ {id:"slime",name:"Gloop Slime",art:"🟢",hp:[22,30],acts:[1],gold:[8,16],moves:[{n:"Tackle",t:"attack",dmg:7},{n:"Harden",t:"block",block:7},{n:"Spit",t:"attack",dmg:5,weak:1}]},
+ {id:"rat",name:"Sewer Rat",art:"🐀",hp:[18,26],acts:[1],gold:[8,15],moves:[{n:"Bite",t:"attack",dmg:6},{n:"Scratch ×2",t:"attack",dmg:3,hits:2},{n:"Squeal",t:"debuff",weak:1}]},
+ {id:"cult",name:"Hooded Cultist",art:"🧙",hp:[24,32],acts:[1],gold:[10,18],moves:[{n:"Hex Bolt",t:"attack",dmg:8},{n:"Chant",t:"buff",str:2},{n:"Curse",t:"debuff",frail:2}]},
+ {id:"gob",name:"Goblin Archer",art:"🏹",hp:[20,28],acts:[1],gold:[10,18],moves:[{n:"Aimed Shot",t:"attack",dmg:9},{n:"Volley ×2",t:"attack",dmg:4,hits:2},{n:"Oil Flask",t:"debuff",burn:2}]},
+ {id:"wraith",name:"Pale Wraith",art:"👻",hp:[34,44],acts:[2],gold:[15,25],moves:[{n:"Chill Touch",t:"attack",dmg:9,weak:1},{n:"Phase",t:"block",block:10},{n:"Wail",t:"debuff",frail:2}]},
+ {id:"orc",name:"Orc Brute",art:"👹",hp:[40,52],acts:[2],gold:[15,26],moves:[{n:"Cleave",t:"attack",dmg:12},{n:"Rage",t:"buff",str:3},{n:"Stomp",t:"attack",dmg:7,frail:1}]},
+ {id:"hex",name:"Hex Mage",art:"🔮",hp:[32,42],acts:[2],gold:[16,26],moves:[{n:"Fire Hex",t:"attack",dmg:7,burn:3},{n:"Barrier",t:"block",block:9},{n:"Enfeeble",t:"debuff",weak:2}]},
+ {id:"spider",name:"Crypt Spider",art:"🕷",hp:[30,40],acts:[2],gold:[14,24],moves:[{n:"Fangs",t:"attack",dmg:8},{n:"Web ×2",t:"attack",dmg:4,hits:2,frail:1},{n:"Venom",t:"debuff",burn:2,weak:1}]},
+ {id:"golem",name:"Rune Golem",art:"🗿",hp:[48,60],acts:[2,3],gold:[18,28],moves:[{n:"Slam",t:"attack",dmg:13},{n:"Fortify",t:"block",block:12},{n:"Quake",t:"attack",dmg:6,burn:0,weak:1,frail:1}]},
+ {id:"demon",name:"Ash Demon",art:"😈",hp:[50,64],acts:[3],gold:[22,32],moves:[{n:"Hellfire",t:"attack",dmg:11,burn:3},{n:"Taunt",t:"buff",str:3},{n:"Rend ×2",t:"attack",dmg:6,hits:2}]},
+ {id:"knight",name:"Dusk Knight",art:"♞",hp:[54,68],acts:[3],gold:[22,34],moves:[{n:"Lance",t:"attack",dmg:14},{n:"Bulwark",t:"block",block:12},{n:"Terror",t:"debuff",weak:2,frail:1}]},
+ {id:"ooze",name:"Elder Ooze",art:"🦠",hp:[46,60],acts:[3],gold:[20,30],moves:[{n:"Engulf",t:"attack",dmg:12,frail:1},{n:"Split",t:"block",block:8},{n:"Acid",t:"attack",dmg:8,burn:3}]},
+ {id:"acol",name:"Void Acolyte",art:"🌑",hp:[44,56],acts:[3],gold:[20,32],moves:[{n:"Void Ray",t:"attack",dmg:12},{n:"Dark Pact",t:"buff",str:2},{n:"Doom",t:"debuff",weak:1,frail:2}]},
+];
+const BOSSES=[
+ {id:"boss1",name:"Rat King",art:"🐀👑",hp:70,act:1,gold:[40,50],phaseAt:.5,
+  m1:[{n:"Gnaw",t:"attack",dmg:10},{n:"Summon",t:"buff",str:2},{n:"Tail ×2",t:"attack",dmg:5,hits:2}],
+  m2:[{n:"FRENZY ×3",t:"attack",dmg:5,hits:3},{n:"Plague Bite",t:"attack",dmg:11,weak:2},{n:"Screech",t:"debuff",frail:2}]},
+ {id:"boss2",name:"Hexlord Malachar",art:"🧛",hp:110,act:2,gold:[60,70],phaseAt:.5,
+  m1:[{n:"Shadow Bolt",t:"attack",dmg:12},{n:"Ward",t:"block",block:14},{n:"Cripple",t:"debuff",weak:2,frail:1}],
+  m2:[{n:"INFERNO",t:"attack",dmg:10,burn:4},{n:"Meteor ×2",t:"attack",dmg:7,hits:2},{n:"Drain",t:"attack",dmg:9,healFoe:9}]},
+ {id:"boss3",name:"The Dungeon Heart",art:"🫀",hp:150,act:3,gold:[90,100],phaseAt:.6,
+  m1:[{n:"Crush",t:"attack",dmg:14},{n:"Harden",t:"block",block:14},{n:"Pulse",t:"attack",dmg:8,frail:2}],
+  m2:[{n:"ANNIHILATE",t:"attack",dmg:18},{n:"Spawn ×2",t:"attack",dmg:7,hits:2,burn:2},{n:"Despair",t:"debuff",weak:2,frail:2}]},
+];
+const RELICS=[
+ {id:"anchor",name:"⚓ Anchor",text:"+9 Block on turn 1."},
+ {id:"vial",name:"🩸 Blood Vial",text:"Heal 2 after each fight."},
+ {id:"core",name:"🔋 Energy Core",text:"+1 energy on turn 1."},
+ {id:"purse",name:"👛 Coin Purse",text:"+25% gold from fights."},
+ {id:"whet",name:"🗡 Whetstone",text:"Your first attack each fight +4 dmg."},
+ {id:"feather",name:"🪶 Phoenix Feather",text:"Rest heals +12 extra."},
+ {id:"charm",name:"🍀 Lucky Charm",text:"Shop prices −25%."},
+ {id:"ember",name:"🔥 Eternal Ember",text:"Burn you apply +1."},
+];
+/* ============ state ============ */
+const G={seed:"7",act:1,hp:70,maxHp:70,gold:40,deck:[],relics:[],map:null,layer:-1,pos:-1,kills:0,floors:0,endless:0,asc:false,over:false};
+const C={foes:[],draw:[],hand:[],disc:[],exh:[],energy:3,maxEn:3,turn:1,pBlock:0,pWeak:0,pFrail:0,pBurn:0,sel:-1,nodeType:"fight",firstAtk:true};
+function newDeck(){const d=[];for(let i=0;i<4;i++)d.push({id:"strike",up:false});for(let i=0;i<4;i++)d.push({id:"guard",up:false});d.push({id:"sear",up:false});d.push({id:"leech",up:false});return d;}
+function hasRelic(id){return G.relics.includes(id);}
+function mult(){return (G.asc?1.25:1)*(1+G.endless*0.3);}
+/* ============ map gen ============ */
+const ICONS={fight:"⚔",elite:"💀",rest:"🔥",shop:"🛒",boss:"👹"};
+function genMap(act){
+ const layers=[];
+ const plan=act===1?["fight","fight","shop","fight","elite","rest","elite","boss"]
+  :act===2?["fight","elite","rest","fight","shop","elite","rest","boss"]
+  :["fight","elite","shop","fight","elite","rest","elite","boss"];
+ for(let L=0;L<8;L++){
+  const n=L===0?3:(L===7?1:(R()<0.5?2:3));
+  const nodes=[];
+  for(let i=0;i<n;i++){let t=plan[L];if((t==="fight")&&R()<0.18)t="elite";nodes.push({type:t,links:[],foesRolled:null});}
+  layers.push(nodes);
+ }
+ for(let L=0;L<7;L++){layers[L].forEach((nd,i)=>{const nn=layers[L+1].length;const opts=[];for(let k=0;k<nn;k++)if(Math.abs(k-i)<=1.2)opts.push(k);nd.links=opts.length?opts:[Math.min(i,nn-1)];});}
+ return layers;
+}
+function show(s){document.querySelectorAll(".screen").forEach(e=>e.classList.remove("on"));$("scr-"+s).classList.add("on");}
+function syncTop(){$("topbar").style.display="flex";$("relicBar").style.display="flex";
+ $("tHp").textContent=G.hp+"/"+G.maxHp;$("tGold").textContent=G.gold;$("tAct").textContent=G.act+(G.endless?" ∞"+G.endless:"");
+ $("tFloor").textContent=G.layer<0?"start":"floor "+(G.layer+1)+"/8";$("tSeed").textContent=G.seed;$("tEn").textContent=C.energy+"/"+C.maxEn;
+ $("relicBar").innerHTML=G.relics.map(id=>{const r=RELICS.find(x=>x.id===id);return `<span class="relic" title="${esc(r.text)}">${esc(r.name)} — <small>${esc(r.text)}</small></span>`;}).join("")||'<small class="dim">no relics yet — elites & bosses drop them</small>';
+}
+function mlog(t){const l=$("mapLog");if(!l)return;const d=document.createElement("div");d.textContent=t;l.prepend(d);}
+function clog(t){const l=$("combatLog");const d=document.createElement("div");d.innerHTML=t;l.prepend(d);while(l.children.length>60)l.lastChild.remove();}
+/* ============ map screen ============ */
+function renderMap(){
+ show("map");syncTop();
+ $("mapTitle").textContent=`Act ${G.act}${G.endless?" (Endless +"+G.endless+")":""} — Choose your path`;
+ $("mapSub").textContent=`HP ${G.hp}/${G.maxHp} · 🪙 ${G.gold} · Deck ${G.deck.length} · ${G.relics.length} relics`;
+ const w=$("mapWrap");w.innerHTML="";
+ G.map.forEach((layer,L)=>{
+  const col=document.createElement("div");col.className="layer";
+  col.innerHTML=`<div class="llab">F${L+1}</div>`;
+  layer.forEach((nd,i)=>{
+   const d=document.createElement("div");d.className="node";
+   if(L<G.layer||(L===G.layer&&i===G.pos))d.classList.add("done");
+   let ok=false;
+   if(L===0&&G.layer===-1)ok=true;
+   else if(L===G.layer+1&&(G.layer===-1||G.map[G.layer][G.pos].links.includes(i)))ok=true;
+   if(ok&&!G.over)d.classList.add("avail");
+   if(L===G.layer&&i===G.pos)d.classList.add("cur");
+   d.innerHTML=`${ICONS[nd.type]}<span class="nt">${nd.type}</span>`;
+   if(ok&&!G.over)d.onclick=()=>{SFX.click();goNode(L,i);};
+   col.appendChild(d);
+  });
+  w.appendChild(col);
+ });
+ const hb=$("bMapHeal");hb.style.display="none";
+}
+/* ============ node flow ============ */
+function goNode(L,i){
+ G.layer=L;G.pos=i;const nd=G.map[L][i];G.floors++;
+ if(nd.type==="fight"||nd.type==="elite"||nd.type==="boss")startCombat(nd.type);
+ else if(nd.type==="rest")openRest();
+ else if(nd.type==="shop")openShop();
+ renderMap();
+}
+function afterNode(){
+ // heal vial handled in victory; check act end
+ if(G.layer>=7){ // boss beaten -> next act or win
+  if(G.act<3){G.act++;G.layer=-1;G.pos=-1;G.maxHp+=6;G.hp=Math.min(G.maxHp,G.hp+Math.floor(G.maxHp*0.3));G.map=genMap(G.act);banner("ACT "+G.act);mlog("→ Act "+G.act+" begins. Healed 30%.");SFX.win();renderMap();}
+  else if(!G.endless){winRun(false);}
+  else{G.endless++;G.act=3;G.layer=-1;G.pos=-1;G.map=genMap(3);banner("ENDLESS +"+G.endless);renderMap();}
+ } else renderMap();
+}
+/* ============ combat ============ */
+function rollFoes(kind){
+ const act=G.act,list=FOES.filter(f=>f.acts.includes(act));
+ const m=mult();const out=[];
+ const mk=(base,boss)=>{const hp=Math.round((boss?base.hp:ri(base.hp[0],base.hp[1]))*m);return{id:base.id,name:base.name,art:base.art,hp,max:hp,block:0,str:0,weak:0,frail:0,burn:0,intent:null,last:-1,boss:!!boss,base};};
+ if(kind==="boss"){const b=BOSSES[G.act-1];const f=mk(b,true);out.push(f);if(G.act>=2){const m2=mk(pick(list));m2.hp=m2.max=Math.round(m2.max*0.6);out.push(m2);}}
+ else if(kind==="elite"){const a=mk(pick(list)),b2=mk(pick(list));a.hp=a.max=Math.round(a.max*1.35);b2.hp=b2.max=Math.round(b2.max*1.35);out.push(a,b2);}
+ else{const n=act===1?(R()<0.6?1:2):(R()<0.5?2:1);if(n===1){const a=mk(pick(list));a.hp=a.max=Math.round(a.max*1.2);out.push(a);}else{out.push(mk(pick(list)));out.push(mk(pick(list)));}}
+ return out;
+}
+function movesFor(f){
+ if(f.boss){const b=BOSSES[G.act-1];const ph=(f.hp<=b.hp*mult()*b.phaseAt)?"P2":"P1";return {set:(f.hp<=b.hp*mult()*b.phaseAt)?b.m2:b.m1,ph};}
+ return {set:f.base.moves,ph:""};
+}
+function chooseIntent(f){
+ const {set,ph}=movesFor(f);f.phase=ph;
+ let idx=Math.floor(R()*set.length);if(set.length>1&&idx===f.last)idx=(idx+1)%set.length;f.last=idx;
+ const mv=set[idx];f.intent=JSON.parse(JSON.stringify(mv));
+ if(mv.t==="attack"){let d=(mv.dmg+f.str);if(f.weak>0)d=Math.floor(d*0.75);f.intent.calc=d;}
+}
+function startCombat(kind){
+ C.nodeType=kind;C.foes=rollFoes(kind);C.turn=0;C.pBlock=0;C.pWeak=0;C.pFrail=0;C.pBurn=0;C.firstAtk=true;
+ C.draw=shuffle(G.deck.map((c,i)=>({uid:i+"_"+Math.random(),id:c.id,up:c.up})));
+ C.hand=[];C.disc=[];C.exh=[];C.sel=-1;C.energy=3;C.maxEn=3;
+ show("combat");syncTop();
+ banner(kind==="boss"?"👹 BOSS — "+C.foes[0].name:kind==="elite"?"💀 ELITE FIGHT":"⚔ FIGHT");
+ clog(`— ${kind.toUpperCase()} (Act ${G.act}) — ${C.foes.map(f=>esc(f.name)+" "+f.hp+"HP").join(" vs ")}`);
+ C.foes.forEach(chooseIntent);
+ startPlayerTurn(true);
+ renderCombat();
+}
+function startPlayerTurn(first){
+ C.turn++;C.energy=C.maxEn;C.pBlock=0;
+ if(C.turn===1){if(hasRelic("core"))C.energy+=1;if(hasRelic("anchor")){C.pBlock+=9;clog("⚓ Anchor: +9 Block.");}}
+ if(first&&hasRelic("core")){}
+ // burn on player
+ if(C.pBurn>0){const d=C.pBurn;hurtPlayer(d,true);C.pBurn--;clog(`🔥 You take ${d} Burn.`);if(G.hp<=0)return die();}
+ // draw to 5
+ const need=5-C.hand.length;
+ for(let i=0;i<need;i++)drawCard();
+ C.foes.forEach(f=>{if(f.burn>0){const d=f.burn+ (0);dealToFoe(f,d,true);f.burn--;clog(`🔥 ${esc(f.name)} takes ${d} Burn.`);}f.block=0;});
+ checkFoeDeaths(true);
+ if(first)banner("YOUR TURN");
+ renderCombat();
+}
+function drawCard(){
+ if(C.draw.length===0){if(C.disc.length===0)return;C.draw=shuffle(C.disc);C.disc=[];clog("🔀 Discard reshuffled.");}
+ const c=C.draw.pop();if(C.hand.length>=10){C.disc.push(c);}else C.hand.push(c);
+}
+/* damage */
+function dealToFoe(f,amt,isBurn){
+ if(amt<=0)return 0;
+ let a=amt;
+ if(!isBurn&&f.frail>0)a=Math.ceil(a*1.25);
+ let blocked=Math.min(f.block,a);f.block-=blocked;a-=blocked;
+ f.hp-=a;
+ floatOnFoe(f,blocked>0&&a===0?`🛡${blocked}`:`-${a}`,isBurn?"burn":"");
+ return a;
+}
+function hurtPlayer(amt,ignoreBlock){
+ let a=amt;
+ if(!ignoreBlock&&C.pFrail>0)a=Math.ceil(a*1.25);
+ if(!ignoreBlock){const b=Math.min(C.pBlock,a);C.pBlock-=b;a-=b;}
+ G.hp-=a;return a;
+}
+function floatOnFoe(f,txt,cls){
+ const els=[...document.querySelectorAll("#foeRow .foe")];
+ const idx=C.foes.indexOf(f);if(!els[idx])return;
+ const s=document.createElement("div");s.className="dmgfloat "+cls;s.textContent=txt;els[idx].appendChild(s);setTimeout(()=>s.remove(),1000);
+ els[idx].classList.remove("shake");void els[idx].offsetWidth;els[idx].classList.add("shake");
+}
+function eff(id,up){const c=CARDS[id];const o={};for(const k of["dmg","block","burn","heal","weak","frail","weakAll","energy","draw","hits","str","weakOne"])if(c[k]!=null)o[k]=c[k]+((up&&c.up&&c.up[k]!=null)?(c.up[k]-c[k]):0);
+ // Ember
+ if(o.burn!=null&&hasRelic("ember"))o.burn+=1;
+ return o;}
+function playCard(hi,foeIdx){
+ const c=C.hand[hi];if(!c)return;
+ const def=CARDS[c.id],e=eff(c.id,c.up);
+ if(def.cost>C.energy){clog("Not enough energy.");return;}
+ const needTarget=def.target==="enemy";
+ if(needTarget&&(foeIdx==null||!C.foes[foeIdx]||C.foes[foeIdx].hp<=0)){clog("Select a foe target.");C.sel=hi;renderCombat();return;}
+ C.energy-=def.cost;
+ C.hand.splice(hi,1);C.sel=-1;
+ SFX.card();animateCard(hi,foeIdx);
+ let targets=[];
+ if(def.target==="all")targets=C.foes.filter(f=>f.hp>0);
+ else if(def.target==="enemy")targets=[C.foes[foeIdx]];
+ const atkMult=(C.pWeak>0&&def.type==="attack")?0.75:1;
+ // resolve
+ if(def.type==="attack"){
+  targets.forEach(f=>{
+   let bonus=(C.firstAtk&&hasRelic("whet"))?4:0;
+   const hits=e.hits||1;
+   for(let h=0;h<hits;h++){
+    if(f.hp<=0)break;
+    let d=Math.round((e.dmg+bonus)*atkMult);
+    const dealt=dealToFoe(f,d,false);
+    clog(`🗡 ${def.name} hits ${esc(f.name)} for ${dealt}.`);
+   }
+   if(e.burn)f.burn+=e.burn;
+   if(e.weak)f.weak+=e.weak;
+   if(e.frail)f.frail+=e.frail;
+   if(e.heal){G.hp=Math.min(G.maxHp,G.hp+e.heal);clog(`💚 Leech heals ${e.heal}.`);SFX.heal();}
+  });
+  if(C.firstAtk&&hasRelic("whet")&&targets.length){clog("🗡 Whetstone +4.");}
+  C.firstAtk=false;SFX.hit();
+ } else {
+  if(e.block){C.pBlock+=e.block;clog(`🛡 +${e.block} Block.`);SFX.block();}
+  if(e.heal){G.hp=Math.min(G.maxHp,G.hp+e.heal);clog(`💚 Heal ${e.heal}.`);SFX.heal();}
+  if(e.energy){C.energy+=e.energy;clog(`⚡ +${e.energy} energy.`);}
+  if(e.draw){for(let i=0;i<e.draw;i++)drawCard();clog(`🂠 Draw ${e.draw}.`);}
+  if(e.weakAll){C.foes.forEach(f=>{if(f.hp>0)f.weak+=e.weakAll;});clog(`🌀 All foes Weak ${e.weakAll}.`);}
+  if(e.weakOne){const alive=C.foes.filter(f=>f.hp>0).sort((a,b)=>b.hp-a.hp)[0];if(alive){alive.weak+=e.weakOne;clog(`🌀 ${esc(alive.name)} Weak ${e.weakOne}.`);}}
+ }
+ C.disc.push(c);
+ if(C.pWeak>0){} // decay at end of turn
+ checkFoeDeaths(false);
+ if(C.foes.every(f=>f.hp<=0)){renderCombat();setTimeout(winFight,450);return;}
+ syncTop();renderCombat();
+}
+function checkFoeDeaths(silent){
+ C.foes.forEach(f=>{if(f.hp<=0&&!f.dead){f.dead=true;f.hp=0;G.kills++;if(!silent)clog(`☠ ${esc(f.name)} slain! +🪙`);}});
+ C.foes=C.foes.filter(f=>!f.dead||f.hp>0&&false);
+ C.foes=C.foes.filter(f=>f.hp>0);
+ // re-choose intents if phase changed handled in foe turn
+}
+function endTurn(){
+ if(C.foes.length===0)return;
+ SFX.click();
+ // discard hand
+ C.disc.push(...C.hand);C.hand=[];
+ if(C.pWeak>0)C.pWeak--;if(C.pFrail>0)C.pFrail--;
+ // foes act
+ banner("FOE TURN");
+ let i=0;
+ const step=()=>{
+  if(G.hp<=0){die();return;}
+  if(i>=C.foes.length){
+   // tick foe statuses durations
+   C.foes.forEach(f=>{if(f.weak>0)f.weak--;if(f.frail>0)f.frail--;});
+   C.foes.forEach(chooseIntent);
+   startPlayerTurn(false);return;
+  }
+  const f=C.foes[i];i++;
+  if(f.hp<=0){step();return;}
+  foeAct(f);renderCombat();
+  setTimeout(step,550);
+ };
+ step();
+}
+function foeAct(f){
+ const mv=f.intent||{t:"attack",dmg:6,calc:6};
+ if(mv.t==="attack"){
+  const hits=mv.hits||1;
+  for(let h=0;h<hits;h++){
+   let d=(mv.dmg+f.str);if(f.weak>0)d=Math.floor(d*0.75);
+   const dealt=hurtPlayer(d,false);
+   clog(`${f.art} ${esc(f.name)} hits you for ${dealt}${hits>1?` (${h+1}/${hits})`:""}.`);
+  }
+  if(mv.burn){C.pBurn+=mv.burn;clog(`🔥 You gain ${mv.burn} Burn.`);}
+  if(mv.weak){C.pWeak+=mv.weak;clog(`🌀 You are Weak (${mv.weak}).`);}
+  if(mv.frail){C.pFrail+=mv.frail;clog(`💔 You are Frail (${mv.frail}).`);}
+  if(mv.healFoe){f.hp=Math.min(f.max,f.hp+mv.healFoe);clog(`${esc(f.name)} drains +${mv.healFoe} HP.`);}
+  SFX.hit();
+ } else if(mv.t==="block"){f.block+=mv.block;clog(`${esc(f.name)} gains ${mv.block} Block.`);SFX.block();}
+ else if(mv.t==="buff"){f.str+=(mv.str||2);clog(`${esc(f.name)} grows +${mv.str||2} Strength! ${f.phase||""}`); }
+ else if(mv.t==="debuff"){
+  if(mv.weak){C.pWeak+=mv.weak;clog(`🌀 You are Weak (${mv.weak}).`);}
+  if(mv.frail){C.pFrail+=mv.frail;clog(`💔 You are Frail (${mv.frail}).`);}
+  if(mv.burn){C.pBurn+=mv.burn;clog(`🔥 You gain ${mv.burn} Burn.`);}
+  if(mv.str)f.str+=mv.str;
+ }
+ if(G.hp<=0){renderCombat();setTimeout(die,400);}
+}
+function winFight(){
+ const kind=C.nodeType;
+ let gold=C.foes.length?0:0;
+ // gold from base of dead? use roll: recompute from foes max? simpler: fixed by kind
+ const base=kind==="boss"?ri(40,55):kind==="elite"?ri(30,45):ri(15,28);
+ gold=Math.round(base*(hasRelic("purse")?1.25:1));
+ G.gold+=gold;SFX.coin();
+ if(hasRelic("vial")){G.hp=Math.min(G.maxHp,G.hp+2);}
+ clog(`🏆 Victory! +${gold}🪙`);
+ SFX.win();
+ // relic drops
+ let gotRelic=null;
+ const unowned=RELICS.filter(r=>!G.relics.includes(r.id));
+ if(unowned.length&&((kind==="boss")||(kind==="elite"&&R()<0.6)||(kind==="fight"&&R()<0.12))){
+  gotRelic=kind==="boss"?unowned[Math.floor(R()*unowned.length)]:pick(unowned);
+  G.relics.push(gotRelic.id);
+ }
+ // wins per act handled at run win; store kills
+ openDraft(gold,gotRelic);
+ syncTop();
+}
+/* ============ render combat ============ */
+function intentText(f){
+ const mv=f.intent;if(!mv)return "?";
+ if(mv.t==="attack"){let d=(mv.calc!=null?mv.calc:mv.dmg+f.str);const h=mv.hits>1?`×${mv.hits}`:"";let extra="";if(mv.burn)extra+=" 🔥";if(mv.weak)extra+=" 🌀";if(mv.frail)extra+=" 💔";return `⚔ ${d}${h}${extra} <small>${esc(mv.n||"")}</small>`;}
+ if(mv.t==="block")return `🛡 ${mv.block} <small>${esc(mv.n||"")}</small>`;
+ if(mv.t==="buff")return `▲ buff <small>${esc(mv.n||"")}${f.phase?" · "+f.phase:""}</small>`;
+ return `▼ debuff <small>${esc(mv.n||"")}</small>`;
+}
+function stsText(f){const s=[];if(f.block)s.push(`🛡${f.block}`);if(f.str)s.push(`💪${f.str}`);if(f.burn)s.push(`🔥${f.burn}`);if(f.weak)s.push(`🌀${f.weak}`);if(f.frail)s.push(`💔${f.frail}`);return s.join(" ");}
+function renderCombat(){
+ syncTop();
+ $("cHp").textContent=Math.max(0,G.hp);
+ $("cBlock").textContent=C.pBlock>0?`🛡${C.pBlock}`:"";
+ $("cStatus").textContent=[C.pBurn?`🔥${C.pBurn}`:"",C.pWeak?`🌀${C.pWeak}`:"",C.pFrail?`💔${C.pFrail}`:""].filter(Boolean).join(" ");
+ $("cEn").textContent=C.energy;$("cTurn").textContent=C.turn;
+ const row=$("foeRow");row.innerHTML="";
+ C.foes.forEach((f,idx)=>{
+  const d=document.createElement("div");d.className="foe"+((C.sel>=0&&CARDS[C.hand[C.sel]].target!=="self")?" targetable":"");
+  d.innerHTML=`<div class="intent">${intentText(f)}</div><div class="art">${f.art}</div><div class="nm">${esc(f.name)}${f.phase?" <small>"+f.phase+"</small>":""}</div><div class="hpbar"><i style="width:${Math.max(0,100*f.hp/f.max)}%"></i></div><div><small>${Math.max(0,f.hp)}/${f.max}</small></div><div class="sts">${stsText(f)}</div>`;
+  d.onclick=()=>{if(C.sel>=0){playCard(C.sel,idx);} };
+  row.appendChild(d);
+ });
+ const h=$("hand");h.innerHTML="";
+ C.hand.forEach((c,i)=>{
+  const def=CARDS[c.id];
+  const d=document.createElement("div");d.className=`card ${def.type}`+(C.sel===i?" sel":"");
+  d.innerHTML=`<div class="cost">${def.cost}</div>${c.up?'<div class="up">+</div>':""}<div class="cn">${esc(def.name)}</div><div class="ct">${def.type} · ${def.target}</div><div class="cd">${esc(cardText(c.id,c.up))}</div>`;
+  d.style.transform=C.sel===i?"":`rotate(${(i-(C.hand.length-1)/2)*4}deg)`;
+  d.onclick=(ev)=>{ev.stopPropagation();
+   if(C.sel===i){C.sel=-1;renderCombat();return;}
+   if(def.cost>C.energy){clog("Not enough ⚡.");SFX.click();return;}
+   if(def.target==="self"){playCard(i,null);}else{C.sel=i;SFX.click();renderCombat();}
+  };
+  h.appendChild(d);
+ });
+ $("pDraw").innerHTML=`🂠 Draw: <b>${C.draw.length}</b>`;
+ $("pDisc").innerHTML=`🗑 Discard: <b>${C.disc.length}</b>`;
+ $("pExh").innerHTML=`✨ Exhaust: <b>${C.exh.length}</b>`;
+}
+function animateCard(hi,foeIdx){
+ try{
+  const handEl=$("hand").children[hi];if(!handEl)return;
+  const r1=handEl.getBoundingClientRect();
+  const foeEls=document.querySelectorAll("#foeRow .foe");
+  const t=foeIdx!=null&&foeEls[foeIdx]?foeEls[foeIdx].getBoundingClientRect():$("midbar").getBoundingClientRect();
+  const ghost=document.createElement("div");ghost.className="card "+CARDS[C.disc[C.disc.length-1]||"strike"]?"":"";ghost.className="card attack";ghost.style.cssText=`position:fixed;left:${r1.left}px;top:${r1.top}px;width:138px;z-index:71;transition:all .45s ease-in;background:linear-gradient(#f3e9d2,#d9c9a3);border-radius:10px;padding:20px;border:2px solid gold;text-align:center`;
+  ghost.textContent="✨";document.body.appendChild(ghost);
+  requestAnimationFrame(()=>{ghost.style.left=(t.left+t.width/2-69)+"px";ghost.style.top=(t.top)+"px";ghost.style.opacity="0.3";});
+  setTimeout(()=>ghost.remove(),480);
+ }catch(e){}
+}
+/* ============ draft / rewards ============ */
+function draftChoices(){
+ const pool=CARD_POOL.slice();
+ const out=[];const cands=shuffle(pool);
+ for(let i=0;i<3&&i<cands.length;i++)out.push(cands[i]);
+ return out;
+}
+function cardEl(cid,up,onclick,label){
+ const def=CARDS[cid];
+ const d=document.createElement("div");d.className="card "+def.type;
+ d.innerHTML=`<div class="cost">${def.cost}</div>${up?'<div class="up">+</div>':""}<div class="cn">${esc(def.name)}</div><div class="ct">${def.type} · ${def.target}</div><div class="cd">${esc(cardText(cid,up))}</div>${label?`<div class="cd"><b>${esc(label)}</b></div>`:""}`;
+ if(onclick)d.onclick=onclick;
+ return d;
+}
+function openDraft(gold,gotRelic){
+ $("draftTitle").textContent=C.nodeType==="boss"?"👹 Boss Slain! Draft a card":C.nodeType==="elite"?"💀 Elite Down! Draft a card":"⚔ Victory! Draft a card";
+ $("draftInfo").innerHTML=`<p>+${gold} 🪙 (you hold ${G.gold}) ${gotRelic?`· 🎁 Relic: <b>${esc(gotRelic.name)}</b> — ${esc(gotRelic.text)}`:""} · HP ${Math.max(0,G.hp)}/${G.maxHp}</p><p><small class="dim">Pick 1 of 3 to add to your deck.</small></p>`;
+ const row=$("draftRow");row.innerHTML="";
+ draftChoices().forEach(cid=>{
+  row.appendChild(cardEl(cid,false,()=>{G.deck.push({id:cid,up:false});SFX.coin();$("ov-draft").classList.remove("on");afterNode();},"➕ draft"));
+ });
+ $("ov-draft").classList.add("on");
+}
+/* ============ rest / shop ============ */
+function openRest(){
+ const bonus=hasRelic("feather")?12:0;
+ $("bRestHeal").textContent=`😴 Rest — heal 30%${bonus?` +${bonus}`:""} (${Math.min(G.maxHp-G.hp,Math.floor(G.maxHp*0.3)+bonus)} HP)`;
+ $("restUpList").innerHTML="";
+ $("ov-rest").classList.add("on");
+ let picked=false;
+ $("bRestHeal").onclick=()=>{if(picked)return;picked=true;const amt=Math.floor(G.maxHp*0.3)+bonus;G.hp=Math.min(G.maxHp,G.hp+amt);SFX.heal();$("bRestHeal").disabled=true;$("bRestUp").disabled=true;mlog(`Rested +${amt} HP.`);};
+ $("bRestUp").onclick=()=>{
+  const list=$("restUpList");list.innerHTML="<p>Choose a card to upgrade permanently:</p>";
+  G.deck.forEach((c,idx)=>{if(c.up)return;const b=document.createElement("button");b.className="btn";b.style.margin="3px";b.textContent=CARDS[c.id].name+" ⬆";b.onclick=()=>{if(picked)return;picked=true;G.deck[idx].up=true;SFX.win();list.innerHTML="<p>Upgraded <b>"+esc(CARDS[c.id].name)+"</b>!</p>";$("bRestHeal").disabled=true;$("bRestUp").disabled=true;};list.appendChild(b);});
+ };
+ $("bRestLeave").onclick=()=>{$("ov-rest").classList.remove("on");$("bRestHeal").disabled=false;$("bRestUp").disabled=false;afterNode();};
+}
+function price(n){return hasRelic("charm")?Math.ceil(n*0.75):n;}
+function openShop(){
+ const g=$("shopGold");g.innerHTML=`Your gold: <b>🪙 ${G.gold}</b>`;
+ const sc=$("shopCards");sc.innerHTML="";
+ shuffle(CARD_POOL.concat(["strike","guard","smash","ironwall"])).slice(0,5).forEach(cid=>{
+  const p=price(40+CARDS[cid].cost*15+ri(0,10));
+  const el=cardEl(cid,false,()=>{if(G.gold<p){SFX.click();return;}G.gold-=p;G.deck.push({id:cid,up:false});SFX.coin();el.style.opacity=".35";el.onclick=null;g.innerHTML=`Your gold: <b>🪙 ${G.gold}</b>`;},`Buy ${p}🪙`);
+  sc.appendChild(el);
+ });
+ const sr=$("shopRelic");sr.innerHTML="";
+ const unowned=RELICS.filter(r=>!G.relics.includes(r.id));
+ if(unowned.length){const r=unowned[0];const p=price(120);const b=document.createElement("button");b.className="btn";b.innerHTML=`${esc(r.name)} — ${esc(r.text)}<br><b>${p}🪙</b>`;b.onclick=()=>{if(G.gold<p)return;G.gold-=p;G.relics.push(r.id);SFX.coin();b.disabled=true;b.textContent="SOLD";syncTop();};sr.appendChild(b);}
+ else sr.innerHTML='<small class="dim">sold out — you own every relic</small>';
+ $("bRemove").onclick=()=>{
+  const rl=$("removeList");rl.innerHTML="";
+  G.deck.forEach((c,idx)=>{const b=document.createElement("button");b.className="btn";b.style.margin="3px";b.textContent="✖ "+CARDS[c.id].name;pat: {b.onclick=()=>{const cost=price(50);if(G.gold<cost)return;G.gold-=cost;G.deck.splice(idx,1);SFX.coin();$("removeList").innerHTML="<p>Card removed.</p>";g.innerHTML=`Your gold: <b>🪙 ${G.gold}</b>`;};}rl.appendChild(b);});
+ };
+ $("ov-shop").classList.add("on");
+ $("bShopLeave").onclick=()=>{$("ov-shop").classList.remove("on");afterNode();};
+}
+/* ============ death / win / score ============ */
+function score(){return G.floors*100+G.kills*25+G.gold;}
+function best(){try{return JSON.parse(localStorage.getItem("ddd_best")||'{"score":0,"wins":{}}');}catch(e){return{score:0,wins:{}};}}
+function saveBest(win){
+ const b=best();let nb=false;
+ if(score()>b.score){b.score=score();nb=true;}
+ if(win){b.wins["act3"]=(b.wins["act3"]||0)+1;}
+ try{localStorage.setItem("ddd_best",JSON.stringify(b));}catch(e){}
+ return b;
+}
+function refreshBestLine(){const b=best();$("bestLine").textContent=b.score+" pts";$("winsLine").textContent=b.wins&&b.wins.act3?`👑 Full-run wins: ${b.wins.act3} · Best ${b.score}`:`Best ${b.score} pts — no full wins yet. Slay Act 3!`;}
+function die(){
+ if(G.over)return;G.over=true;SFX.lose();
+ const b=saveBest(false);
+ $("overTitle").textContent="💀 The Dungeon Claims You";
+ $("overBody").innerHTML=`<p>Act ${G.act} · Floor ${G.layer+1} · Kills ${G.kills} · Gold ${G.gold}</p><h3 style="color:var(--gold)">Score: ${score()}</h3><p><small>Best: ${b.score} pts</small></p><p>Seed <b>${esc(G.seed)}</b> — <a href="?seed=${encodeURIComponent(G.seed)}">retry this exact run</a></p>`;
+ $("endlessRow").style.display="none";
+ $("ov-draft").classList.remove("on");$("ov-rest").classList.remove("on");$("ov-shop").classList.remove("on");
+ $("ov-over").classList.add("on");
+}
+function winRun(endless){
+ SFX.win();saveBest(true);
+ if(!endless){
+  G.over=true;
+  const b=best();
+  $("overTitle").textContent="👑 DUNGEON CONQUERED!";
+  $("overBody").innerHTML=`<p>You slew the Dungeon Heart and cleared all 3 acts!</p><p>Kills ${G.kills} · Gold ${G.gold} · Deck ${G.deck.length}</p><h3 style="color:var(--gold)">Score: ${score()}</h3><p><small>Best: ${b.score} · Full wins: ${b.wins.act3||1}</small></p>`;
+  $("endlessRow").style.display="flex";
+  $("ov-over").classList.add("on");
+ }
+}
+/* ============ run control ============ */
+function startRun(){
+ const s=($("optSeed").value||String(Math.floor(Math.random()*99999))).trim()||"7";
+ reseed(s);
+ G.asc=$("optAsc").checked;G.act=1;G.hp=70;G.maxHp=70;G.gold=40;
+ G.deck=newDeck();G.relics=[];G.layer=-1;G.pos=-1;G.kills=0;G.floors=0;G.endless=0;G.over=false;
+ G.map=genMap(1);
+ ["ov-over","ov-draft","ov-rest","ov-shop"].forEach(id=>$(id).classList.remove("on"));
+ mlog(`Run started — seed ${G.seed}${G.asc?" · ASCENSION":""}.`);
+ renderMap();banner("ACT 1");
+}
+/* ============ wiring ============ */
+$("bStart").onclick=()=>{SFX.click();startRun();};
+$("bEnd").onclick=()=>{endTurn();};
+$("bDraftSkip").onclick=()=>{G.gold+=5;$("ov-draft").classList.remove("on");afterNode();};
+$("bAgain").onclick=()=>{$("ov-over").classList.remove("on");startRun();};
+$("bTitleBtn").onclick=()=>{$("ov-over").classList.remove("on");show("title");refreshBestLine();};
+$("bEndless").onclick=()=>{G.over=false;G.endless=1;G.act=3;G.layer=-1;G.pos=-1;G.hp=G.maxHp;$("ov-over").classList.remove("on");G.map=genMap(3);renderMap();banner("ENDLESS +1");};
+$("bHelp").onclick=()=>{$("ov-help").classList.add("on");};
+$("bHelpClose").onclick=()=>{$("ov-help").classList.remove("on");};
+$("bMute").onclick=(e)=>{muted=!muted;e.target.textContent=muted?"🔇 muted":"🔊 toggle";};
+$("bAbandon").onclick=()=>{if(confirm("Abandon run? Score will be recorded."))die();};
+$("bCodex").onclick=()=>{renderCodex();$("ov-codex").classList.add("on");};
+$("bCodexClose").onclick=()=>{$("ov-codex").classList.remove("on");};
+$("bBest").onclick=()=>{alert("Best score: "+best().score+" pts\n"+JSON.stringify(best().wins));};
+$("codexFilter").onchange=renderCodex;
+function renderCodex(){
+ const f=$("codexFilter").value;const g=$("codexGrid");g.innerHTML="";
+ Object.keys(CARDS).forEach(id=>{const c=CARDS[id];
+  if(f==="0"||f==="1"||f==="2"||f==="3"){if(c.cost!==+f)return;}
+  else if(f==="attack"||f==="skill"){if(c.type!==f)return;}
+  g.appendChild(cardEl(id,true,null,`up: ${esc(cardText(id,true))}`));
+ });
+}
+function showPile(title,cards){
+ $("pileTitle").textContent=title;const g=$("pileGrid");g.innerHTML=cards.length?"":'<small class="dim">empty</small>';
+ cards.forEach(c=>g.appendChild(cardEl(c.id,c.up,null,"")));
+ $("ov-pile").classList.add("on");
+}
+$("pDraw").onclick=()=>showPile("Draw pile ("+C.draw.length+")",C.draw);
+$("pDisc").onclick=()=>showPile("Discard ("+C.disc.length+")",C.disc);
+$("pExh").onclick=()=>showPile("Exhaust ("+C.exh.length+")",C.exh);
+$("bPileClose").onclick=()=>$("ov-pile").classList.remove("on");
+// stamp sign-off with exact generation time
+(function(){
+ const now=new Date();
+ const pad=n=>String(n).padStart(2,"0");
+ const stamp=`${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())} UTC`;
+ $("signoff").innerHTML=`Credits: produced <b>${stamp}</b> by <b>Muse Spark 1.3 Contributor (OpenCode agent)</b> · vanilla HTML/CSS/JS, no dependencies.`;
+})();
+// boot
+(function(){
+ const q=new URLSearchParams(location.search);
+ const s=q.get("seed");if(s){$("optSeed").value=s;reseed(s);}else{reseed("7");$("optSeed").value="7";}
+ try{const b=best();}catch(e){}
+ refreshBestLine();
+ document.addEventListener("keydown",e=>{if(e.key==="e"||e.key===" "){if($("scr-combat").classList.contains("on")&&!document.querySelector(".overlay.on"))endTurn();}if(e.key==="Escape"){$("ov-help").classList.toggle("on");}});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Driftline GP — Top-Down Drift Racer</title>
+<style>
+  :root{ --bg:#0d1319; --panel:#16202b; --line:#263445; --txt:#e8f0f7; --dim:#8fa3b5;
+    --acc:#ffb300; --acc2:#00e5ff; --good:#37d67a; --bad:#ff5252; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#101922;border-bottom:1px solid var(--line);}
+  header h1{font-size:18px;margin:0;letter-spacing:.5px;}
+  header h1 span{color:var(--acc);}
+  header .sub{color:var(--dim);font-size:12px;}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px;}
+  select,button,input[type=text],textarea{background:#0f1720;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:13px;}
+  button{cursor:pointer;} button:hover{border-color:var(--acc);}
+  button.primary{background:var(--acc);color:#111;border-color:var(--acc);font-weight:700;}
+  button.ghost{background:#1d2f42;}
+  #wrap{display:flex;flex-wrap:wrap;gap:12px;padding:12px 14px;justify-content:center;}
+  #stage{position:relative;}
+  canvas#game{background:#1c6b2c;border:2px solid var(--line);border-radius:10px;display:block;touch-action:none;max-width:96vw;}
+  #hud{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:8px;pointer-events:none;font-variant-numeric:tabular-nums;}
+  .pill{background:rgba(8,14,20,.78);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;min-width:90px;text-align:center;}
+  .pill b{color:var(--acc);} .pill small{display:block;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.6px;}
+  #gap{position:absolute;top:64px;left:8px;background:rgba(8,14,20,.78);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;}
+  #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;pointer-events:none;}
+  #msg .big{font-size:64px;font-weight:900;text-shadow:0 4px 24px rgba(0,0,0,.7);}
+  #msg .sub2{font-size:15px;color:var(--dim);background:rgba(8,14,20,.8);padding:6px 12px;border-radius:8px;}
+  .overlay{position:absolute;inset:0;background:rgba(5,10,15,.82);display:flex;align-items:center;justify-content:center;border-radius:10px;z-index:5;}
+  .card{background:#121c27;border:1px solid var(--line);border-radius:12px;padding:18px 20px;max-width:560px;width:92%;max-height:92%;overflow:auto;}
+  .card h2{margin:0 0 8px;} .card p{color:var(--dim);font-size:13px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;font-variant-numeric:tabular-nums;}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;} th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+  .hidden{display:none!important;}
+  #side{width:300px;max-width:94vw;display:flex;flex-direction:column;gap:10px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;}
+  .panel h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  #driftbar{height:10px;background:#0b1219;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  #driftfill{height:100%;width:0%;background:linear-gradient(90deg,var(--acc2),var(--acc),var(--bad));}
+  #touch{display:none;gap:8px;justify-content:center;padding:10px;flex-wrap:wrap;}
+  #touch button{font-size:18px;padding:12px 18px;min-width:64px;user-select:none;}
+  @media (pointer:coarse){ #touch{display:flex;} }
+  #editor{padding:12px 14px;} #editor textarea{width:100%;min-height:90px;font-family:monospace;font-size:12px;}
+  footer{padding:12px 14px;color:var(--dim);font-size:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  kbd{background:#0b1219;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  label{font-size:12px;color:var(--dim);}
+</style>
+</head>
+<body>
+<header>
+  <h1>DRIFTLINE <span>GP</span></h1>
+  <div class="sub">top-down drift time-trial &bull; 3 laps &bull; ghost &bull; rubber-band AI &bull; editor</div>
+</header>
+<div class="bar">
+  <label>Track</label>
+  <select id="trackSel"></select>
+  <button id="btnStart" class="primary">Start Race</button>
+  <button id="btnPause">Pause (P)</button>
+  <button id="btnSound">Sound: ON</button>
+  <button id="btnWeather">Weather: Dry</button>
+  <button id="btnEditor">Track Editor</button>
+  <button id="btnClearGhost" class="ghost">Clear Ghost</button>
+  <span style="color:var(--dim);font-size:12px"><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> drive &bull; <kbd>Space</kbd> handbrake &bull; <kbd>R</kbd> respawn (+5s) &bull; <kbd>P</kbd> pause</span>
+</div>
+
+<div id="wrap">
+  <div id="stage">
+    <canvas id="game" width="960" height="600"></canvas>
+    <div id="hud">
+      <div class="pill"><small>Lap</small><b id="hLap">–</b></div>
+      <div class="pill"><small>Total</small><b id="hTotal">0:00.000</b></div>
+      <div class="pill"><small>Last / Best</small><b id="hBest">–</b></div>
+      <div class="pill"><small>Pos</small><b id="hPos">–</b></div>
+      <div class="pill"><small>Speed</small><b id="hSpeed">0 km/h</b></div>
+      <div class="pill"><small>Off-track</small><b id="hOff">–</b></div>
+    </div>
+    <div id="gap">Ghost: –</div>
+    <div id="msg"><div class="big" id="countBig"></div><div class="sub2 hidden" id="countSub"></div></div>
+
+    <div class="overlay hidden" id="menuOv">
+      <div class="card">
+        <h2>Driftline GP</h2>
+        <p>3-lap time trial. Pass every quarter checkpoint in order — cutting the corner invalidates the lap (shown in red, lap restarts at the line). Beat your translucent ghost and the orange AI rival. Grass slows you down, walls bounce you. <kbd>R</kbd> respawns at the last checkpoint with +5s.</p>
+        <div class="row"><button id="btnGo" class="primary">Start Race (Enter)</button><span id="bestLine" style="color:var(--dim);font-size:12px"></span></div>
+        <p style="margin-top:10px">Ghost auto-saves (best total per track) to localStorage and replays next run.</p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="resultOv">
+      <div class="card">
+        <h2>Results</h2>
+        <div id="resSign" style="font-size:12px;color:var(--dim)"></div>
+        <table id="resTable"><tr><th>Lap</th><th>Time</th><th>Split Δ (vs ghost)</th><th>Valid</th></tr></table>
+        <div id="resTotal" style="margin-top:8px;font-size:14px"></div>
+        <div class="row" style="margin-top:10px"><button id="btnAgain" class="primary">Race Again</button><button id="btnMenu">Change Track</button></div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="pauseOv">
+      <div class="card"><h2>Paused</h2><p>Press <kbd>P</kbd> or the button to resume.</p><button id="btnResume" class="primary">Resume</button></div>
+    </div>
+  </div>
+
+  <div id="side">
+    <div class="panel"><h3>Drift meter</h3><div id="driftbar"><div id="driftfill"></div></div>
+      <div style="margin-top:6px;color:var(--dim);font-size:12px" id="driftTxt">Hold SPACE handbrake in corners to drift.</div></div>
+    <div class="panel"><h3>Splits</h3><div id="splits" style="font-variant-numeric:tabular-nums;font-size:13px;color:var(--txt)">–</div></div>
+    <div class="panel"><h3>Minimap</h3><canvas id="mini" width="276" height="170" style="width:100%;background:#0b1219;border-radius:8px;border:1px solid var(--line)"></canvas></div>
+    <div class="panel"><h3>How laps validate</h3><div style="font-size:12px;color:var(--dim)">Start/finish + 3 quarter gates (Q1 Q2 Q3) must be hit in order. Skipping one = invalid lap, auto re-arm at next line crossing.</div></div>
+  </div>
+</div>
+
+<div id="touch">
+  <button data-k="left">◀</button><button data-k="up">▲</button><button data-k="down">▼</button><button data-k="right">▶</button>
+  <button data-k="hb">DRIFT</button><button data-k="resp">R</button>
+</div>
+
+<div id="editor" class="hidden">
+  <div class="panel">
+    <h3>Track editor — click canvas to place centerline points (min 4), then Play</h3>
+    <div class="row">
+      <label>Name <input type="text" id="edName" value="Custom Bowl" style="width:140px"></label>
+      <label>Width <input type="text" id="edWidth" value="52" style="width:60px"></label>
+      <button id="edUndo">Undo</button><button id="edClear">Clear</button>
+      <button id="edPlay" class="primary">Play custom track</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="edExport">Export JSON ↓</button><button id="edImport">Import JSON ↑</button>
+      <span style="font-size:12px;color:var(--dim)">Format: {"name":..,"width":..,"points":[[x,y],..]}</span>
+    </div>
+    <textarea id="edJson" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<footer>
+  <div>Driftline GP — vanilla canvas, fixed-step 120 Hz physics, procedural art, localStorage ghosts only. No network.</div>
+  <div id="footSign"></div>
+</footer>
+
+<script>
+"use strict";
+/* ============ sign-off ============ */
+const PRODUCED_AT = "2026-10-30 12:00 UTC";
+const PRODUCED_BY = "Muse Spark 1.3 Contributor (opencode)";
+document.getElementById('footSign').textContent = "Produced " + PRODUCED_AT + " by " + PRODUCED_BY;
+
+/* ============ utils ============ */
+const $ = id => document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+function fmt(t){ if(t==null||!isFinite(t)) return "–"; t=Math.max(0,t); const m=Math.floor(t/60), s=Math.floor(t%60), ms=Math.floor((t%1)*1000); return m+":"+String(s).padStart(2,'0')+"."+String(ms).padStart(3,'0'); }
+function fmtDelta(d){ if(d==null||!isFinite(d)) return "–"; const s=(d>0?"+":"")+d.toFixed(3); return s+"s"; }
+
+/* ============ audio (oscillator/noise only) ============ */
+let AC=null, engOsc=null, engGain=null, skidGain=null, soundOn=true;
+function audioInit(){ if(AC) return; try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  engOsc=AC.createOscillator(); engOsc.type="sawtooth"; engOsc.frequency.value=70;
+  engGain=AC.createGain(); engGain.gain.value=0.0;
+  const lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=900;
+  engOsc.connect(engGain); engGain.connect(lp); lp.connect(AC.destination); engOsc.start();
+  const nb=AC.createBuffer(1, AC.sampleRate*1, AC.sampleRate); const d=nb.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const ns=AC.createBufferSource(); ns.buffer=nb; ns.loop=true;
+  const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=1400; bp.Q.value=1.2;
+  skidGain=AC.createGain(); skidGain.gain.value=0;
+  ns.connect(bp); bp.connect(skidGain); skidGain.connect(AC.destination); ns.start();
+}
+function beep(f,dur,when=0,vol=0.25){ if(!AC||!soundOn) return; const o=AC.createOscillator(),g=AC.createGain(); o.type="square"; o.frequency.value=f;
+  g.gain.setValueAtTime(vol,AC.currentTime+when); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+when+dur);
+  o.connect(g); g.connect(AC.destination); o.start(AC.currentTime+when); o.stop(AC.currentTime+when+dur+0.02); }
+function thud(){ if(!AC||!soundOn) return; const o=AC.createOscillator(),g=AC.createGain(); o.type="sine"; o.frequency.setValueAtTime(120,AC.currentTime); o.frequency.exponentialRampToValueAtTime(40,AC.currentTime+0.15);
+  g.gain.setValueAtTime(0.4,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.2); o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+0.22); }
+
+/* ============ tracks ============ */
+const TRACKS=[
+ {name:"Harbor Loop", width:52, points:[[140,140],[420,100],[660,190],[740,380],[520,500],[220,470],[90,300]]},
+ {name:"Canyon Switchback", width:46, points:[[120,480],[140,200],[360,120],[620,140],[800,260],[700,420],[430,380],[330,480],[520,540],[760,520],[830,380]]},
+ {name:"Neon Oval Plus", width:60, points:[[150,150],[480,110],[800,160],[830,400],[500,500],[160,440]]}
+];
+let customTrack=null;
+function trackList(){ return customTrack? [...TRACKS, customTrack] : TRACKS; }
+
+/* resample closed polyline with Catmull-Rom -> dense pts + cumulative length */
+function resample(points, subdiv=28){
+  const n=points.length, dense=[];
+  const P=i=>points[(i%n+n)%n];
+  for(let i=0;i<n;i++){
+    const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2);
+    for(let j=0;j<subdiv;j++){
+      const t=j/subdiv, t2=t*t, t3=t2*t;
+      dense.push([
+        0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
+        0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)
+      ]);
+    }
+  }
+  const cum=[0]; for(let i=1;i<=dense.length;i++){ const a=dense[i-1],b=dense[i%dense.length]; cum.push(cum[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1])); }
+  return {pts:dense, cum, total:cum[dense.length]};
+}
+let R=null; // resampled current track
+function nearest(x,y){
+  const p=R.pts; let bi=0,bd=1e18;
+  for(let i=0;i<p.length;i++){ const dx=x-p[i][0],dy=y-p[i][1],d=dx*dx+dy*dy; if(d<bd){bd=d;bi=i;} }
+  const N=p.length, prev=p[(bi-1+N)%N], next=p[(bi+1)%N];
+  // tangent estimate
+  const tx=next[0]-prev[0], ty=next[1]-prev[1], tl=Math.hypot(tx,ty)||1;
+  const nx=-ty/tl, ny=tx/tl; // left normal
+  const sx=x-p[bi][0], sy=y-p[bi][1];
+  const side=sx*nx+sy*ny; // signed lateral
+  return {idx:bi, dist:Math.sqrt(bd), side, along:R.cum[bi], nx, ny, tx:tx/tl, ty:ty/tl};
+}
+
+/* ============ game state ============ */
+const cv=$('game'), ctx=cv.getContext('2d');
+const mini=$('mini'), mctx=mini.getContext('2d');
+const W=cv.width, H=cv.height;
+let cam={x:0,y:0};
+const PHYS=1/120; let acc=0,lastT=0;
+let state="menu"; // menu|countdown|race|paused|finished
+let trackIdx=0, curDef=null;
+let player, ai, ghostRec, ghostPlay, particles=[];
+let raceTime=0, countT=0, lastBeep=-1;
+let wet=false;
+let keys={};
+let slowmo=0;
+
+function startPose(){
+  const p0=R.pts[0], p1=R.pts[4];
+  const h=Math.atan2(p1[1]-p0[1],p1[0]-p0[0]);
+  // place slightly behind line
+  const bx=p0[0]-Math.cos(h)*30, by=p0[1]-Math.sin(h)*30;
+  return {x:bx,y:by,h,vx:0,vy:0};
+}
+function newCar(sp){ return {...sp, fSpeed:0, drift:0, driftScore:0, off:false, lastCp:0, cpMask:0, lap:1, lapStart:0, laps:[], cpPos:{x:sp.x,y:sp.y,h:sp.h}, invalid:false, progress:0, totalProg:0}; }
+
+function loadGhost(ti){
+  try{ const g=JSON.parse(localStorage.getItem("driftline_ghost_"+ti)||"null"); return g&&g.samples&&g.samples.length?g:null; }catch(e){ return null; }
+}
+function bestKey(ti){ return "driftline_best_"+ti; }
+function loadBest(ti){ try{ return JSON.parse(localStorage.getItem(bestKey(ti))||"null"); }catch(e){ return null; } }
+
+function setTrack(i){
+  trackIdx=i; const defs=trackList(); curDef=defs[i];
+  R=resample(curDef.points);
+  ghostPlay=loadGhost(i);
+  const sp=startPose();
+  player=newCar(sp);
+  ai={...sp, x:sp.x-14, y:sp.y+22, s:0, speed:0, wob:Math.random()*10, mistake:0, lap:1, totalProg:0, prog:0};
+  ai.s=R.total-40;
+  raceTime=0; particles=[]; ghostRec=[];
+  updateBestLine();
+}
+function updateBestLine(){
+  const b=loadBest(trackIdx);
+  $('bestLine').textContent = b? ("Best total "+fmt(b.total)+" · best lap "+fmt(b.bestLap)+(ghostPlay?" · ghost loaded":"")) : "No ghost yet — set one!";
+  $('trackSel').value=String(trackIdx);
+}
+
+function startRace(){
+  audioInit(); if(AC&&AC.state==="suspended") AC.resume();
+  setTrack(trackIdx);
+  $('menuOv').classList.add('hidden'); $('resultOv').classList.add('hidden'); $('pauseOv').classList.add('hidden');
+  state="countdown"; countT=0; lastBeep=-1;
+  $('countSub').classList.remove('hidden'); $('countSub').textContent="3 laps · hit every Q gate in order";
+}
+function finishRace(){
+  state="finished"; slowmo=0;
+  const total=raceTime;
+  const prev=loadBest(trackIdx);
+  const prevTotal=prev?prev.total:null;
+  let isRecord=false;
+  if(!prev||total<prev.total){
+    isRecord=true;
+    try{
+      localStorage.setItem("driftline_ghost_"+trackIdx, JSON.stringify({total, samples:ghostRec, laps:player.laps, when:Date.now()}));
+      localStorage.setItem(bestKey(trackIdx), JSON.stringify({total, bestLap:Math.min(...player.laps.map(l=>l.t)), laps:player.laps}));
+    }catch(e){}
+    ghostPlay=loadGhost(trackIdx);
+  }
+  // results table
+  const g=ghostPlay; let html="<tr><th>Lap</th><th>Time</th><th>Split Δ (vs ghost)</th><th>Valid</th></tr>";
+  player.laps.forEach((l,i)=>{
+    let delta=null;
+    if(g&&g.laps&&g.laps[i]&&l.valid&&g.laps[i].valid) delta=l.t-g.laps[i].t;
+    html+="<tr><td>"+(i+1)+"</td><td>"+fmt(l.t)+(l.valid?"":" (cut)")+"</td><td>"+fmtDelta(delta)+"</td><td>"+(l.valid?"✔":"✘")+"</td></tr>";
+  });
+  $('resTable').innerHTML=html;
+  const aiWon = (ai.finish!=null && ai.finish < total);
+  const win = aiWon ? "AI wins." : "You win!";
+  const margin = ai.finish!=null ? Math.abs(total-ai.finish) : null;
+  $('resTotal').innerHTML="<b>Total "+fmt(total)+"</b> · best lap "+fmt(Math.min(...player.laps.map(l=>l.t)))+" · "+win+(margin!=null?" (margin "+margin.toFixed(3)+"s"+(margin<0.1?" — PHOTO FINISH!":"")+")":"")+(isRecord?' · <b style="color:var(--good)">NEW GHOST RECORD!</b>':(prevTotal!=null?' · ghost best '+fmt(prevTotal):''));
+  $('resSign').textContent="Produced "+PRODUCED_AT+" by "+PRODUCED_BY;
+  $('resultOv').classList.remove('hidden');
+  beep(880,0.4); beep(1320,0.5,0.15);
+}
+/* ============ physics step (120 Hz) ============ */
+function step(dt){
+  if(state!=="race") return;
+  raceTime+=dt;
+  if(slowmo>0){ slowmo-=dt; }
+  stepCar(player, true, dt);
+  stepAI(dt);
+  // photo-finish slow-mo: final lap, both near the line and close together
+  if(player.laps.length===2){
+    const L=R.total, rem=3*L-(player.totalProg||0);
+    if(rem<260&&rem>0&&Math.abs((player.totalProg||0)-(ai.totalProg||0))<160) slowmo=Math.max(slowmo,0.6);
+  }
+  // ghost record @20Hz
+  if(Math.floor(raceTime/0.05)!==Math.floor((raceTime-dt)/0.05)) ghostRec.push([+raceTime.toFixed(2), +player.x.toFixed(1), +player.y.toFixed(1), +player.h.toFixed(3)]);
+  // particles
+  for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.life-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.life<=0) particles.splice(i,1); }
+  // photo-finish slow-mo cue (sub-100ms): handled at finish; here just particles
+}
+function surfAt(x,y){
+  const n=nearest(x,y), hw=curDef.width/2;
+  return {n, off:Math.abs(n.side)>hw, wall:Math.abs(n.side)>hw+16};
+}
+function stepCar(c, isPlayer, dt){
+  const gripBase = wet? 6.4 : 8.0;
+  const grip = (keys.hb||c.hb? 1.6 : gripBase);
+  const maxSpd = c.off? 175 : 385;
+  const accel = c.off? 200: 430;
+  let th=0, st=0;
+  if(isPlayer){ if(keys.up)th+=1; if(keys.down)th-=1; if(keys.left)st-=1; if(keys.right)st+=1; }
+  const hb = isPlayer? !!keys.hb : false;
+  // steering scales with speed
+  const fSpd = c.vx*Math.cos(c.h)+c.vy*Math.sin(c.h);
+  const spdF=clamp(Math.abs(fSpd)/120,0,1);
+  const steerMax = hb? 3.6 : 2.7;
+  c.h += st*steerMax*(0.35+0.65*spdF)*Math.sign(fSpd||1)*dt*(fSpd<-5?-1:1);
+  // decompose
+  const fx=Math.cos(c.h), fy=Math.sin(c.h);
+  let f = c.vx*fx+c.vy*fy;
+  let lx=c.vx-fx*f, ly=c.vy-fy*f;
+  // throttle
+  if(th>0) f+=accel*th*dt*(wet?0.85:1);
+  else if(th<0){ if(f>12) f-=620*dt; else f=Math.max(f-260*dt,-140); }
+  // drag + rolling
+  f-=f*0.55*dt; if(!th) f-=Math.sign(f)*Math.min(Math.abs(f),26*dt);
+  if(c.off) f-=f*1.1*dt;
+  f=clamp(f,-150,maxSpd*(wet?0.92:1));
+  // lateral grip decay
+  const k=Math.exp(-grip*dt);
+  lx*=k; ly*=k;
+  c.vx=fx*f+lx; c.vy=fy*f+ly;
+  c.x+=c.vx*dt; c.y+=c.vy*dt;
+  const lat=Math.hypot(lx,ly);
+  c.drift=lat; c.fSpeed=f;
+  const drifting = lat>70 && Math.abs(f)>80;
+  if(drifting){ c.driftScore+=dt; if(particles.length<400&&Math.random()<0.6) particles.push({x:c.x-fx*12+(Math.random()-0.5)*10,y:c.y-fy*12+(Math.random()-0.5)*10,vx:(Math.random()-0.5)*40,vy:(Math.random()-0.5)*40,life:0.5,c:wet?"#9db6c9":"#cfd6dd"}); }
+  // surface + wall
+  const s=surfAt(c.x,c.y);
+  c.off=s.off;
+  if(s.wall){
+    const px=s.n.nx*Math.sign(s.n.side), py=s.n.ny*Math.sign(s.n.side);
+    const over=Math.abs(s.n.side)-(curDef.width/2+16);
+    c.x-=px*over; c.y-=py*over;
+    const vn=c.vx*px+c.vy*py;
+    if(vn>0){ c.vx-=1.7*vn*px; c.vy-=1.7*vn*py; const nf=c.vx*fx+c.vy*fy; }
+    const ns=surfAt(c.x,c.y); c.off=ns.off;
+    c.vx*=0.72; c.vy*=0.72;
+    if(Math.abs(vn)>120&&isPlayer){ thud(); for(let i=0;i<10;i++) particles.push({x:c.x,y:c.y,vx:(Math.random()-0.5)*260,vy:(Math.random()-0.5)*260,life:0.35,c:"#ffd54f"}); }
+  }
+  c.lastSurf=s.n;
+  if(isPlayer){
+    // checkpoints: quarter gates
+    const L=R.total, hw=curDef.width;
+    const qs=[0, L*0.25, L*0.5, L*0.75];
+    for(let q=1;q<=3;q++){
+      if(c.lastCp===q-1||(q===1&&c.lastCp===0&&c.cpMask===0)){
+        const gi=Math.floor(qs[q]/L*R.pts.length)%R.pts.length, gp=R.pts[gi];
+        if(Math.hypot(c.x-gp[0],c.y-gp[1])<hw*1.1){ c.lastCp=q; if(q===1)c.cpMask=1; if(q===2&&c.cpMask===1)c.cpMask=2; if(q===3&&c.cpMask===2)c.cpMask=3; c.cpPos={x:c.x,y:c.y,h:c.h}; }
+      }
+    }
+    // start/finish crossing: near gate 0 + cooldown to avoid retrigger
+    const g0=R.pts[0];
+    if(Math.hypot(c.x-g0[0],c.y-g0[1])<hw*1.2){
+      if(c.crossCd==null||raceTime-c.crossCd>3){
+        const lt=raceTime-c.lapStart; // lapStart=0 at GO, so lap 1 = full loop
+        if(lt>5){
+          const valid = (c.cpMask===3);
+          c.laps.push({t:lt,valid});
+          c.lapStart=raceTime;
+          c.lastCp=0; c.cpMask=0; c.invalid=!valid;
+          c.crossCd=raceTime;
+          beep(valid?660:220,0.15);
+          if(c.laps.length>=3){ c.totalProg=3*L; finishRace(); return; }
+          c.lap=c.laps.length+1;
+        }
+      }
+    }
+    // progress metric: lap-based
+    c.totalProg=(c.lap-1)*L + lapAlong(c);
+    // respawn timeout? R handled in keydown
+    // engine audio
+    if(AC&&soundOn){ engGain.gain.value=0.05; engOsc.frequency.value=60+Math.abs(f)*0.55+(th>0?25:0); skidGain.gain.value=drifting?0.14:0; }
+  }
+}
+function lapAlong(c){
+  const n=c.lastSurf||nearest(c.x,c.y);
+  // project along using heading continuity: use along but handle wrap
+  // estimate lap fraction from checkpoint progress to avoid wrap jumps
+  return n.along;
+}
+function stepAI(dt){
+  const L=R.total, N=R.pts.length;
+  // progress index from s
+  let idx=Math.floor(ai.s/L*N)%N; if(idx<0)idx+=N;
+  const look=Math.floor(10+Math.abs(ai.speed)*0.045);
+  const tp=R.pts[(idx+look)%N];
+  // lateral offset: noise + mistake wobble
+  ai.wob+=dt*1.3;
+  let lat=Math.sin(ai.wob)*curDef.width*0.22;
+  if(ai.mistake>0){ ai.mistake-=dt; lat+=Math.sin(ai.wob*7)*curDef.width*0.35; }
+  // offset target along normal
+  const nx=R?0:0;
+  const n2=nearest(tp[0],tp[1]);
+  const tx=tp[0]+n2.nx*lat, ty=tp[1]+n2.ny*lat;
+  const dh=Math.atan2(ty-ai.y,tx-ai.x);
+  let dd=dh-ai.h; while(dd>Math.PI)dd-=2*Math.PI; while(dd<-Math.PI)dd+=2*Math.PI;
+  ai.h+=clamp(dd,-3,3)*Math.min(1,4*dt)*2*dt*60/60;
+  ai.h+=clamp(dd*2.2,-3.2,3.2)*dt;
+  // rubber band
+  const diff=(player.totalProg||0)-(ai.totalProg||0);
+  let target=330;
+  target+=clamp(diff*0.12,-70,90); // behind->faster, ahead->slower
+  if(wet)target*=0.9;
+  if(diff<-500&&Math.random()<dt*0.25) ai.mistake=1.2; // mistakes when well ahead
+  if(ai.mistake>0) target*=0.55;
+  ai.speed+=(target-ai.speed)*Math.min(1,1.6*dt);
+  ai.x+=Math.cos(ai.h)*ai.speed*dt; ai.y+=Math.sin(ai.h)*ai.speed*dt;
+  ai.s+=ai.speed*dt; if(ai.s>=L){ai.s-=L; ai.lap++; if(ai.lap>3&&!ai.finish){ai.finish=raceTime;}}
+  ai.totalProg=(ai.lap-1)*L+ai.s;
+  ai.fSpeed=ai.speed;
+}
+
+/* ============ render ============ */
+function draw(){
+  // camera follows player
+  cam.x=lerp(cam.x,player.x-W/2,0.12); cam.y=lerp(cam.y,player.y-H/2,0.12);
+  // grass
+  ctx.fillStyle=wet?"#274b33":"#2c7a35"; ctx.fillRect(0,0,W,H);
+  // grass texture dots (screen-space cheap)
+  ctx.fillStyle="rgba(255,255,255,0.04)";
+  const ox=Math.floor(cam.x/40)*40, oy=Math.floor(cam.y/40)*40;
+  for(let gx=ox;gx<cam.x+W+40;gx+=40) for(let gy=oy;gy<cam.y+H+40;gy+=40){ if(((gx+gy)/40)%2===0) ctx.fillRect(gx-cam.x,gy-cam.y,3,3); }
+  if(wet){ ctx.fillStyle="rgba(120,150,170,0.10)"; ctx.fillRect(0,0,W,H); }
+  ctx.save(); ctx.translate(-cam.x,-cam.y);
+  drawTrack(ctx);
+  drawGhost();
+  drawAI();
+  drawCar(player,"#29b6f6","#0b3d55",false);
+  drawParticles();
+  // checkpoint markers Q1..Q3 + start
+  ctx.restore();
+  drawVignette();
+  drawMinimap();
+  updateHUD();
+}
+function pathOf(scale=1){
+  ctx.beginPath();
+  const p=R.pts;
+  ctx.moveTo(p[0][0],p[0][1]);
+  for(let i=1;i<=p.length;i++){ const q=p[i%p.length]; ctx.lineTo(q[0],q[1]); }
+  ctx.closePath();
+}
+function drawTrack(c){
+  const wdt=curDef.width;
+  // outer wall shadow
+  c.lineJoin="round"; c.lineCap="round";
+  c.strokeStyle="#3a3f45"; c.lineWidth=wdt+34; pathOf(); c.stroke();
+  c.strokeStyle="#5b636c"; c.lineWidth=wdt+28; pathOf(); c.stroke();
+  // kerbs: alternating red/white wider band behind asphalt
+  const p=R.pts, N=p.length;
+  c.lineWidth=wdt+10;
+  const segs=160;
+  for(let i=0;i<segs;i++){
+    const a=Math.floor(i/segs*N), b=Math.floor((i+1)/segs*N);
+    c.strokeStyle=i%2?"#d23b3b":"#e8e8e8";
+    c.beginPath(); c.moveTo(p[a][0],p[a][1]);
+    for(let k=a+1;k<=b;k++) c.lineTo(p[k%N][0],p[k%N][1]);
+    c.lineTo(p[b%N][0],p[b%N][1]); c.stroke();
+  }
+  // asphalt
+  c.strokeStyle=wet?"#3d444d":"#434a53"; c.lineWidth=wdt; pathOf(); c.stroke();
+  c.strokeStyle="rgba(255,255,255,0.06)"; c.lineWidth=wdt-10; pathOf(); c.stroke();
+  // center dashes
+  c.strokeStyle="rgba(255,255,255,0.5)"; c.lineWidth=3; c.setLineDash([18,22]);
+  pathOf(); c.stroke(); c.setLineDash([]);
+  // quarter gates
+  const L=R.total;
+  [["Q1",0.25,"#00e5ff"],["Q2",0.5,"#ffb300"],["Q3",0.75,"#7cff6b"]].forEach(([t,f,col])=>{
+    const gi=Math.floor(f*N)%N, g=p[gi], n=nearest(g[0],g[1]);
+    c.strokeStyle=col; c.lineWidth=5; c.globalAlpha=0.85;
+    c.beginPath(); c.moveTo(g[0]-n.nx*wdt/2,g[1]-n.ny*wdt/2); c.lineTo(g[0]+n.nx*wdt/2,g[1]+n.ny*wdt/2); c.stroke();
+    c.globalAlpha=1; c.fillStyle=col; c.font="bold 15px system-ui"; c.fillText(t,g[0]+8,g[1]-8);
+  });
+  // start line checker
+  const s0=p[0], sn=nearest(s0[0],s0[1]);
+  c.save(); c.translate(s0[0],s0[1]); c.rotate(Math.atan2(sn.nx,sn.ny)+Math.PI/2);
+  for(let r=-2;r<2;r++) for(let q2=0;q2<2;q2++){ c.fillStyle=(r+q2)%2?"#111":"#fff"; c.fillRect(q2*8-8,r*10,wdt/2,10); }
+  // NOTE: checker drawn across — restore
+  c.restore();
+  c.strokeStyle="#fff"; c.lineWidth=4;
+  c.beginPath(); c.moveTo(s0[0]-sn.nx*wdt/2,s0[1]-sn.ny*wdt/2); c.lineTo(s0[0]+sn.nx*wdt/2,s0[1]+sn.ny*wdt/2); c.stroke();
+}
+function drawCar(c,col,dark,isAI){
+  ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.h);
+  ctx.fillStyle="rgba(0,0,0,0.35)"; ctx.fillRect(-14,-9+3,28,18);
+  ctx.fillStyle=col; roundRect(-14,-9,28,18,5); ctx.fill();
+  ctx.fillStyle=dark; ctx.fillRect(2,-7,9,14);
+  ctx.fillStyle="rgba(255,255,255,0.75)"; ctx.fillRect(-12,-6,5,12);
+  ctx.fillStyle="#111";
+  [[-10,-11],[6,-11],[-10,7],[6,7]].forEach(([x,y])=>{ctx.fillRect(x,y,9,4);});
+  if(c.drift>70){ ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-14,-9); ctx.lineTo(-26,-14-Math.sign(c.drift)*2); ctx.moveTo(-14,9); ctx.lineTo(-26,14); ctx.stroke(); }
+  ctx.restore();
+  if(isAI){ ctx.fillStyle="#ffb300"; ctx.font="bold 11px system-ui"; ctx.fillText("AI",c.x-8,c.y-16); }
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawParticles(){ for(const p of particles){ ctx.globalAlpha=clamp(p.life*2,0,1); ctx.fillStyle=p.c; ctx.fillRect(p.x-2,p.y-2,4,4);} ctx.globalAlpha=1; }
+function ghostSample(t){
+  if(!ghostPlay||!ghostPlay.samples||!ghostPlay.samples.length) return null;
+  const s=ghostPlay.samples; if(t<=s[0][0]) return s[0]; if(t>=s[s.length-1][0]) return s[s.length-1];
+  let lo=0,hi=s.length-1; while(hi-lo>1){ const m=(lo+hi)>>1; if(s[m][0]<=t)lo=m; else hi=m; }
+  const a=s[lo],b=s[hi], f=(t-a[0])/Math.max(1e-6,b[0]-a[0]);
+  return [t, lerp(a[1],b[1],f), lerp(a[2],b[2],f), lerp(a[3],b[3],f)];
+}
+function drawGhost(){
+  const g=ghostSample(raceTime); if(!g||state==="menu") return;
+  ctx.save(); ctx.globalAlpha=0.45; ctx.translate(g[1],g[2]); ctx.rotate(g[3]);
+  ctx.fillStyle="#b388ff"; roundRect(-14,-9,28,18,5); ctx.fill();
+  ctx.fillStyle="#2c1a55"; ctx.fillRect(2,-7,9,14);
+  ctx.restore(); ctx.globalAlpha=1;
+  ctx.fillStyle="rgba(179,136,255,0.9)"; ctx.font="bold 11px system-ui"; ctx.fillText("GHOST",g[1]-20,g[2]-16);
+}
+function drawAI(){ drawCar(ai,"#ff8f00","#4a2c00",true); }
+function drawVignette(){ const g=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.75); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,0.35)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+function drawMinimap(){
+  mctx.clearRect(0,0,mini.width,mini.height);
+  mctx.fillStyle="#0b1219"; mctx.fillRect(0,0,mini.width,mini.height);
+  const p=R.pts; let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+  for(const q of p){mnx=Math.min(mnx,q[0]);mxx=Math.max(mxx,q[0]);mny=Math.min(mny,q[1]);mxy=Math.max(mxy,q[1]);}
+  const sc=Math.min((mini.width-16)/(mxx-mnx||1),(mini.height-16)/(mxy-mny||1));
+  const ox=(mini.width-(mxx-mnx)*sc)/2-mnx*sc, oy=(mini.height-(mxy-mny)*sc)/2-mny*sc;
+  const X=x=>x*sc+ox, Y=y=>y*sc+oy;
+  mctx.strokeStyle="#5b636c"; mctx.lineWidth=7; mctx.lineJoin="round"; mctx.beginPath();
+  mctx.moveTo(X(p[0][0]),Y(p[0][1])); for(let i=1;i<=p.length;i++){const q=p[i%p.length]; mctx.lineTo(X(q[0]),Y(q[1]));} mctx.closePath(); mctx.stroke();
+  mctx.strokeStyle="#9aa7b4"; mctx.lineWidth=3; mctx.stroke();
+  const dot=(x,y,c)=>{mctx.fillStyle=c; mctx.beginPath(); mctx.arc(X(x),Y(y),4,0,7); mctx.fill();};
+  const g=ghostSample(raceTime); if(g) dot(g[1],g[2],"#b388ff");
+  dot(ai.x,ai.y,"#ff8f00"); dot(player.x,player.y,"#29b6f6");
+}
+function updateHUD(){
+  $('hLap').textContent = state==="race"||state==="finished" ? (Math.min(player.lap,3)+"/3"+(player.invalid?" ⚠":"")) : "–";
+  $('hTotal').textContent=fmt(raceTime);
+  const bl=player.laps.filter(l=>l.valid).map(l=>l.t);
+  const last=player.laps[player.laps.length-1];
+  $('hBest').textContent=(last?fmt(last.t):"–")+(bl.length?" / "+fmt(Math.min(...bl)):"");
+  const lead=(player.totalProg||0)>=(ai.totalProg||0);
+  $('hPos').textContent=state==="menu"?"–":(lead?"P1":"P2");
+  $('hPos').style.color=lead?"var(--good)":"var(--bad)";
+  $('hSpeed').textContent=Math.round(Math.abs(player.fSpeed||0)*0.35)+" km/h";
+  $('hOff').textContent=player.off?"GRASS":"track"; $('hOff').style.color=player.off?"var(--bad)":"var(--good)";
+  $('driftfill').style.width=clamp((player.drift||0)/220*100,0,100)+"%";
+  $('driftTxt').textContent=player.drift>70?("DRIFTING! +"+player.driftScore.toFixed(1)+"s slide"):"Hold SPACE handbrake in corners to drift.";
+  // gap vs ghost
+  const g=ghostSample(raceTime);
+  if(g&&state==="race"){
+    const d=Math.hypot(player.x-g[1],player.y-g[2]);
+    const ahead=(player.totalProg||0)>(ghostProgAt(raceTime)||0);
+    $('gap').textContent="Ghost: "+(ahead?"▲ ahead ":"▼ behind ")+Math.round(d)+"px "+(ahead?"(you lead)":"(chase!)");
+    $('gap').style.borderColor=ahead?"var(--good)":"var(--bad)";
+  } else $('gap').textContent="Ghost: "+(ghostPlay?"ready":"none yet");
+  // splits panel
+  if(player.laps.length){ $('splits').innerHTML=player.laps.map((l,i)=>"Lap "+(i+1)+": <b>"+fmt(l.t)+"</b> "+(l.valid?"✔":"✘ CUT").toString()).join("<br>"); }
+  else $('splits').textContent="–";
+}
+function ghostProgAt(t){
+  // approx: index fraction * total * laps? use samples count heuristic vs player lap
+  if(!ghostPlay||!ghostPlay.samples.length) return 0;
+  const n=ghostPlay.samples.length, f=clamp(t/(ghostPlay.total||90),0,2.999);
+  return f*R.total;
+}
+
+/* ============ main loop fixed-step 120Hz ============ */
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(!lastT)lastT=ts;
+  let dt=(ts-lastT)/1000; lastT=ts;
+  if(dt>0.25)dt=0.25;
+  if(slowmo>0) dt*=0.35; // photo-finish slow-mo
+  if(state==="countdown"){
+    countT+=dt;
+    const seq=["3","2","1","GO!"];
+    const k=Math.floor(countT/0.8);
+    if(k<3){ $('countBig').textContent=seq[k]; if(k!==lastBeep){beep(440,0.15); lastBeep=k;} }
+    else if(k===3){ $('countBig').textContent="GO!"; if(k!==lastBeep){beep(880,0.35); lastBeep=k; state="race"; player.lapStart=0; player.crossCd=-10; $('countSub').classList.add('hidden'); setTimeout(()=>$('countBig').textContent="",1200);} }
+    else if(k>4){ state="race"; }
+    acc=0;
+  } else if(state==="race"){
+    $('countBig').textContent="";
+    acc+=dt; let n=0;
+    while(acc>=PHYS&&n<12){ step(PHYS); acc-=PHYS; n++; if(state!=="race"){acc=0;break;} }
+    pollGamepad();
+  } else if(state==="paused"||state==="menu"||state==="finished"){
+    if(AC&&soundOn&&engGain){ engGain.gain.value=0; skidGain.gain.value=0; }
+  }
+  if(state!=="menu") draw(); else drawMenuBg();
+  // camera init
+  if(state==="menu"){ cam.x=player.x-W/2; cam.y=player.y-H/2; }
+}
+let menuA=0;
+function drawMenuBg(){ menuA+=0.01; cam.x=R.pts[0][0]-W/2+Math.cos(menuA)*60; cam.y=R.pts[0][1]-H/2+Math.sin(menuA)*60;
+  ctx.fillStyle="#2c7a35"; ctx.fillRect(0,0,W,H); ctx.save(); ctx.translate(-cam.x,-cam.y); drawTrack(ctx); ctx.restore(); drawMinimap(); }
+
+/* ============ input ============ */
+addEventListener('keydown',e=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  audioInit();
+  const k=e.key.toLowerCase();
+  if(k==="arrowup"||k==="w")keys.up=true;
+  if(k==="arrowdown"||k==="s")keys.down=true;
+  if(k==="arrowleft"||k==="a")keys.left=true;
+  if(k==="arrowright"||k==="d")keys.right=true;
+  if(k===" ")keys.hb=true;
+  if(k==="enter"&&state==="menu")startRace();
+  if(k==="p"||k==="escape")togglePause();
+  if((k==="r")&&state==="race")respawn();
+});
+addEventListener('keyup',e=>{ const k=e.key.toLowerCase();
+  if(k==="arrowup"||k==="w")keys.up=false; if(k==="arrowdown"||k==="s")keys.down=false;
+  if(k==="arrowleft"||k==="a")keys.left=false; if(k==="arrowright"||k==="d")keys.right=false;
+  if(k===" ")keys.hb=false; });
+function respawn(){ player.x=player.cpPos.x; player.y=player.cpPos.y; player.h=player.cpPos.h; player.vx=player.vy=0; raceTime+=5; player.crossCd=raceTime; beep(200,0.2); }
+function togglePause(){
+  if(state==="race"){state="paused"; $('pauseOv').classList.remove('hidden');}
+  else if(state==="paused"){state="race"; $('pauseOv').classList.add('hidden'); lastT=performance.now();}
+}
+function pollGamepad(){
+  try{ const gp=navigator.getGamepads&&navigator.getGamepads()[0]; if(!gp)return;
+    keys.left=keys.left||gp.buttons[14]?.pressed||gp.axes[0]<-0.3;
+    keys.right=keys.right||gp.buttons[15]?.pressed||gp.axes[0]>0.3;
+    keys.up=keys.up||gp.buttons[7]?.pressed||gp.buttons[0]?.pressed;
+    keys.down=keys.down||gp.buttons[6]?.pressed||gp.buttons[1]?.pressed;
+    if(gp.buttons[2]?.pressed)keys.hb=true;
+  }catch(e){}
+}
+// touch
+document.querySelectorAll('#touch button').forEach(b=>{
+  const k=b.dataset.k;
+  const on=e=>{e.preventDefault(); audioInit(); if(k==="resp"){if(state==="race")respawn();return;} keys[k==="hb"?"hb":k]=true;};
+  const off=e=>{e.preventDefault(); if(k!=="resp")keys[k==="hb"?"hb":k]=false;};
+  b.addEventListener('pointerdown',on); b.addEventListener('pointerup',off); b.addEventListener('pointerleave',off);
+});
+
+/* ============ editor ============ */
+let edPts=[];
+$('btnEditor').onclick=()=>{ $('editor').classList.toggle('hidden'); edMode=!edMode; if(edMode){state==="race"&&togglePause();} };
+let edMode=false;
+cv.addEventListener('click',e=>{
+  if(!edMode&&$('editor').classList.contains('hidden'))return;
+  if(!$('editor').classList.contains('hidden')){
+    const r=cv.getBoundingClientRect(), sx=cv.width/r.width, sy=cv.height/r.height;
+    const x=(e.clientX-r.left)*sx+cam.x, y=(e.clientY-r.top)*sy+cam.y;
+    edPts.push([Math.round(x),Math.round(y)]);
+    drawEditorPts();
+  }
+});
+function drawEditorPts(){
+  draw();
+  ctx.save(); ctx.translate(-cam.x,-cam.y);
+  ctx.fillStyle="#00e5ff";
+  edPts.forEach((p,i)=>{ctx.beginPath();ctx.arc(p[0],p[1],7,0,7);ctx.fill();ctx.fillStyle="#111";ctx.font="bold 11px system-ui";ctx.fillText(i,p[0]-4,p[1]+4);ctx.fillStyle="#00e5ff";});
+  ctx.restore();
+}
+$('edUndo').onclick=()=>{edPts.pop(); if(state!=="menu")draw();};
+$('edClear').onclick=()=>{edPts=[]; draw();};
+$('edExport').onclick=()=>{$('edJson').value=JSON.stringify({name:$('edName').value||"Custom",width:clamp(parseInt($('edWidth').value)||52,24,120),points:edPts});};
+$('edImport').onclick=()=>{try{const o=JSON.parse($('edJson').value); if(!o.points||o.points.length<4){alert("Need ≥4 points");return;} edPts=o.points; $('edName').value=o.name||"Custom"; $('edWidth').value=o.width||52; alert("Imported "+edPts.length+" points — press Play custom track.");}catch(err){alert("Bad JSON: "+err.message);}};
+$('edPlay').onclick=()=>{
+  let pts=edPts;
+  if(!pts.length){ try{const o=JSON.parse($('edJson').value); pts=o.points||[];}catch(e){} }
+  if(!pts||pts.length<4){alert("Click at least 4 points on the canvas first (editor open).");return;}
+  customTrack={name:$('edName').value||"Custom",width:clamp(parseInt($('edWidth').value)||52,24,120),points:pts};
+  rebuildSel(); trackIdx=trackList().length-1; startRace(); $('editor').classList.add('hidden'); edMode=false;
+};
+
+/* ============ ui wiring ============ */
+function rebuildSel(){
+  const s=$('trackSel'); s.innerHTML="";
+  trackList().forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.name+(i>=3?" (custom)":"");s.appendChild(o);});
+  s.value=String(trackIdx);
+}
+$('trackSel').onchange=e=>{trackIdx=+e.target.value; setTrack(trackIdx); if(state!=="race"){$('menuOv').classList.remove('hidden');}};
+$('btnStart').onclick=startRace; $('btnGo').onclick=startRace;
+$('btnAgain').onclick=startRace; $('btnMenu').onclick=()=>{setTrack(trackIdx); state="menu"; $('resultOv').classList.add('hidden'); $('menuOv').classList.remove('hidden');};
+$('btnPause').onclick=togglePause; $('btnResume').onclick=togglePause;
+$('btnSound').onclick=e=>{soundOn=!soundOn; e.target.textContent="Sound: "+(soundOn?"ON":"OFF"); if(!soundOn&&AC){engGain.gain.value=0;skidGain.gain.value=0;}};
+$('btnWeather').onclick=e=>{wet=!wet; e.target.textContent="Weather: "+(wet?"Rain ☔":"Dry");};
+$('btnClearGhost').onclick=()=>{localStorage.removeItem("driftline_ghost_"+trackIdx); localStorage.removeItem(bestKey(trackIdx)); ghostPlay=null; updateBestLine(); alert("Ghost cleared for this track.");};
+
+/* ============ boot ============ */
+rebuildSel(); setTrack(0); state="menu";
+$('menuOv').classList.remove('hidden');
+cam.x=player.x-W/2; cam.y=player.y-H/2;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

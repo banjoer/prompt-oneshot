@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hexblade Skirmish — Hex Tactics vs AI</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161d27; --panel2:#1c2534; --line:#2c3a52;
+    --txt:#dbe4f3; --dim:#8b98b0; --acc:#e8b34a; --blue:#4aa3ff; --red:#ff5d5d;
+    --green:#4ade80; --forest:#2c6b3c; --hill:#8a6d3b; --water:#1d5f8a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:19px;margin:0;letter-spacing:.5px}
+  header h1 span{color:var(--acc)}
+  header .sub{color:var(--dim);font-size:12.5px}
+  #wrap{display:flex;gap:14px;padding:14px;max-width:1280px;margin:0 auto;align-items:flex-start}
+  #boardCol{flex:1 1 auto;min-width:0}
+  #canvasHolder{background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:8px;position:relative}
+  canvas{display:block;width:100%;height:auto;cursor:crosshair}
+  #turnBar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  button{background:#24314a;color:var(--txt);border:1px solid #3a4c6e;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}
+  button:hover:not(:disabled){background:#2e3f61;border-color:var(--acc)}
+  button:disabled{opacity:.45;cursor:default}
+  button.primary{background:#7a5a12;border-color:var(--acc);font-weight:700}
+  button.primary:hover:not(:disabled){background:#93702a}
+  #side{width:340px;flex:0 0 340px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 90px);overflow-y:auto}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+  .card h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--acc)}
+  #scenList{display:flex;flex-direction:column;gap:6px}
+  .scenBtn{display:flex;justify-content:space-between;align-items:center;text-align:left;width:100%}
+  .scenBtn.active{border-color:var(--acc);background:#2c2410}
+  .star{color:var(--acc);font-size:14px}
+  .star.empty{color:#4a5568}
+  #unitInfo,#odds{min-height:54px;font-size:13px;line-height:1.5}
+  #unitInfo .cls{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px}
+  .blade{background:#7a1f1f}.bow{background:#1f4a7a}.mend{background:#1f7a4d}
+  #log{list-style:none;margin:0;padding:0;font-size:12px;max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+  #log li{background:#0f1520;border:1px solid #223047;border-radius:6px;padding:4px 7px}
+  #log li.atk{border-left:3px solid var(--red)} #log li.heal{border-left:3px solid var(--green)}
+  #log li.move{border-left:3px solid var(--blue)} #log li.sys{border-left:3px solid var(--acc)}
+  #legend{font-size:11.5px;color:var(--dim);line-height:1.6}
+  #legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid #0006}
+  footer.signoff{margin-top:2px;font-size:11px;color:var(--dim);border-top:1px solid var(--line);padding-top:8px;line-height:1.6}
+  footer.signoff b{color:var(--acc)}
+  #overlay{position:absolute;inset:8px;display:none;align-items:center;justify-content:center;background:rgba(5,8,13,.78);border-radius:10px;z-index:5}
+  #overlay .box{background:var(--panel2);border:1px solid var(--acc);border-radius:12px;padding:26px 34px;text-align:center}
+  #overlay h2{margin:0 0 8px}
+  #aiThink{display:none;font-size:13px;color:var(--acc)}
+  .hpbar{height:6px;background:#000;border-radius:4px;overflow:hidden;margin-top:3px;border:1px solid #000}
+  .hpbar>div{height:100%}
+  kbd{background:#000;border:1px solid #444;border-radius:4px;padding:0 5px;font-size:11px}
+  @media(max-width:980px){#wrap{flex-direction:column}#side{width:100%;max-height:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⬢ HEXBLADE <span>SKIRMISH</span></h1>
+  <div class="sub">Hex tactics vs AI · 9×9 pointy-top · deterministic damage · fog-of-war · seeded RNG · vanilla JS</div>
+</header>
+<div id="wrap">
+  <div id="boardCol">
+    <div id="canvasHolder">
+      <canvas id="cv" width="860" height="760"></canvas>
+      <div id="overlay"><div class="box"><h2 id="ovTitle">Victory</h2><p id="ovSub" style="color:#9fb0cc"></p><button class="primary" id="ovBtn">Replay scenario</button></div></div>
+    </div>
+    <div id="turnBar">
+      <button class="primary" id="bEnd">End Turn ⏭</button>
+      <button id="bUndo">↩ Undo last action</button>
+      <button id="bWait">Wait (unit holds)</button>
+      <button id="bRestart">⟳ Restart scenario</button>
+      <span id="aiThink">🤖 AI thinking…</span>
+      <span id="turnLabel" style="margin-left:auto;font-size:13px;color:#9fb0cc"></span>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <h3>How to play</h3>
+      <div id="legend">
+        <b>Click</b> a blue-ringed unit → green tiles = reachable (move cost: plain 1 · forest 1 · hill 2 · water ✕). Starting on a hill costs −1 move. <b>Click</b> green tile to move · <b>click</b> red-ringed foe to attack · <b>Mend</b> clicks a wounded ally (range 2) to heal 2. Each unit may move once + act once per turn, in any order.<br>
+        <i style="background:#20324a"></i>plain &nbsp;<i style="background:#1d4d2c"></i>forest (+1 def = −1 dmg taken, min 1) &nbsp;<i style="background:#6b5a2e"></i>hill (+1 range, heavy footing) &nbsp;<i style="background:#144a6e"></i>water (impassable, blocks bow shots)<br>
+        Blade: 12 HP · move 4 · 3 dmg melee(r1) &nbsp;·&nbsp; Bow: 8 HP · move 3 · 2 dmg range 3 &nbsp;·&nbsp; Mend: 9 HP · move 3 · 1 dmg r1 · heal 2 (r2). Fog: foes visible only within 4 hexes of any ally — 👻 = last-known ghost.
+      </div>
+    </div>
+  </div>
+  <div id="side">
+    <div class="card"><h3>Scenarios (5) — click to deploy</h3><div id="scenList"></div></div>
+    <div class="card"><h3>Selected unit</h3><div id="unitInfo">No unit selected.</div></div>
+    <div class="card"><h3>Pre-attack odds panel</h3><div id="odds">Select a unit, then hover / click a foe to preview deterministic damage.</div></div>
+    <div class="card"><h3>Combat log (last 20)</h3><ul id="log"></ul></div>
+    <footer class="signoff" id="signoff"></footer>
+  </div>
+</div>
+<script>
+"use strict";
+/* ============================================================
+   HEXBLADE SKIRMISH — single-file vanilla implementation
+   Hex math (axial, pointy-top) hand-rolled inline. No deps.
+   ============================================================ */
+// ---------- seeded RNG (mulberry32) ----------
+function mulberry32(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+let RNG = mulberry32(7);
+function srand(s){RNG=mulberry32(s);}
+function pickR(arr){if(!arr.length)return null;return arr[Math.floor(RNG()*arr.length)];}
+
+// ---------- hex math (axial q,r, pointy-top) ----------
+const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+function neighbors(q,r){return DIRS.map(d=>[q+d[0],r+d[1]]);}
+function hexDist(aq,ar,bq,br){const dq=aq-bq,dr=ar-br;return (Math.abs(dq)+Math.abs(dr)+Math.abs(dq+dr))/2;}
+function hexRound(q,r){ // fractional axial -> integer axial via cube
+  const x=q,z=r,y=-x-z;let rx=Math.round(x),ry=Math.round(y),rz=Math.round(z);
+  const dx=Math.abs(rx-x),dy=Math.abs(ry-y),dz=Math.abs(rz-z);
+  if(dx>dy&&dx>dz)rx=-ry-rz;else if(dy>dz)ry=-rx-rz;else rz=-rx-ry;
+  return [rx,rz];
+}
+const SQRT3=Math.sqrt(3);
+// layout
+const HEX=36, OX=86, OY=64;
+function hexToPixel(q,r){return [OX+HEX*SQRT3*(q+r/2), OY+HEX*1.5*r];}
+function pixelToHex(px,py){
+  const r=(py-OY)/(HEX*1.5), q=(px-OX)/(HEX*SQRT3)-r/2;
+  return hexRound(q,r);
+}
+function inBoard(q,r){return q>=0&&q<9&&r>=0&&r<9;}
+
+// ---------- audio (WebAudio, no assets) ----------
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==="suspended")AC.resume();return AC;}
+function tone(f,dur,type,vol,slide){try{const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime);if(slide)o.frequency.exponentialRampToValueAtTime(slide,c.currentTime+dur);g.gain.setValueAtTime(vol||.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+dur);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);}catch(e){}}
+function sfxClick(){tone(660,.07,"square",.06);}
+function sfxMove(){tone(300,.12,"sine",.08,520);}
+function sfxClash(){tone(160,.22,"sawtooth",.14,70);tone(1100,.08,"square",.05,300);}
+function sfxHeal(){tone(440,.14,"sine",.1,880);setTimeout(()=>tone(660,.16,"sine",.09,990),110);}
+function sfxWin(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,"triangle",.12),i*140));}
+function sfxLose(){[400,320,240,150].forEach((f,i)=>setTimeout(()=>tone(f,.25,"sawtooth",.09),i*160));}
+document.addEventListener("pointerdown",()=>ac(),{once:true});
+
+// ---------- data ----------
+const CLASS={
+  blade:{name:"Blade",hp:12,move:4,dmg:3,range:1,heal:0,healRange:0,color:"#ff5d5d",glyph:"⚔"},
+  bow:{name:"Bow",hp:8,move:3,dmg:2,range:3,heal:0,healRange:0,color:"#4aa3ff",glyph:"➶"},
+  mend:{name:"Mend",hp:9,move:3,dmg:1,range:1,heal:2,healRange:2,color:"#4ade80",glyph:"✚"}
+};
+// 5 inline scenarios, fixed placements, 4v4
+const SCENARIOS=[
+ {name:"1 · Greenfield Clash",
+  terrain:{"4,3":"forest","3,4":"forest","5,4":"forest","4,5":"forest","2,2":"hill","6,6":"hill"},
+  player:[{c:"blade",q:3,r:6},{c:"blade",q:4,r:7},{c:"bow",q:2,r:7},{c:"mend",q:5,r:7}],
+  foe:[{c:"blade",q:4,r:1},{c:"blade",q:5,r:2},{c:"bow",q:3,r:1},{c:"mend",q:4,r:0}]},
+ {name:"2 · River Hold",
+  terrain:{"4,0":"water","4,1":"water","4,2":"water","4,3":"water","4,5":"water","4,6":"water","4,7":"water","4,8":"water","4,4":"hill","3,4":"hill","5,4":"hill"},
+  player:[{c:"blade",q:2,r:6},{c:"blade",q:3,r:7},{c:"bow",q:1,r:7},{c:"mend",q:2,r:8}],
+  foe:[{c:"blade",q:6,r:1},{c:"blade",q:5,r:2},{c:"bow",q:7,r:1},{c:"mend",q:6,r:0}]},
+ {name:"3 · Whisperwood Ambush",
+  terrain:{"2,3":"forest","3,3":"forest","4,2":"forest","5,3":"forest","6,4":"forest","3,5":"forest","4,5":"forest","5,5":"forest","6,2":"forest","1,4":"forest","4,4":"hill","7,6":"hill"},
+  player:[{c:"blade",q:1,r:6},{c:"blade",q:3,r:7},{c:"bow",q:2,r:8},{c:"mend",q:4,r:8}],
+  foe:[{c:"blade",q:5,r:2},{c:"bow",q:6,r:1},{c:"bow",q:4,r:1},{c:"mend",q:5,r:0}]},
+ {name:"4 · Highridge Stand",
+  terrain:{"1,4":"hill","2,4":"hill","3,4":"hill","4,4":"hill","5,4":"hill","6,4":"hill","7,4":"hill","3,2":"forest","5,6":"forest"},
+  player:[{c:"blade",q:3,r:6},{c:"blade",q:5,r:6},{c:"bow",q:4,r:7},{c:"mend",q:4,r:8}],
+  foe:[{c:"blade",q:3,r:2},{c:"blade",q:5,r:2},{c:"bow",q:4,r:1},{c:"mend",q:4,r:0}]},
+ {name:"5 · Mire of Echoes",
+  terrain:{"2,2":"water","2,3":"water","6,5":"water","6,6":"water","3,5":"water","5,3":"water","1,5":"forest","3,3":"forest","4,5":"forest","5,5":"forest","6,3":"forest","4,1":"hill","4,7":"hill"},
+  player:[{c:"blade",q:2,r:6},{c:"bow",q:1,r:7},{c:"bow",q:3,r:8},{c:"mend",q:4,r:6}],
+  foe:[{c:"blade",q:6,r:2},{c:"blade",q:5,r:1},{c:"bow",q:7,r:2},{c:"mend",q:6,r:0}]}
+];
+const SIGHT=4;
+
+// ---------- state ----------
+let scenIdx=0, units=[], turn="player", turnNo=1, selId=null;
+let reachMap=new Map(), hoverHex=null, hoverTargetId=null;
+let ghosts={};       // foeId -> {q,r}
+let history=[];      // undo snapshots (player turn only)
+let logArr=[];
+let floaters=[];     // {q,r,txt,color,t}
+let anims=[];        // {kind,q1,r1,q2,r2,t}
+let gameOver=null;   // {win:bool}
+let aiBusy=false;
+let uidCounter=1;
+
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+const elInfo=document.getElementById("unitInfo"), elOdds=document.getElementById("odds"),
+      elLog=document.getElementById("log"), elScen=document.getElementById("scenList"),
+      elTurn=document.getElementById("turnLabel"), elThink=document.getElementById("aiThink");
+
+// ---------- persistence ----------
+const LSKEY="hexblade-progress-v1";
+function loadProg(){try{const j=JSON.parse(localStorage.getItem(LSKEY)||"{}");return j.stars||{};}catch(e){return {};}}
+function saveProg(s){try{localStorage.setItem(LSKEY,JSON.stringify({stars:s}));}catch(e){}}
+let stars=loadProg();
+
+// ---------- helpers ----------
+function key(q,r){return q+","+r;}
+function terrainAt(q,r){const t=SCENARIOS[scenIdx].terrain[key(q,r)];return t||"plain";}
+function moveCost(q,r){const t=terrainAt(q,r);if(t==="water")return Infinity;if(t==="hill")return 2;return 1;}
+function unitAt(q,r){return units.find(u=>u.alive&&u.q===q&&u.r===r)||null;}
+function getUnit(id){return units.find(u=>u.id===id)||null;}
+function aliveOf(side){return units.filter(u=>u.alive&&u.side===side);}
+function effMove(u){let m=CLASS[u.c].move;if(terrainAt(u.q,u.r)==="hill")m-=1;return Math.max(1,m);}
+function effRange(u){let rg=CLASS[u.c].range;if(terrainAt(u.q,u.r)==="hill")rg+=1;return rg;}
+function blocksBow(a,b){ // water hex on the straight-ish line blocks? approximate: midpoint hexes
+  // sample hexes along cube lerp; if any water -> blocked
+  const N=hexDist(a.q,a.r,b.q,b.r);
+  if(N<=1)return false;
+  for(let i=1;i<N;i++){const t=i/N;
+    const qf=a.q+(b.q-a.q)*t, rf=a.r+(b.r-a.r)*t;
+    const [qq,rr]=hexRound(qf,rf);
+    if(inBoard(qq,rr)&&terrainAt(qq,rr)==="water")return true;}
+  return false;
+}
+function predictDamage(att,def){
+  let dmg=CLASS[att.c].dmg;
+  if(terrainAt(def.q,def.r)==="forest")dmg-=1;   // +1 def
+  return Math.max(1,dmg);
+}
+function visibleFoes(){ // foe units visible to player
+  const ps=aliveOf("P");const out=new Set();
+  for(const f of aliveOf("E")){
+    for(const p of ps){if(hexDist(f.q,f.r,p.q,p.r)<=SIGHT){out.add(f.id);break;}}
+  }
+  return out;
+}
+function foeVisibleToPlayer(f){return visibleFoes().has(f.id);}
+function snapshot(){return JSON.stringify({units:units.map(u=>({...u})),ghosts:JSON.parse(JSON.stringify(ghosts)),turnNo});}
+function restore(s){const o=JSON.parse(s);units=o.units.map(u=>({...u}));ghosts=o.ghosts;turnNo=o.turnNo;selId=null;reachMap=new Map();gameOver=null;hideOverlay();refresh();}
+function pushHistory(){history.push(snapshot());if(history.length>40)history.shift();}
+function addLog(kind,text){logArr.push({kind,text});if(logArr.length>60)logArr=logArr.slice(-60);renderLog();}
+function addFloater(q,r,txt,color){floaters.push({q,r,txt,color,t:0});}
+
+// ---------- movement BFS (range-BFS, hand-rolled) ----------
+function computeReach(u){
+  const budget=effMove(u);const best=new Map();best.set(key(u.q,u.r),0);
+  const prev=new Map();const q=[[u.q,u.r,0]];
+  const occupied=new Set(units.filter(x=>x.alive&&x.id!==u.id).map(x=>key(x.q,x.r)));
+  while(q.length){
+    const [cq,cr,cc]=q.shift();
+    for(const [nq,nr] of neighbors(cq,cr)){
+      if(!inBoard(nq,nr))continue;
+      if(terrainAt(nq,nr)==="water")continue;
+      if(occupied.has(key(nq,nr)))continue;
+      const nc=cc+moveCost(nq,nr);
+      if(nc>budget)continue;
+      if(!best.has(key(nq,nr))||nc<best.get(key(nq,nr))){best.set(key(nq,nr),nc);prev.set(key(nq,nr),[cq,cr]);q.push([nq,nr,nc]);}
+    }
+  }
+  best.delete(key(u.q,u.r));
+  return {best,prev};
+}
+
+// ---------- scenario setup ----------
+function loadScenario(i){
+  scenIdx=i;srand(1000+i*77+13);uidCounter=1;
+  units=[];ghosts={};history=[];floaters=[];anims=[];gameOver=null;turn="player";turnNo=1;selId=null;reachMap=new Map();hoverHex=null;
+  logArr=[];renderLog();
+  const S=SCENARIOS[i];
+  for(const p of S.player)units.push({id:uidCounter++,side:"P",c:p.c,q:p.q,r:p.r,hp:CLASS[p.c].hp,maxHp:CLASS[p.c].hp,moved:false,acted:false,alive:true});
+  for(const f of S.foe)units.push({id:uidCounter++,side:"E",c:f.c,q:f.q,r:f.r,hp:CLASS[f.c].hp,maxHp:CLASS[f.c].hp,moved:false,acted:false,alive:true});
+  hideOverlay();
+  addLog("sys",`Deployed <b>${S.name}</b> — player to move (turn 1). Seed ${1000+i*77+13}.`);
+  refresh();renderScenList();
+}
+function renderScenList(){
+  elScen.innerHTML="";
+  SCENARIOS.forEach((s,i)=>{
+    const b=document.createElement("button");b.className="scenBtn"+(i===scenIdx?" active":"");
+    const won=stars[i];
+    b.innerHTML=`<span>${s.name}</span><span class="star ${won?"":"empty"}">${won?"★":"☆"}</span>`;
+    b.onclick=()=>{sfxClick();loadScenario(i);};
+    elScen.appendChild(b);
+  });
+}
+
+// ---------- turn loop ----------
+function resetUnitFlags(side){for(const u of units)if(u.side===side&&u.alive){u.moved=false;u.acted=false;}}
+function checkEnd(){
+  const p=aliveOf("P").length,e=aliveOf("E").length;
+  if(e===0&&p>0)return endGame(true);
+  if(p===0)return endGame(false);
+  return false;
+}
+function endGame(win){
+  gameOver={win};refresh();
+  document.getElementById("ovTitle").textContent=win?"⚔ Victory — enemy routed!":"☠ Defeat — squad wiped";
+  document.getElementById("ovSub").textContent=win?`${SCENARIOS[scenIdx].name} cleared in ${turnNo} turn(s). Star saved.`:`${SCENARIOS[scenIdx].name} lost on turn ${turnNo}. Try a new approach.`;
+  document.getElementById("overlay").style.display="flex";
+  if(win){stars[scenIdx]=1;saveProg(stars);renderScenList();sfxWin();addLog("sys",`<b>Victory!</b> ${SCENARIOS[scenIdx].name} cleared. ★ saved.`);}
+  else{sfxLose();addLog("sys","<b>Defeat.</b> Squad wiped.");}
+}
+function hideOverlay(){document.getElementById("overlay").style.display="none";}
+function endTurn(){
+  if(turn!=="player"||aiBusy||gameOver)return;
+  sfxClick();selId=null;reachMap=new Map();history=[];
+  turn="ai";refresh();runAI();
+}
+async function runAI(){
+  aiBusy=true;elThink.style.display="inline";refresh();
+  addLog("sys",`<b>— Turn ${turnNo}: enemy phase —</b>`);
+  await wait(650);
+  resetUnitFlags("E");
+  const order=aliveOf("E").slice();
+  // greedy order: mend-low-hp first, then closest to player
+  order.sort((a,b)=>(a.c==="mend"&&a.hp<a.maxHp*.4?-1:0)-(b.c==="mend"&&b.hp<b.maxHp*.4?-1:0));
+  for(const u of order){
+    if(gameOver)break;
+    if(!u.alive)continue;
+    addLog("sys",`Foe ${label(u)} ponders…`);
+    refresh();await wait(420);
+    aiActUnit(u);
+    updateGhosts();refresh();await wait(420);
+    if(checkEnd())break;
+  }
+  if(!gameOver){
+    turnNo++;turn="player";resetUnitFlags("P");history=[];
+    addLog("sys",`<b>— Turn ${turnNo}: your phase —</b>`);
+  }
+  aiBusy=false;elThink.style.display="none";refresh();
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+function label(u){return `${CLASS[u.c].name}#${u.id} (${u.q},${u.r})`;}
+
+// ---------- AI: greedy evaluate + retreat + fog ----------
+function aiVisiblePlayers(u){
+  // AI scouts: players visible within SIGHT of any foe; fallback: all (marching orders)
+  const vis=new Set();
+  for(const p of aliveOf("P")){
+    for(const f of aliveOf("E")){
+      if(hexDist(p.q,p.r,f.q,f.r)<=SIGHT){vis.add(p.id);break;}
+    }
+  }
+  if(vis.size===0){for(const p of aliveOf("P"))vis.add(p.id);}
+  return aliveOf("P").filter(p=>vis.has(p.id));
+}
+function aiActUnit(u){
+  const foes=aiVisiblePlayers(u);
+  if(!foes.length)return;
+  const nearest=p=>foes.slice().sort((a,b)=>hexDist(u.q,u.r,a.q,a.r)-hexDist(u.q,u.r,b.q,b.r))[0];
+  // RETREAT: Mend below 40% HP
+  if(u.c==="mend"&&u.hp<u.maxHp*0.4){
+    const reach=computeReach(u);
+    let best=null,bestScore=-1e9;
+    const threat=nearest();
+    for(const k of reach.best.keys()){
+      const [qq,rr]=k.split(",").map(Number);
+      const d=threat?hexDist(qq,rr,threat.q,threat.r):99;
+      const score=d+RNG()*0.5;
+      if(score>bestScore){bestScore=score;best=[qq,rr];}
+    }
+    if(best){doMove(u,best[0],best[1],true);}
+    // heal lowest ally in range else attack
+    const allies=aliveOf("E").filter(a=>a.hp<a.maxHp&&hexDist(u.q,u.r,a.q,a.r)<=CLASS.mend.healRange).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp));
+    if(allies.length&&!u.acted){doHeal(u,allies[0],true);}
+    else{const t=bestAttackTarget(u,foes);if(t)doAttack(u,t,true);}
+    return;
+  }
+  // ATTACK-OR-ADVANCE: evaluate each reachable tile (+ staying) for best attack value
+  const reach=computeReach(u);
+  const cands=[{q:u.q,r:u.r}];
+  for(const k of reach.best.keys()){const [qq,rr]=k.split(",").map(Number);cands.push({q:qq,r:rr});}
+  let bestTile={q:u.q,r:u.r},bestTgt=null,bestScore=-1e9;
+  for(const t of cands){
+    const rg=effRange({ ...u,q:t.q,r:t.r});
+    for(const p of foes){
+      const d=hexDist(t.q,t.r,p.q,p.r);
+      if(d>rg)continue;
+      if(u.c==="bow"&&d>1&&blocksBow({q:t.q,r:t.r},p))continue;
+      const dmg=predictDamage(u,p);
+      const kill=dmg>=p.hp?1:0;
+      const score=dmg*2+kill*12+(CLASS[p.c].name==="Mend"?1.5:0)-d*0.15+RNG()*0.4;
+      if(score>bestScore){bestScore=score;bestTile=t;bestTgt=p;}
+    }
+  }
+  if(bestTgt){
+    if(bestTile.q!==u.q||bestTile.r!==u.r)doMove(u,bestTile.q,bestTile.r,true);
+    doAttack(u,bestTgt,true);
+  }else{
+    // no shot: move toward nearest enemy
+    const tgt=nearest();if(!tgt)return;
+    let bt=null,bd=hexDist(u.q,u.r,tgt.q,tgt.r);
+    for(const t of cands){const d=hexDist(t.q,t.r,tgt.q,tgt.r);if(d<bd-1e-9||(Math.abs(d-bd)<1e-9&&RNG()<.3)){bd=d;bt=t;}}
+    // mend non-retreat: prefer tile near wounded ally
+    if(u.c==="mend"){
+      const wounded=aliveOf("E").filter(a=>a.id!==u.id&&a.hp<a.maxHp).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0];
+      if(wounded&&wounded.hp<wounded.maxHp*0.7){
+        let bw=null,bwd=1e9;
+        for(const t of cands){const d=hexDist(t.q,t.r,wounded.q,wounded.r);if(d<=CLASS.mend.healRange&&d<bwd){bwd=d;bw=t;}}
+        if(bw)bt=bw;
+      }
+    }
+    if(bt&&(bt.q!==u.q||bt.r!==u.r))doMove(u,bt.q,bt.r,true);
+    // after moving, mend heals if possible else attacks
+    if(u.c==="mend"&&!u.acted){
+      const allies=aliveOf("E").filter(a=>a.hp<a.maxHp&&hexDist(u.q,u.r,a.q,a.r)<=CLASS.mend.healRange).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp));
+      if(allies.length){doHeal(u,allies[0],true);return;}
+    }
+    const t2=bestAttackTarget(u,foes);
+    if(t2&&!u.acted)doAttack(u,t2,true);
+  }
+}
+function bestAttackTarget(u,foes){
+  const rg=effRange(u);let best=null,bs=-1e9;
+  for(const p of foes){
+    const d=hexDist(u.q,u.r,p.q,p.r);if(d>rg)continue;
+    if(u.c==="bow"&&d>1&&blocksBow(u,p))continue;
+    const dmg=predictDamage(u,p);const kill=dmg>=p.hp?1:0;
+    const s=dmg*2+kill*12+RNG()*.3;
+    if(s>bs){bs=s;best=p;}
+  }
+  return best;
+}
+
+// ---------- player + shared actions ----------
+function doMove(u,nq,nr,isAI){
+  if(!inBoard(nq,nr)||terrainAt(nq,nr)==="water")return false;
+  if(unitAt(nq,nr))return false;
+  u.q=nq;u.r=nr;u.moved=true;sfxMove();
+  anims.push({kind:"move",q1:u.q,r1:u.r,q2:nq,r2:nr,t:0});
+  addLog("move",`${u.side==="P"?"You":"Foe"} ${label(u)} → (${nq},${nr}) [${terrainAt(nq,nr)}]`);
+  return true;
+}
+function doAttack(att,def,isAI){
+  const d=hexDist(att.q,att.r,def.q,def.r),rg=effRange(att);
+  if(d>rg)return false;
+  if(att.c==="bow"&&d>1&&blocksBow(att,def)){if(!isAI)addLog("sys","Shot blocked by water.");return false;}
+  const dmg=predictDamage(att,def);
+  def.hp-=dmg;att.acted=true;sfxClash();
+  const [x1,y1]=hexToPixel(att.q,att.r),[x2,y2]=hexToPixel(def.q,def.r);
+  anims.push({kind:"slash",q1:att.q,r1:att.r,q2:def.q,r2:def.r,t:0});
+  addFloater(def.q,def.r,`-${dmg}`,dmg>=3?"#ff5d5d":"#ffd166");
+  addLog("atk",`${att.side==="P"?"You":"Foe"} ${label(att)} hits ${label(def)} for <b>${dmg}</b> (forest−1? ${terrainAt(def.q,def.r)==="forest"?"yes":"no"}${terrainAt(att.q,att.r)==="hill"?", hill +1 rng":""})`);
+  if(def.hp<=0){def.hp=0;def.alive=false;addFloater(def.q,def.r,"K.O.", "#ff2222");addLog("sys",`☠ ${label(def)} falls.`);if(selId===def.id)selId=null;}
+  return true;
+}
+function doHeal(mend,tgt,isAI){
+  if(mend.c!=="mend")return false;
+  if(hexDist(mend.q,mend.r,tgt.q,tgt.r)>CLASS.mend.healRange)return false;
+  const amt=Math.min(CLASS.mend.heal,tgt.maxHp-tgt.hp);
+  if(amt<=0)return false;
+  tgt.hp+=amt;mend.acted=true;sfxHeal();
+  anims.push({kind:"heal",q1:mend.q,r1:mend.r,q2:tgt.q,r2:tgt.r,t:0});
+  addFloater(tgt.q,tgt.r,`+${amt}`,"#4ade80");
+  addLog("heal",`${mend.side==="P"?"You":"Foe"} ${label(mend)} mends ${label(tgt)} +${amt} HP`);
+  return true;
+}
+function updateGhosts(){
+  const vis=visibleFoes();
+  for(const f of aliveOf("E")){
+    if(vis.has(f.id))ghosts[f.id]={q:f.q,r:f.r};
+  }
+  for(const id of Object.keys(ghosts)){if(!getUnit(Number(id))||!getUnit(Number(id)).alive)delete ghosts[id];}
+}
+
+// ---------- selection / input ----------
+function selectUnit(u){
+  selId=u?u.id:null;reachMap=new Map();
+  if(u&&u.side==="P"&&u.alive&&turn==="player"&&!u.moved){reachMap=computeReach(u).best;}
+  refresh();
+}
+cv.addEventListener("mousemove",e=>{
+  const r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left)*(cv.width/r.width),py=(e.clientY-r.top)*(cv.height/r.height);
+  const [hq,hr]=pixelToHex(px,py);
+  const prev=hoverHex?hoverHex.join(","):null;
+  hoverHex=inBoard(hq,hr)?[hq,hr]:null;
+  hoverTargetId=null;
+  if(hoverHex){
+    const u=unitAt(hoverHex[0],hoverHex[1]);
+    if(u&&(u.side==="E"||(u.side==="P"&&selId&&getUnit(selId)&&getUnit(selId).c==="mend")))hoverTargetId=u.id;
+  }
+  if((hoverHex?hoverHex.join(","):null)!==prev)updateOdds();
+  refresh();
+});
+cv.addEventListener("click",e=>{
+  if(turn!=="player"||aiBusy||gameOver)return;
+  const r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left)*(cv.width/r.width),py=(e.clientY-r.top)*(cv.height/r.height);
+  const [hq,hr]=pixelToHex(px,py);
+  if(!inBoard(hq,hr))return;
+  const clicked=unitAt(hq,hr);
+  const sel=selId?getUnit(selId):null;
+  // 1) mend-heal / attack with current selection?
+  if(sel&&sel.alive&&sel.side==="P"){
+    // heal ally?
+    if(clicked&&clicked.side==="P"&&clicked.id!==sel.id&&sel.c==="mend"&&!sel.acted&&hexDist(sel.q,sel.r,clicked.q,clicked.r)<=CLASS.mend.healRange&&clicked.hp<clicked.maxHp){
+      pushHistory();doHeal(sel,clicked,false);afterPlayerAction(sel);return;
+    }
+    // self-heal?
+    if(clicked&&clicked.id===sel.id&&sel.c==="mend"&&!sel.acted&&sel.hp<sel.maxHp){
+      pushHistory();doHeal(sel,sel,false);afterPlayerAction(sel);return;
+    }
+    // attack foe (visible or ghost-guess? must be actual unit; ghosts can't be attacked)
+    if(clicked&&clicked.side==="E"&&!sel.acted&&hexDist(sel.q,sel.r,clicked.q,clicked.r)<=effRange(sel)){
+      if(!foeVisibleToPlayer(clicked)){addLog("sys","Target hidden in fog — move closer (≤4).");sfxClick();return;}
+      pushHistory();doAttack(sel,clicked,false);afterPlayerAction(sel);checkEnd();return;
+    }
+    // move?
+    if(!clicked&&!sel.moved&&reachMap.has(key(hq,hr))){
+      pushHistory();doMove(sel,hq,hr,false);
+      if(!sel.acted)reachMap=new Map(); // moved: clear preview
+      sfxMove();afterPlayerAction(sel,true);return;
+    }
+  }
+  // 2) (re)select
+  if(clicked&&clicked.side==="P"&&clicked.alive){
+    if(clicked.moved&&clicked.acted){addLog("sys",`${label(clicked)} is spent this turn.`);}
+    sfxClick();selectUnit(clicked);updateOdds();return;
+  }
+  if(clicked&&clicked.side==="E"){
+    sfxClick();updateOdds(clicked.id);
+    const s=sel?` · selected ${label(sel)}`:"";
+    addLog("sys",`Inspecting foe ${label(clicked)}${s}.`);
+    refresh();return;
+  }
+  // clicked empty non-reachable: deselect
+  selectUnit(null);updateOdds();
+});
+function afterPlayerAction(sel,justMoved){
+  updateGhosts();
+  // refresh reach preview: if unit still has partial turn, keep selected but recompute
+  if(sel.alive&&(!sel.moved||!sel.acted)){
+    if(sel.moved)reachMap=new Map();
+    // keep selection for second half of turn
+  }else{selId=null;reachMap=new Map();}
+  if(checkEnd()){refresh();return;}
+  refresh();updateOdds();
+}
+document.getElementById("bEnd").onclick=endTurn;
+document.getElementById("bRestart").onclick=()=>{sfxClick();loadScenario(scenIdx);};
+document.getElementById("bUndo").onclick=()=>{
+  if(turn!=="player"||aiBusy){return;}
+  if(!history.length){addLog("sys","Nothing to undo.");return;}
+  restore(history.pop());sfxClick();addLog("sys","↩ Undid last unit action.");
+};
+document.getElementById("bWait").onclick=()=>{
+  const sel=selId?getUnit(selId):null;
+  if(!sel||sel.side!=="P"){addLog("sys","Select one of your units, then Wait.");return;}
+  pushHistory();sel.moved=true;sel.acted=true;sfxClick();addLog("move",`You ${label(sel)} holds position.`);
+  selId=null;reachMap=new Map();refresh();
+};
+document.getElementById("ovBtn").onclick=()=>loadScenario(scenIdx);
+document.addEventListener("keydown",e=>{
+  if(e.key==="u"||e.key==="U")document.getElementById("bUndo").click();
+  if(e.key===" "){e.preventDefault();endTurn();}
+  if(e.key==="Escape")selectUnit(null);
+});
+
+// ---------- side panel renders ----------
+function renderLog(){
+  elLog.innerHTML=logArr.slice(-20).reverse().map(l=>`<li class="${l.kind}">${l.text}</li>`).join("");
+}
+function updateOdds(forceFoeId){
+  const sel=selId?getUnit(selId):null;
+  let foe=null;
+  if(forceFoeId)foe=getUnit(forceFoeId);
+  else if(hoverTargetId)foe=getUnit(hoverTargetId);
+  if(!sel||!foe||foe.side!=="E"||!foe.alive){ 
+    if(sel&&sel.alive){
+      const rg=effRange(sel);
+      const vis=visibleFoes();
+      const tgts=aliveOf("E").filter(f=>vis.has(f.id)&&hexDist(sel.q,sel.r,f.q,f.r)<=rg);
+      elOdds.innerHTML=`<b>${CLASS[sel.c].glyph} ${CLASS[sel.c].name}#${sel.id}</b> HP ${sel.hp}/${sel.maxHp} · range ${rg} · ${sel.moved?"moved ✓":"can move"} · ${sel.acted?"acted ✓":"can act"}`+
+        (tgts.length?`<br>Targets in range: `+tgts.map(t=>`E-${t.id} (${t.q},${t.r}) ${t.hp}HP → <b>${predictDamage(sel,t)} dmg</b>${predictDamage(sel,t)>=t.hp?" ☠KILL":""}`).join(" · "):`<br><span style="color:#8b98b0">No visible foes in range. Move closer.</span>`);
+    } else elOdds.innerHTML="Select a unit, then hover / click a foe to preview deterministic damage.";
+    return;
+  }
+  const d=hexDist(sel.q,sel.r,foe.q,foe.r),rg=effRange(sel);
+  if(d>rg){elOdds.innerHTML=`<b>${CLASS[sel.c].name}#${sel.id}</b> → <b>Foe ${foe.id}</b>: out of range (dist ${d} &gt; range ${rg}).`;return;}
+  if(sel.c==="bow"&&d>1&&blocksBow(sel,foe)){elOdds.innerHTML=`Shot BLOCKED by water.`;return;}
+  const dmg=predictDamage(sel,foe),kill=dmg>=foe.hp;
+  elOdds.innerHTML=`<b>${CLASS[sel.c].glyph} ${CLASS[sel.c].name}#${sel.id}</b> → <b style="color:#ff8f8f">Foe ${CLASS[foe.c].name}#${foe.id}</b> (${foe.q},${foe.r} ${terrainAt(foe.q,foe.r)})<br>`+
+    `dist ${d} / range ${rg} · base ${CLASS[sel.c].dmg}${terrainAt(foe.q,foe.r)==="forest"?" −1 forest":""}${terrainAt(sel.q,sel.r)==="hill"?" +hill range":""} ⇒ <b>${dmg} dmg</b> ${kill?'<b style="color:#ff5d5d">☠ KILL</b>':`foe survives at ${foe.hp-dmg} HP`} · deterministic (no dice)`;
+}
+function refresh(){
+  const S=SCENARIOS[scenIdx];
+  elTurn.textContent=`${S.name} · Turn ${turnNo} · ${turn==="player"?"YOUR move (blue rings)":"ENEMY phase"} · You ${aliveOf("P").length}⚔ Foe ${aliveOf("E").length}`;
+  document.getElementById("bEnd").disabled=turn!=="player"||aiBusy||!!gameOver;
+  document.getElementById("bUndo").disabled=turn!=="player"||!history.length||aiBusy;
+  const sel=selId?getUnit(selId):null;
+  if(!sel)elInfo.innerHTML="No unit selected.";
+  else{
+    const st=CLASS[sel.c];
+    elInfo.innerHTML=`<span class="cls ${sel.c}">${st.glyph} ${st.name}</span><b>#${sel.id}</b> (${sel.q},${sel.r}) on <b>${terrainAt(sel.q,sel.r)}</b><br>`+
+      `HP ${sel.hp}/${sel.maxHp} <div class="hpbar"><div style="width:${100*sel.hp/sel.maxHp}%;background:${sel.hp/sel.maxHp>.5?"#4ade80":sel.hp/sel.maxHp>.25?"#e8b34a":"#ff5d5d"}"></div></div>`+
+      `move ${effMove(sel)} (${sel.moved?"used":"ready"}) · ${sel.c==="mend"?`heal ${st.heal} r${st.healRange} + atk ${st.dmg}`:`atk ${st.dmg} r${effRange(sel)}`} (${sel.acted?"used":"ready"})`+
+      (sel.c==="mend"?`<br><span style="color:#8b98b0">Tip: click a wounded ally (≤2) incl. self to heal.</span>`:"");
+  }
+  if(!hoverTargetId)updateOdds();
+}
+
+// ---------- canvas render ----------
+function hexCorners(cx,cy,s){
+  const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);p.push([cx+s*Math.cos(a),cy+s*Math.sin(a)]);}
+  return p;
+}
+function pathHex(c){
+  ctx.beginPath();c.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+}
+const TCOL={plain:"#20324a",forest:"#1d4d2c",hill:"#6b5a2e",water:"#144a6e"};
+let T=0;
+function draw(){
+  T+=1/60;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#0a0e14";ctx.fillRect(0,0,cv.width,cv.height);
+  const vis=visibleFoes();
+  const sel=selId?getUnit(selId):null;
+  // tiles
+  for(let q=0;q<9;q++)for(let r=0;r<9;r++){
+    const [cx,cy]=hexToPixel(q,r);const t=terrainAt(q,r);
+    const c=hexCorners(cx,cy,HEX-1.5);
+    pathHex(c);
+    ctx.fillStyle=TCOL[t];ctx.fill();
+    ctx.lineWidth=1.5;ctx.strokeStyle="#0d1420";ctx.stroke();
+    // reachable preview
+    if(reachMap.has(key(q,r))){ctx.fillStyle="rgba(74,163,255,.34)";ctx.fill();}
+    // hover
+    if(hoverHex&&hoverHex[0]===q&&hoverHex[1]===r){ctx.fillStyle="rgba(232,179,74,.35)";ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle="#e8b34a";ctx.stroke();}
+    // attack-target rings
+    if(sel&&sel.alive){
+      const u=unitAt(q,r);
+      if(u&&u.side==="E"&&vis.has(u.id)&&hexDist(sel.q,sel.r,q,r)<=effRange(sel)&&!sel.acted){ctx.lineWidth=2.5;ctx.strokeStyle="#ff5d5d";pathHex(hexCorners(cx,cy,HEX-6));ctx.stroke();}
+      if(sel.c==="mend"&&u&&u.side==="P"&&u.hp<u.maxHp&&hexDist(sel.q,sel.r,q,r)<=CLASS.mend.healRange&&!sel.acted){ctx.lineWidth=2.5;ctx.strokeStyle="#4ade80";pathHex(hexCorners(cx,cy,HEX-6));ctx.stroke();}
+    }
+    // terrain glyph + coords
+    ctx.fillStyle=t==="water"?"#7fd4ff":t==="hill"?"#ffe1a1":t==="forest"?"#9fe8b4":"#5b6b87";
+    ctx.font="11px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(t==="water"?"≈":t==="forest"?"♣":t==="hill"?"▲":"·",cx,cy-6);
+    ctx.fillStyle="rgba(219,228,243,.5)";ctx.font="8.5px system-ui";
+    ctx.fillText(q+","+r,cx,cy+9);
+    // hill range / move hint
+    if(t==="hill"){ctx.fillStyle="rgba(255,225,161,.75)";ctx.font="8px system-ui";ctx.fillText("+rng",cx,cy+17);}
+  }
+  // ghosts (last-known, only for hidden foes)
+  ctx.textAlign="center";
+  for(const f of aliveOf("E")){
+    if(vis.has(f.id))continue;
+    const g=ghosts[f.id];if(!g)continue;
+    const [gx,gy]=hexToPixel(g.q,g.r);
+    ctx.globalAlpha=.55;ctx.fillStyle="#9aa7c2";
+    ctx.font="20px system-ui";ctx.fillText("👻",gx,gy+2);
+    ctx.font="9px system-ui";ctx.fillText(`last (${g.q},${g.r})`,gx,gy+20);
+    ctx.globalAlpha=1;
+  }
+  // grid: selection ring under units
+  // units (visible foes + all player units)
+  for(const u of units){
+    if(!u.alive)continue;
+    if(u.side==="E"&&!vis.has(u.id))continue; // fog hides
+    const [cx,cy]=hexToPixel(u.q,u.r);
+    const bob=(u.id===selId)?Math.sin(T*5)*2:0;
+    // shadow/team ring
+    ctx.beginPath();ctx.arc(cx,cy+bob,HEX*.52,0,7);
+    ctx.fillStyle=u.side==="P"?"#2b4a77":"#6e2b2b";ctx.fill();
+    ctx.lineWidth=(selId===u.id)?3.5:(u.side==="P"&&turn==="player"&&(!u.moved||!u.acted))?2.5:1.5;
+    ctx.strokeStyle=selId===u.id?"#e8b34a":u.side==="P"?(u.moved&&u.acted?"#4a5568":"#4aa3ff"):"#ff5d5d";
+    ctx.stroke();
+    // body
+    ctx.fillStyle="#101724";ctx.beginPath();ctx.arc(cx,cy+bob,HEX*.40,0,7);ctx.fill();
+    ctx.fillStyle=CLASS[u.c].color;ctx.font="bold 19px system-ui";ctx.textBaseline="middle";
+    ctx.fillText(CLASS[u.c].glyph,cx,cy+bob-4);
+    ctx.fillStyle="#dbe4f3";ctx.font="bold 9px system-ui";
+    ctx.fillText((u.side==="P"?"P":"E")+u.id+" "+CLASS[u.c].name,cx,cy+bob+11);
+    // HP bar
+    const w=44;ctx.fillStyle="#000";ctx.fillRect(cx-w/2,cy+bob+19,w,6);
+    ctx.fillStyle=u.hp/u.maxHp>.5?"#4ade80":u.hp/u.maxHp>.25?"#e8b34a":"#ff5d5d";
+    ctx.fillRect(cx-w/2+1,cy+bob+20,(w-2)*Math.max(0,u.hp/u.maxHp),4);
+    ctx.fillStyle="#fff";ctx.font="8px system-ui";ctx.fillText(u.hp+"/"+u.maxHp,cx,cy+bob+30);
+    // spent dim
+    if(u.side==="P"&&u.moved&&u.acted){ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.arc(cx,cy+bob,HEX*.52,0,7);ctx.fill();}
+  }
+  // animations: slash lines / heal pulses
+  anims=anims.filter(a=>a.t<1);
+  for(const a of anims){
+    a.t+=0.04;
+    const [x1,y1]=hexToPixel(a.q1,a.r1),[x2,y2]=hexToPixel(a.q2,a.r2);
+    if(a.kind==="slash"){
+      ctx.strokeStyle=`rgba(255,90,90,${1-a.t})`;ctx.lineWidth=4;
+      ctx.beginPath();
+      const mx=(x1+x2)/2+(Math.random()-.5)*10;
+      ctx.moveTo(x1,y1);ctx.lineTo(mx+(x2-x1)*.2,y1+(y2-y1)*.2);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.fillStyle=`rgba(255,220,120,${1-a.t})`;ctx.beginPath();ctx.arc(x2,y2,10*(1-a.t)+4,0,7);ctx.fill();
+    }else if(a.kind==="heal"){
+      ctx.strokeStyle=`rgba(74,222,128,${1-a.t})`;ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(x2,y2,10+a.t*26,0,7);ctx.stroke();
+      ctx.beginPath();ctx.arc(x2,y2,6+a.t*14,0,7);ctx.stroke();
+    }
+  }
+  // floaters
+  floaters=floaters.filter(f=>f.t<1.4);
+  for(const f of floaters){
+    f.t+=0.016;
+    const [fx,fy]=hexToPixel(f.q,f.r);
+    ctx.globalAlpha=Math.max(0,1-f.t/1.4);
+    ctx.fillStyle=f.color;ctx.font="bold 17px system-ui";
+    ctx.fillText(f.txt,fx,fy-30-f.t*26);
+    ctx.globalAlpha=1;
+  }
+  requestAnimationFrame(draw);
+}
+
+// ---------- sign-off footer ----------
+(function signoff(){
+  const now=new Date();
+  const s=now.toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"});
+  document.getElementById("signoff").innerHTML=
+    `📜 <b>Sign-off:</b> solution produced <b>${s}</b> (${now.toISOString()})<br>by <b>Muse Spark 1.3 Contributor</b> (OpenCode agent) · vanilla single-file · no deps`;
+})();
+
+// ---------- boot ----------
+loadScenario(0);
+updateGhosts();refresh();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

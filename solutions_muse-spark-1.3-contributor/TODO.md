@@ -49,3 +49,13 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | RegexZero: A From-Scratch NFA Regex Engine and Grep CLI | 🔴 Extreme | ⏳ Pending |
 | CellForge: A Swing Spreadsheet Engine | 🔴 Extreme | ⏳ Pending |
 | Emberdeep: A Seeded ASCII Roguelike in a Single HTML File | 🔴 Extreme | ✅ Done |
+| Cratebound — Sokoban Warehouse Puzzler | 🟢 Easy | ✅ Done |
+| Crossrush — Frogger-Style Road & River Crosser | 🟢 Easy | ✅ Done |
+| Gemswap Cascade — Match-3 Jewel Puzzler | 🟡 Medium | ✅ Done |
+| Maze Munch — Pellet Maze Chaser | 🟡 Medium | ✅ Done |
+| Castle Toss — Slingshot Physics Siege | 🟡 Medium | ✅ Done |
+| Driftline GP — Top-Down Drift Racer with Ghost | 🟠 Hard | ✅ Done |
+| Hexblade Skirmish — Hex Tactics vs AI | 🟠 Hard | ✅ Done |
+| Dungeon Deck Delve — Deckbuilding Crawler | 🟠 Hard | ✅ Done |
+| Sector-7 — From-Scratch Raycaster FPS | 🔴 Extreme | ✅ Done |
+| Conveyor Lab — Factory Automation Sim | 🔴 Extreme | ✅ Done |
