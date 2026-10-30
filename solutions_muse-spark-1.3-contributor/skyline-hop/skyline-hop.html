@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<!--
+  SKYLINE HOP — One-Button Endless Runner
+  Single-file game: markup + styles + logic, no build, no assets, no network.
+  Runs from file:// — just double-click.
+
+  Produced: 2026-10-30 00:10 UTC
+  Author/Model: Muse Spark 1.3 Contributor (OpenCode subagent)
+  Third-party libraries: none (vanilla HTML/CSS/JS + Canvas 2D only).
+
+  How to run: double-click skyline-hop.html (or drag into any modern browser).
+  Controls: Space / ArrowUp / mouse click / touch tap = ONE button (jump).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Skyline Hop — One-Button Endless Runner</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0b0e1a;
+    color: #e8ecf8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 12px; gap: 8px;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
+  h1 {
+    font-size: clamp(16px, 3vw, 24px);
+    letter-spacing: 4px; font-weight: 800;
+    color: #ffd75e;
+    text-shadow: 0 2px 0 #7a3b00, 0 0 18px rgba(255, 190, 60, .35);
+  }
+  h1 small { display: block; font-size: 11px; letter-spacing: 2px; color: #9fb0d8; text-shadow: none; text-align: center; margin-top: 2px; }
+  #wrap {
+    width: min(96vw, calc((100vh - 150px) * 2));
+    max-width: 900px;
+  }
+  canvas {
+    display: block; width: 100%; aspect-ratio: 2 / 1; height: auto;
+    background: #0b0e1a; border-radius: 10px;
+    border: 2px solid #2b3560;
+    box-shadow: 0 8px 40px rgba(0,0,0,.55);
+    touch-action: none; cursor: pointer;
+  }
+  #hint { font-size: 12px; color: #9fb0d8; text-align: center; }
+  #hint b { color: #ffd75e; }
+  footer { font-size: 11px; color: #6f7ea6; text-align: center; }
+  footer b { color: #9fb0d8; }
+</style>
+</head>
+<body>
+<h1>SKYLINE HOP<small>one button &middot; double-tap the sky</small></h1>
+<div id="wrap">
+  <canvas id="game" width="800" height="400" aria-label="Skyline Hop endless runner"></canvas>
+</div>
+<div id="hint"><b>SPACE</b> / <b>&uarr;</b> / <b>CLICK</b> / <b>TAP</b> = jump &middot; press again mid-air = double-jump</div>
+<footer>Skyline Hop &middot; built <b>2026-10-30 00:10 UTC</b> by <b>Muse Spark 1.3 Contributor</b> &middot; single file, no assets</footer>
+
+<script>
+'use strict';
+/* ================= Skyline Hop — single-file endless runner ================= */
+
+// ---- Logical resolution & tuning ----
+var W = 800, H = 400;
+var GROUND_H = 60;
+var GROUND_Y = H - GROUND_H;          // y of ground surface
+var GRAVITY = 2200;                   // px/s^2
+var JUMP_V = -720;                    // px/s
+var DOUBLE_V = -620;                  // px/s
+var START_SPEED = 260;                // px/s
+var RAMP = 6;                         // px/s per second
+var MAX_SPEED = 620;                  // px/s
+// Airtime of a single jump + safety margin => every gap is clearable.
+var SINGLE_AIRTIME = 2 * 720 / 2200;  // ~0.6545 s
+var TIME_TO_CLEAR = SINGLE_AIRTIME + 0.25;
+
+// ---- Canvas ----
+var canvas = document.getElementById('game');
+var ctx = canvas.getContext('2d');
+
+// ---- Persistent hi-score (localStorage with session fallback) ----
+var HI_KEY = 'skyline-hop-hiscore';
+var hiScore = 0;
+var storageOK = true;
+try {
+  var raw = window.localStorage.getItem(HI_KEY);
+  if (raw !== null) hiScore = Math.max(0, parseInt(raw, 10) || 0);
+} catch (e) { storageOK = false; hiScore = 0; }
+function saveHi(v) {
+  hiScore = v;
+  if (!storageOK) return;
+  try { window.localStorage.setItem(HI_KEY, String(v)); }
+  catch (e) { storageOK = false; }
+}
+
+// ---- Tiny WebAudio beeps (generated, no files) ----
+var audioCtx = null;
+function ac() {
+  if (audioCtx) return audioCtx;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  } catch (e) { audioCtx = null; }
+  return audioCtx;
+}
+function beep(freq, dur, type, vol, slideTo) {
+  try {
+    var c = ac();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume();
+    var o = c.createOscillator();
+    var g = c.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, c.currentTime);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.06, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + dur);
+  } catch (e) { /* audio is optional */ }
+}
+
+// ---- Game state ----
+var ST_READY = 0, ST_PLAY = 1, ST_OVER = 2;
+var state = ST_READY;
+var elapsed = 0;       // seconds survived this run
+var speed = START_SPEED;
+var distance = 0;      // px travelled this run
+var score = 0;
+var isNewBest = false;
+var overAt = 0;        // performance.now() of death (restart lockout)
+var nowMs = 0;
+
+// ---- Runner ----
+var player = {
+  x: 120, w: 30, h: 42,
+  y: GROUND_Y - 42, vy: 0,
+  grounded: true, canDouble: true,
+  spin: 0,            // remaining spin radians for double-jump flip
+  squash: 0           // landing squash timer
+};
+
+// ---- Obstacles ----
+var obstacles = [];    // {x, w, h, tall}
+function clearableGap() {
+  // gap = rand(0.9, 1.6) * speed * TIME_TO_CLEAR  (req. 5)
+  return (0.9 + Math.random() * 0.7) * speed * TIME_TO_CLEAR;
+}
+function spawnObstacle(x) {
+  var tall = Math.random() < 0.22;   // ~1 in 5 needs the double-jump
+  var w, h;
+  if (tall) { w = 16 + Math.random() * 10; h = 85 + Math.random() * 27; }  // 85..112
+  else      { w = 18 + Math.random() * 24; h = 28 + Math.random() * 42; }  // 28..70
+  obstacles.push({ x: x, w: w, h: h, tall: tall });
+}
+
+// ---- Parallax layers (seamless TILE_W-periodic strips) ----
+var TILE_W = 1600;
+function mulberry(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function makeLayer(seed, minW, maxW, minH, maxH) {
+  var rnd = mulberry(seed);
+  var arr = [], x = 0;
+  while (x < TILE_W) {
+    var w = minW + rnd() * (maxW - minW);
+    var h = minH + rnd() * (maxH - minH);
+    arr.push({ x: x, w: w, h: h, seed: Math.floor(rnd() * 1e9) });
+    x += w + 4 + rnd() * 26;
+  }
+  return arr;
+}
+var farB  = makeLayer(1234, 50, 100, 60, 170);
+var midB  = makeLayer(987, 55, 110, 90, 210);
+var nearB = makeLayer(555, 60, 130, 18, 55);
+var scrollFar = 0, scrollMid = 0, scrollNear = 0, groundScroll = 0;
+var FAR_F = 0.15, MID_F = 0.4, NEAR_F = 0.75;
+
+// ---- Particles (double-jump ring + crash bits + run dust) ----
+var parts = [];
+function burst(x, y, n, color, spd) {
+  for (var i = 0; i < n; i++) {
+    var a = Math.random() * Math.PI * 2;
+    var s = spd * (0.4 + Math.random());
+    parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, life: 0.5 + Math.random() * 0.3, t: 0, color: color });
+  }
+}
+
+// ---- Control: ONE button ----
+function press() {
+  if (state === ST_READY) { startRun(); return; }
+  if (state === ST_OVER) {
+    if (nowMs - overAt > 500) startRun();   // short lockout avoids skipping the panel
+    return;
+  }
+  // playing: jump / double-jump
+  if (player.grounded) {
+    player.vy = JUMP_V;
+    player.grounded = false;
+    player.canDouble = true;
+    beep(440, 0.09, 'square', 0.05);
+    burst(player.x + player.w / 2, GROUND_Y, 6, '#8fa2d8', 120);
+  } else if (player.canDouble) {
+    player.canDouble = false;
+    player.vy = DOUBLE_V;
+    player.spin = Math.PI * 2;              // distinct visual cue: full flip
+    beep(660, 0.11, 'square', 0.06, 990);
+    burst(player.x + player.w / 2, player.y + player.h / 2, 12, '#ffd75e', 200);
+  }
+  // third+ press mid-air: nothing (exactly one double-jump)
+}
+window.addEventListener('keydown', function (e) {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    if (!e.repeat) press();
+  }
+});
+canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); press(); });
+window.addEventListener('pointerdown', function (e) {
+  if (e.target !== canvas) press();   // clicking anywhere counts
+});
+window.addEventListener('touchstart', function () {}, { passive: true });
+canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+function startRun() {
+  state = ST_PLAY;
+  elapsed = 0; speed = START_SPEED; distance = 0; score = 0;
+  obstacles.length = 0; parts.length = 0;
+  isNewBest = false;
+  player.y = GROUND_Y - player.h; player.vy = 0;
+  player.grounded = true; player.canDouble = true; player.spin = 0;
+  spawnObstacle(W + 300);
+}
+
+function die() {
+  state = ST_OVER;
+  overAt = nowMs;
+  beep(200, 0.3, 'sawtooth', 0.07, 60);
+  burst(player.x + player.w / 2, player.y + player.h / 2, 22, '#ff5d5d', 260);
+  if (score > hiScore) { saveHi(score); isNewBest = true; }
+}
+
+// ---- Color helpers (day/night cycle) ----
+function lerp(a, b, t) { return a + (b - a) * t; }
+function mix(c1, c2, t) {
+  return [lerp(c1[0], c2[0], t) | 0, lerp(c1[1], c2[1], t) | 0, lerp(c1[2], c2[2], t) | 0];
+}
+function css(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+var SKY_DAY = [[105, 170, 255], [200, 235, 255]];
+var SKY_NIGHT = [[8, 12, 34], [30, 32, 70]];
+// Full day/night cycle every 40000 px (~90-150 s depending on speed).
+function dayMix() { return 0.5 + 0.5 * Math.cos((distance % 40000) / 40000 * Math.PI * 2); }
+
+// ---- Update (delta-time physics) ----
+function update(dt) {
+  if (state === ST_PLAY) {
+    elapsed += dt;
+    speed = Math.min(MAX_SPEED, START_SPEED + RAMP * elapsed);
+    distance += speed * dt;
+    score = Math.floor(distance / 50);
+
+    // runner physics
+    player.vy += GRAVITY * dt;
+    player.y += player.vy * dt;
+    if (player.spin > 0) player.spin = Math.max(0, player.spin - dt * 12);
+    if (player.squash > 0) player.squash -= dt;
+    if (player.y >= GROUND_Y - player.h) {
+      if (!player.grounded) { player.squash = 0.12; burst(player.x + player.w / 2, GROUND_Y, 4, '#5a6b9e', 90); }
+      player.y = GROUND_Y - player.h; player.vy = 0;
+      player.grounded = true; player.canDouble = true;
+      if (player.spin < Math.PI) player.spin = 0; // snapped landing cancels leftover spin
+    }
+
+    // obstacles
+    for (var i = 0; i < obstacles.length; i++) obstacles[i].x -= speed * dt;
+    while (obstacles.length && obstacles[0].x + obstacles[0].w < -10) obstacles.shift();
+    var last = obstacles[obstacles.length - 1];
+    if (!last) spawnObstacle(W + 60);
+    else if (last.x + last.w + clearableGap() < W + 40) spawnObstacle(W + 40);
+
+    // parallax + ground scroll
+    scrollFar += speed * FAR_F * dt;
+    scrollMid += speed * MID_F * dt;
+    scrollNear += speed * NEAR_F * dt;
+    groundScroll += speed * dt;
+
+    // run dust
+    if (player.grounded && Math.random() < dt * 8)
+      parts.push({ x: player.x + 4, y: GROUND_Y - 2, vx: -speed * 0.3, vy: -40 - Math.random() * 40, life: 0.4, t: 0, color: '#5a6b9e' });
+
+    // collisions (forgiving AABB)
+    var px = player.x + 4, pw = player.w - 8, py = player.y + 3, ph = player.h - 3;
+    for (var j = 0; j < obstacles.length; j++) {
+      var o = obstacles[j];
+      var oy = GROUND_Y - o.h;
+      if (px < o.x + o.w - 3 && px + pw > o.x + 3 && py < oy + o.h && py + ph > oy) { die(); break; }
+    }
+  } else if (state === ST_READY) {
+    // gentle attract-mode drift
+    scrollFar += 40 * dt; scrollMid += 100 * dt; scrollNear += 190 * dt;
+  }
+  // particles always tick
+  for (var k = parts.length - 1; k >= 0; k--) {
+    var p = parts[k];
+    p.t += dt;
+    if (p.t >= p.life) { parts.splice(k, 1); continue; }
+    p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+  }
+}
+
+// ---- Drawing ----
+function drawTileLayer(list, scroll, baseY, fill, winColor) {
+  var off = scroll % TILE_W;
+  for (var rep = -1; rep <= 1; rep++) {
+    var bx = -off + rep * TILE_W;
+    if (bx + TILE_W < 0 || bx > W) continue;
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i];
+      var x = bx + b.x;
+      if (x + b.w < 0 || x > W) continue;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, baseY - b.h, b.w, b.h);
+      if (winColor) {
+        // lit windows: deterministic per building
+        var r = mulberry(b.seed);
+        ctx.fillStyle = winColor;
+        for (var wy = baseY - b.h + 8; wy < baseY - 8; wy += 14) {
+          for (var wx = x + 5; wx < x + b.w - 5; wx += 12) {
+            if (r() < 0.45) ctx.fillRect(wx, wy, 5, 7);
+          }
+        }
+        // antenna on some
+        if (r() < 0.3) {
+          ctx.fillStyle = fill;
+          ctx.fillRect(x + b.w / 2 - 1, baseY - b.h - 14, 2, 14);
+          ctx.fillStyle = '#ff5d5d';
+          ctx.fillRect(x + b.w / 2 - 2, baseY - b.h - 17, 4, 3);
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  var mixT = dayMix();                       // 1 = day, 0 = night
+  var top = mix(SKY_NIGHT[0], SKY_DAY[0], mixT);
+  var bot = mix(SKY_NIGHT[1], SKY_DAY[1], mixT);
+  var g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, css(top)); g.addColorStop(1, css(bot));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // stars at night
+  if (mixT < 0.6) {
+    ctx.save();
+    ctx.globalAlpha = (0.6 - mixT) * 1.6;
+    ctx.fillStyle = '#ffffff';
+    var r = mulberry(42);
+    for (var s = 0; s < 60; s++) {
+      var sx = r() * W, sy = r() * (GROUND_Y - 160);
+      var tw = 0.5 + 0.5 * Math.sin(nowMs / 400 + s * 2.1);
+      ctx.globalAlpha = (0.6 - mixT) * 1.6 * (0.4 + 0.6 * tw);
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  // sun / moon arc across the sky with the cycle
+  var phase = ((distance % 40000) / 40000) * Math.PI * 2;
+  var orbX = W / 2 + Math.cos(phase) * W * 0.42;
+  var orbY = 120 - Math.sin(phase) * 70;
+  if (mixT >= 0.5) {
+    ctx.fillStyle = '#ffdf6b';
+    ctx.beginPath(); ctx.arc(orbX, orbY, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,223,107,.25)';
+    ctx.beginPath(); ctx.arc(orbX, orbY, 32, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = '#e8ecf8';
+    ctx.beginPath(); ctx.arc(orbX, orbY, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = css(top);
+    ctx.beginPath(); ctx.arc(orbX - 6, orbY - 4, 14, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 3 parallax layers
+  var nightF = 1 - mixT;
+  drawTileLayer(farB, scrollFar, GROUND_Y,
+    mixT >= 0.5 ? '#7d8fc9' : '#1c2342', null);
+  drawTileLayer(midB, scrollMid, GROUND_Y,
+    mixT >= 0.5 ? '#4a5a96' : '#141a38',
+    nightF > 0.25 ? '#ffd75e' : '#c9d6ff');
+  drawTileLayer(nearB, scrollNear, GROUND_Y,
+    mixT >= 0.5 ? '#2c3763' : '#0a0e24', null);
+
+  // ground
+  ctx.fillStyle = mixT >= 0.5 ? '#232c52' : '#070b1e';
+  ctx.fillRect(0, GROUND_Y, W, GROUND_H);
+  ctx.fillStyle = '#ffd75e'; ctx.fillRect(0, GROUND_Y, W, 3);
+  ctx.fillStyle = mixT >= 0.5 ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.12)';
+  var goff = groundScroll % 46;
+  for (var gx = -goff; gx < W; gx += 46) ctx.fillRect(gx, GROUND_Y + 26, 24, 4);
+
+  // obstacles
+  for (var i = 0; i < obstacles.length; i++) {
+    var o = obstacles[i], oy = GROUND_Y - o.h;
+    if (o.tall) {
+      ctx.fillStyle = '#c33d5e';
+      ctx.fillRect(o.x, oy, o.w, o.h);
+      ctx.fillStyle = '#ff7d9c';
+      ctx.fillRect(o.x, oy, o.w, 5);
+      ctx.fillRect(o.x + 3, oy + 10, 4, o.h - 10);   // hazard stripes cue
+      ctx.fillStyle = '#ffd75e';
+      ctx.fillRect(o.x - 2, oy - 8, o.w + 4, 4);     // warning cap: needs double-jump
+    } else {
+      ctx.fillStyle = '#37c26a';
+      ctx.fillRect(o.x, oy, o.w, o.h);
+      ctx.fillStyle = '#8df0ae';
+      ctx.fillRect(o.x, oy, o.w, 5);
+      ctx.fillRect(o.x + 3, oy + 9, 4, o.h - 9);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.fillRect(o.x, GROUND_Y - 4, o.w, 4);
+  }
+
+  // runner (with double-jump flip + landing squash)
+  ctx.save();
+  var cx = player.x + player.w / 2, cy = player.y + player.h / 2;
+  var ang = 0;
+  if (player.spin > 0) ang = (1 - player.spin / (Math.PI * 2)) * Math.PI * 2;
+  else if (!player.grounded) ang = -0.12;
+  var sq = player.squash > 0 ? player.squash / 0.12 : 0;
+  ctx.translate(cx, cy);
+  ctx.rotate(ang);
+  ctx.scale(1 + 0.25 * sq, 1 - 0.25 * sq);
+  ctx.translate(-player.w / 2, -player.h / 2);
+  ctx.fillStyle = state === ST_OVER ? '#ff5d5d' : '#ff9f2e';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(0, 0, player.w, player.h, 7); else ctx.rect(0, 0, player.w, player.h);
+  ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.fillRect(17, 8, 9, 10);          // eye white
+  ctx.fillStyle = '#111'; ctx.fillRect(20, 10, 5, 6);          // pupil
+  ctx.fillStyle = '#ffd75e'; ctx.fillRect(0, 26, player.w, 5); // scarf
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(4, player.h - 7, player.w - 8, 4);
+  ctx.restore();
+  // double-jump halo while flipping
+  if (player.spin > 0) {
+    ctx.save();
+    ctx.globalAlpha = player.spin / (Math.PI * 2) * 0.9;
+    ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // particles
+  for (var k = 0; k < parts.length; k++) {
+    var p = parts[k];
+    ctx.globalAlpha = 1 - p.t / p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // HUD
+  ctx.fillStyle = 'rgba(5,8,20,.55)'; ctx.fillRect(10, 10, 250, 64);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 20px monospace'; ctx.textAlign = 'left';
+  ctx.fillText('SCORE ' + score, 20, 36);
+  ctx.fillStyle = '#ffd75e'; ctx.font = 'bold 15px monospace';
+  ctx.fillText('HI    ' + hiScore, 20, 58);
+  ctx.fillStyle = 'rgba(5,8,20,.55)'; ctx.fillRect(W - 218, 10, 208, 30);
+  ctx.fillStyle = '#7dffb0'; ctx.font = '13px monospace';
+  ctx.fillText('SPD ' + Math.round(speed) + ' px/s', W - 208, 30);
+
+  if (state === ST_READY) {
+    ctx.fillStyle = 'rgba(5,8,25,.62)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd75e'; ctx.font = 'bold 52px monospace';
+    ctx.fillText('SKYLINE HOP', W / 2, 150);
+    ctx.fillStyle = '#fff'; ctx.font = '18px monospace';
+    ctx.fillText('hop the endless rooftops', W / 2, 182);
+    ctx.fillStyle = '#7dffb0'; ctx.font = 'bold 20px monospace';
+    if (Math.floor(nowMs / 500) % 2 === 0)
+      ctx.fillText('press SPACE / click / tap to start', W / 2, 240);
+    ctx.fillStyle = '#9fb0d8'; ctx.font = '15px monospace';
+    ctx.fillText('mid-air press = double-jump (one per leap)', W / 2, 272);
+    ctx.fillText('tall red bars NEED the double-jump', W / 2, 294);
+  }
+
+  if (state === ST_OVER) {
+    ctx.fillStyle = 'rgba(5,8,25,.68)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(10,14,32,.92)';
+    ctx.fillRect(W / 2 - 220, 90, 440, 220);
+    ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 3;
+    ctx.strokeRect(W / 2 - 220, 90, 440, 220);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff5d5d'; ctx.font = 'bold 44px monospace';
+    ctx.fillText('GAME OVER', W / 2, 140);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px monospace';
+    ctx.fillText('SCORE ' + score + '    HI ' + hiScore, W / 2, 178);
+    if (isNewBest) {
+      var pulse = 1 + 0.08 * Math.sin(nowMs / 150);
+      ctx.save(); ctx.translate(W / 2, 212); ctx.scale(pulse, pulse);
+      ctx.fillStyle = '#ffd75e'; ctx.font = 'bold 24px monospace';
+      ctx.fillText('★ NEW BEST! ★', 0, 0);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#7dffb0'; ctx.font = 'bold 18px monospace';
+    if (nowMs - overAt > 500 && Math.floor(nowMs / 500) % 2 === 0)
+      ctx.fillText('press to restart', W / 2, 262);
+    ctx.fillStyle = '#9fb0d8'; ctx.font = '13px monospace';
+    ctx.fillText('speed reached ' + Math.round(speed) + ' px/s', W / 2, 288);
+  }
+}
+
+// ---- Main loop (delta-time => identical at any refresh rate) ----
+var last = 0;
+function frame(now) {
+  nowMs = now;
+  if (!last) last = now;
+  var dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.05) dt = 0.05;   // clamp tab-switch spikes
+  if (dt < 0) dt = 0;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

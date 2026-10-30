@@ -1,0 +1,485 @@
+<!--
+  Typefall — Falling Words Typing Arcade
+  Produced: 2026-10-30 12:00 UTC
+  Author/Model: Muse Spark 1.3 Contributor (OpenCode coding agent)
+  Third-party libraries: none (vanilla HTML/CSS/JS only)
+  Run: double-click this file (file://) in Chrome/Firefox/Safari. No build, no server.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typefall — Falling Words Typing Arcade</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0a0e1a;
+    color: #e8ecf8;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #game { position: relative; width: 100vw; height: 100vh; overflow: hidden;
+    background: radial-gradient(ellipse at 50% -10%, #1b2450 0%, #0a0e1a 60%); }
+  /* HUD */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 30;
+    display: flex; gap: 14px; align-items: center; justify-content: center;
+    flex-wrap: wrap; padding: 10px 12px;
+    background: rgba(5,8,20,.78); border-bottom: 1px solid #2a3560;
+    font-size: 15px; backdrop-filter: blur(4px);
+  }
+  #hud .stat { background:#141b36; border:1px solid #2a3560; border-radius:8px;
+    padding:4px 12px; white-space:nowrap; }
+  #hud .stat b { color:#7df9ff; font-variant-numeric: tabular-nums; }
+  #hud #lives { color:#ff5d7a; font-size:17px; letter-spacing:2px; }
+  #hud #combo.badge-hot { background:#4a1f3d; border-color:#ff5d7a; color:#ffd166; }
+  #shock-stat.ready b { color:#9dff57; }
+  #shock-stat.spent { opacity:.55; }
+  /* Playfield */
+  #playfield { position:absolute; inset:52px 0 86px 0; overflow:hidden; }
+  .word {
+    position:absolute; transform:translateX(-50%);
+    font-size:30px; font-weight:700; letter-spacing:1px;
+    background:rgba(10,16,38,.88); border:2px solid #3d4c8c; border-radius:10px;
+    padding:4px 14px; white-space:nowrap;
+    text-shadow:0 2px 0 #000;
+    transition:border-color .08s;
+  }
+  .word .matched { color:#7df9ff; }
+  .word .rest { color:#f2f4ff; }
+  .word.target { border-color:#7df9ff; box-shadow:0 0 14px rgba(125,249,255,.55); }
+  .word.typo-flash { border-color:#ff3355 !important; background:#4d0f1f !important;
+    animation:wordflash .25s; }
+  @keyframes wordflash { 0%{transform:translateX(-50%) scale(1);} 50%{transform:translateX(calc(-50% - 6px)) scale(1.06);} 100%{transform:translateX(-50%) scale(1);} }
+  .word.dying { animation:pop .28s forwards; pointer-events:none; }
+  @keyframes pop { 0%{transform:translateX(-50%) scale(1);opacity:1;} 100%{transform:translateX(-50%) scale(1.7);opacity:0;} }
+  .particle { position:absolute; width:8px; height:8px; border-radius:50%;
+    pointer-events:none; z-index:25; animation:part .55s ease-out forwards; }
+  @keyframes part { to { transform:translate(var(--dx),var(--dy)) scale(.2); opacity:0; } }
+  #danger-line {
+    position:absolute; left:0; right:0; height:4px;
+    background:linear-gradient(90deg,#ff3355,#ff9f1c,#ff3355);
+    box-shadow:0 0 12px #ff3355;
+  }
+  #danger-label {
+    position:absolute; left:0; right:0; text-align:center;
+    color:#ff8fa0; font-size:12px; letter-spacing:3px; font-weight:700;
+  }
+  #danger-line.hit { animation:dangerhit .4s; }
+  @keyframes dangerhit { 0%{background:#fff;} 100%{} }
+  /* Input display */
+  #inputbar {
+    position:absolute; left:0; right:0; bottom:0; z-index:30;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    padding:12px; background:rgba(5,8,20,.9); border-top:1px solid #2a3560;
+  }
+  #current-input {
+    min-width:min(520px,70vw); text-align:center;
+    font-size:24px; font-weight:700; letter-spacing:3px;
+    background:#050818; border:2px solid #3d4c8c; border-radius:10px;
+    padding:8px 18px; min-height:48px;
+    font-variant-numeric:tabular-nums;
+  }
+  #current-input .cursor { display:inline-block; width:14px; animation:blink 1s infinite; color:#7df9ff; }
+  @keyframes blink { 50%{opacity:0;} }
+  #current-input.shake { animation:shake .25s; border-color:#ff3355; }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+  #input-hint { font-size:12px; color:#8b96c4; }
+  /* Screens */
+  .screen {
+    position:absolute; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; text-align:center; padding:24px;
+    background:rgba(4,6,16,.88);
+  }
+  .screen.hidden { display:none; }
+  .title { font-size:clamp(48px,9vw,96px); font-weight:900; letter-spacing:4px;
+    background:linear-gradient(180deg,#7df9ff,#4a7dff 60%,#ff5d7a);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 0 #000) drop-shadow(0 0 24px rgba(125,249,255,.3)); }
+  .subtitle { color:#aab4dd; font-size:17px; max-width:560px; line-height:1.5; }
+  .big-btn {
+    font-size:22px; font-weight:800; letter-spacing:1px; cursor:pointer;
+    color:#06121a; background:linear-gradient(180deg,#7df9ff,#38c6ff);
+    border:none; border-radius:12px; padding:14px 42px;
+    box-shadow:0 6px 0 #1a6fa0, 0 0 24px rgba(125,249,255,.4);
+  }
+  .big-btn:active { transform:translateY(4px); box-shadow:0 2px 0 #1a6fa0; }
+  .pulse { animation:pulse 1.4s infinite; }
+  @keyframes pulse { 50%{transform:scale(1.04);} }
+  .stats-card { background:#10173a; border:1px solid #2a3560; border-radius:12px;
+    padding:16px 28px; font-size:18px; line-height:1.9; min-width:min(420px,86vw); }
+  .stats-card b { color:#7df9ff; font-variant-numeric:tabular-nums; }
+  #newbest { display:none; font-size:26px; font-weight:900; color:#ffd166;
+    background:#4a2b00; border:2px solid #ffd166; border-radius:10px; padding:6px 22px;
+    animation:pulse 1s infinite; }
+  #newbest.show { display:inline-block; }
+  footer.signoff { margin-top:8px; font-size:12px; color:#66709c; }
+  kbd { background:#222a52; border:1px solid #4a5899; border-bottom-width:3px;
+    border-radius:6px; padding:1px 8px; font-family:inherit; }
+  #level-note { font-size:13px; color:#ffd166; min-height:18px; font-weight:700; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="hud">
+    <span class="stat">Score <b id="score">0</b></span>
+    <span class="stat">WPM <b id="wpm">0.0</b></span>
+    <span class="stat">Acc <b id="acc">100%</b></span>
+    <span class="stat" id="lives">♥♥♥</span>
+    <span class="stat">Best <b id="best">0.0</b></span>
+    <span class="stat" id="combo">Combo <b>x0</b></span>
+    <span class="stat ready" id="shock-stat">Shock <b>SPACE ✓</b></span>
+  </div>
+  <div id="playfield">
+    <div id="danger-line"></div>
+    <div id="danger-label">⚠ DANGER LINE ⚠</div>
+  </div>
+  <div id="inputbar">
+    <div id="current-input"><span style="opacity:.45">type here…</span><span class="cursor">▌</span></div>
+    <div id="input-hint">type words to blast them · <kbd>⌫</kbd> fix · <kbd>Space</kbd> shockwave (1/run)</div>
+  </div>
+
+  <div id="start-screen" class="screen">
+    <div class="title">TYPEFALL</div>
+    <div class="subtitle">Words rain from the sky. Your keyboard is the only weapon.<br>
+      Type a falling word to vaporize it before it crosses the <b style="color:#ff8fa0">danger line</b>.<br>
+      You have <b>3 lives</b>. Speed ramps up fast — survive.</div>
+    <div class="stats-card">Best WPM: <b id="start-best">—</b><br>
+      <span style="font-size:14px;color:#8b96c4">Combo kills earn bonus points · <kbd>Space</kbd> = shockwave clears screen once per run</span></div>
+    <button class="big-btn pulse" id="start-btn">▶ START GAME</button>
+    <div class="subtitle" style="font-size:15px">press <kbd>Enter</kbd> or click to start</div>
+    <footer class="signoff">Built 2026-10-30 12:00 UTC · by Muse Spark 1.3 Contributor (OpenCode)</footer>
+  </div>
+
+  <div id="gameover-screen" class="screen hidden">
+    <div class="title" style="font-size:clamp(40px,7vw,72px)">GAME OVER</div>
+    <div id="newbest">★ NEW BEST! ★</div>
+    <div class="stats-card">
+      Final WPM: <b id="final-wpm">0.0</b><br>
+      Accuracy: <b id="final-acc">100%</b><br>
+      Words destroyed: <b id="final-kills">0</b> · Score: <b id="final-score">0</b><br>
+      Best WPM: <b id="final-best">0.0</b>
+    </div>
+    <button class="big-btn pulse" id="restart-btn">↻ PLAY AGAIN</button>
+    <div class="subtitle" style="font-size:15px">press <kbd>Enter</kbd> or click to restart (no reload needed)</div>
+    <footer class="signoff">Built 2026-10-30 12:00 UTC · by Muse Spark 1.3 Contributor (OpenCode)</footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+const WORDS = [
+  "apple","arrow","anchor","acorn","beach","bridge","breeze","birch",
+  "candle","castle","canyon","clover","cloud","crystal","dancer","dragon",
+  "dream","desert","dune","eagle","ember","engine","elm","falcon",
+  "feather","fern","flame","forest","frost","galaxy","garden","glacier",
+  "goblin","grove","hammer","harbor","hawk","helium","honey","horizon",
+  "igloo","insect","iris","island","ivory","jacket","jade","jewel",
+  "jigsaw","jungle","kayak","kettle","kitten","kelp","koala","ladder",
+  "lagoon","lantern","lemon","light","lily","magic","marble","meadow",
+  "meteor","mirror","moss","music","nebula","nectar","needle","noodle",
+  "nova","oak","ocean","onyx","orbit","orange","owl","paper",
+  "parrot","pencil","piano","pine","prairie","quartz","queen","quiver",
+  "rabbit","rainbow","reed","riddle","river","rocket","saddle","sage",
+  "shadow","silver","stone","storm","summit","sunset","thunder","tiger",
+  "timber","tower","tulip","umber","umbrella","unicorn","vapor","velvet",
+  "violet","volcano","walnut","whale","willow","window","yarn","yellow",
+  "zebra","zipper"
+];
+
+// ---- tuning ----
+const MAX_WORDS = 6;
+const BASE_SPEED = 40;          // px/s
+const SPEED_STEP = 15;          // +px/s per escalation
+const SPEED_CAP = 200;
+const ESCALATE_EVERY = 15;      // seconds
+const BASE_SPAWN = 2000;        // ms
+const SPAWN_STEP = 150, SPAWN_MIN = 700;
+const START_LIVES = 3;
+const BEST_KEY = "typefall.bestWPM";
+
+// ---- dom ----
+const $ = id => document.getElementById(id);
+const playfield=$("playfield"), dangerLine=$("danger-line"), dangerLabel=$("danger-label"),
+  elScore=$("score"), elWpm=$("wpm"), elAcc=$("acc"), elLives=$("lives"), elBest=$("best"),
+  elCombo=$("combo"), elShock=$("shock-stat"), elInput=$("current-input"),
+  startScreen=$("start-screen"), overScreen=$("gameover-screen"), levelNote=$("level-note");
+
+// ---- state ----
+let state="start"; // start | play | over
+let words=[], wordSeq=0;
+let input="", target=null, targetClean=true;
+let score=0, kills=0, lives=START_LIVES, combo=0;
+let correctChars=0, correctKeys=0, totalKeys=0;
+let startTime=0, elapsed=0, lastTs=0, spawnAcc=0, rafId=null;
+let shockAvailable=true;
+let bestWPM=0;
+let audioCtx=null;
+
+try { bestWPM = parseFloat(localStorage.getItem(BEST_KEY)) || 0; } catch(e){ bestWPM=0; }
+function fmtWpm(w){ return (isFinite(w)?w:0).toFixed(1); }
+function refreshBest(){ elBest.textContent=fmtWpm(bestWPM); $("start-best").textContent = bestWPM>0?fmtWpm(bestWPM):"— (no runs yet)"; }
+refreshBest();
+
+function dangerY(){ return playfield.clientHeight - 70; }
+function layoutDanger(){ const y=dangerY(); dangerLine.style.top=y+"px"; dangerLabel.style.top=(y+8)+"px"; }
+layoutDanger();
+window.addEventListener("resize", ()=>{ layoutDanger(); });
+
+// ---- audio (synthesized, optional) ----
+function blip(freq, dur, type, vol){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||"square"; o.frequency.value=freq;
+    g.gain.value=vol||0.06;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+(dur||0.08));
+    o.stop(audioCtx.currentTime+(dur||0.08));
+  }catch(e){}
+}
+const sndType  = ()=>blip(440+combo*40, .06, "square", .05);
+const sndKill  = ()=>{ blip(520+combo*60,.12,"sawtooth",.07); setTimeout(()=>blip(780+combo*60,.12,"sine",.07),60); };
+const sndTypo  = ()=>blip(140,.15,"sawtooth",.09);
+const sndHurt  = ()=>blip(90,.35,"sawtooth",.12);
+const sndShock = ()=>blip(200,.5,"sawtooth",.12);
+
+// ---- difficulty ----
+function level(){ return Math.floor(elapsed/ESCALATE_EVERY); }
+function fallSpeed(){ return Math.min(BASE_SPEED + SPEED_STEP*level(), SPEED_CAP); }
+function spawnInterval(){ return Math.max(BASE_SPAWN - SPAWN_STEP*level(), SPAWN_MIN); }
+
+// ---- words ----
+function pickWord(){
+  for(let t=0;t<20;t++){
+    const w=WORDS[(Math.random()*WORDS.length)|0];
+    if(!words.some(o=>o.text===w)) return w;
+  }
+  return WORDS[(Math.random()*WORDS.length)|0];
+}
+function spawnWord(){
+  if(words.length>=MAX_WORDS) return;
+  const text=pickWord();
+  const el=document.createElement("div");
+  el.className="word";
+  const x=8+Math.random()*84; // percent, keeps full word on screen
+  const w={id:++wordSeq, text, x, y:-46, el};
+  el.style.left=x+"%"; el.style.top=w.y+"px";
+  renderWord(w);
+  playfield.appendChild(el);
+  words.push(w);
+}
+function renderWord(w){
+  const n = (target===w)?input.length:countPrefix(w);
+  function countPrefix(w){
+    // non-target words show no highlight (deterministic target only)
+    return 0;
+  }
+  const m=w.text.slice(0,n), r=w.text.slice(n);
+  w.el.innerHTML="";
+  const s1=document.createElement("span"); s1.className="matched"; s1.textContent=m;
+  const s2=document.createElement("span"); s2.className="rest"; s2.textContent=r;
+  w.el.appendChild(s1); w.el.appendChild(s2);
+  w.el.classList.toggle("target", target===w);
+  w.el.style.top=w.y+"px";
+}
+function renderAllWords(){ words.forEach(renderWord); }
+
+function burst(xPx, yPx, color){
+  for(let i=0;i<14;i++){
+    const p=document.createElement("div");
+    p.className="particle";
+    p.style.left=xPx+"px"; p.style.top=yPx+"px";
+    p.style.background=color||(["#7df9ff","#ffd166","#ff5d7a","#9dff57"][i%4]);
+    p.style.setProperty("--dx", ((Math.random()-0.5)*160)+"px");
+    p.style.setProperty("--dy", ((Math.random()-0.7)*140)+"px");
+    playfield.appendChild(p);
+    setTimeout(()=>p.remove(), 600);
+  }
+}
+
+function destroyWord(w, byShock){
+  const idx=words.indexOf(w); if(idx<0) return;
+  words.splice(idx,1);
+  const r=w.el.getBoundingClientRect(), pr=playfield.getBoundingClientRect();
+  const cx=r.left-pr.left+r.width/2, cy=r.top-pr.top+r.height/2;
+  if(byShock){
+    burst(cx,cy,"#9dff57");
+    w.el.remove();
+  } else {
+    kills++;
+    if(targetClean){ combo++; } else { combo=0; }
+    const gained = 1 + Math.floor(combo/3); // combo bonus
+    score += gained;
+    burst(cx,cy);
+    sndKill();
+    w.el.classList.add("dying");
+    setTimeout(()=>w.el.remove(), 280);
+  }
+  if(target===w){ target=null; input=""; targetClean=true; }
+  renderHUD(); renderInput();
+}
+
+// ---- HUD / input ----
+function liveWPM(){
+  const mins=elapsed/60;
+  if(mins<=0.0005) return 0;
+  return (correctChars/5)/mins;
+}
+function accuracy(){ return totalKeys===0?100:(correctKeys/totalKeys*100); }
+function renderHUD(){
+  elScore.textContent=score;
+  elWpm.textContent=fmtWpm(liveWPM());
+  elAcc.textContent=accuracy().toFixed(1)+"%";
+  elLives.textContent="♥".repeat(lives)+"♡".repeat(Math.max(0,START_LIVES-lives));
+  elCombo.innerHTML="Combo <b>x"+combo+"</b>";
+  elCombo.classList.toggle("badge-hot", combo>=2);
+  elShock.innerHTML = shockAvailable ? "Shock <b>SPACE ✓</b>" : "Shock <b>used</b>";
+  elShock.classList.toggle("ready", shockAvailable);
+  elShock.classList.toggle("spent", !shockAvailable);
+}
+function renderInput(){
+  elInput.innerHTML="";
+  if(!input){ const s=document.createElement("span"); s.style.opacity=".45"; s.textContent="type here…"; elInput.appendChild(s); }
+  else { const s=document.createElement("span"); s.style.color="#ffd166"; s.textContent=input; elInput.appendChild(s); }
+  const c=document.createElement("span"); c.className="cursor"; c.textContent="▌"; elInput.appendChild(c);
+}
+function flashTypo(wordEl){
+  const t = wordEl || elInput;
+  t.classList.remove("typo-flash","shake"); void t.offsetWidth;
+  t.classList.add(wordEl?"typo-flash":"shake");
+  setTimeout(()=>t.classList.remove("typo-flash","shake"), 280);
+}
+
+// ---- game flow ----
+function startGame(){
+  words.forEach(w=>w.el.remove()); words=[];
+  input=""; target=null; targetClean=true;
+  score=0; kills=0; lives=START_LIVES; combo=0;
+  correctChars=0; correctKeys=0; totalKeys=0;
+  elapsed=0; spawnAcc=0; shockAvailable=true;
+  startTime=performance.now(); lastTs=startTime;
+  state="play";
+  startScreen.classList.add("hidden"); overScreen.classList.add("hidden");
+  renderHUD(); renderInput(); layoutDanger();
+  spawnWord();
+  cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(loop);
+}
+function endGame(){
+  state="over";
+  cancelAnimationFrame(rafId);
+  words.forEach(w=>w.el.remove()); // keep field clean behind panel (words array cleared)
+  words=[]; target=null; input="";
+  const finalWpm=liveWPM(), acc=accuracy();
+  const isBest = finalWpm>bestWPM && finalWpm>0;
+  if(isBest){ bestWPM=finalWpm; try{localStorage.setItem(BEST_KEY,String(bestWPM));}catch(e){} }
+  $("final-wpm").textContent=fmtWpm(finalWpm);
+  $("final-acc").textContent=acc.toFixed(1)+"%";
+  $("final-kills").textContent=kills;
+  $("final-score").textContent=score;
+  $("final-best").textContent=fmtWpm(bestWPM);
+  $("newbest").classList.toggle("show", isBest);
+  refreshBest(); renderHUD();
+  overScreen.classList.remove("hidden");
+}
+function loseLife(w){
+  lives--;
+  sndHurt();
+  dangerLine.classList.remove("hit"); void dangerLine.offsetWidth; dangerLine.classList.add("hit");
+  if(target===w){ target=null; input=""; targetClean=true; renderInput(); }
+  w.el.remove();
+  const i=words.indexOf(w); if(i>=0) words.splice(i,1);
+  renderHUD();
+  if(lives<=0) endGame();
+}
+
+function loop(ts){
+  if(state!=="play") return;
+  const dt=Math.min((ts-lastTs)/1000, 0.1); lastTs=ts;
+  elapsed=(ts-startTime)/1000;
+  const spd=fallSpeed();
+  spawnAcc+=dt*1000;
+  if(spawnAcc>=spawnInterval()){ spawnAcc=0; spawnWord(); }
+  const dy=dangerY();
+  // move (iterate copy since loseLife mutates)
+  for(const w of [...words]){
+    w.y+=spd*dt;
+    w.el.style.top=w.y+"px";
+    if(w.y+34>=dy) loseLife(w);
+    if(state!=="play") return;
+  }
+  renderHUD(); // live WPM / acc tick
+  rafId=requestAnimationFrame(loop);
+}
+
+// ---- typing ----
+function handleChar(ch){
+  if(state!=="play") return;
+  totalKeys++;
+  if(!target){
+    const cands=words.filter(w=>w.text.startsWith(ch));
+    if(cands.length===0){
+      // typo: no word starts with it
+      combo=0; sndTypo(); flashTypo(null); renderHUD(); renderInput(); return;
+    }
+    cands.sort((a,b)=>b.y-a.y); // closest to danger line
+    target=cands[0]; input=ch; targetClean=true;
+    correctKeys++; correctChars++;
+    sndType(); renderAllWords(); renderHUD(); renderInput();
+    if(input===target.text) destroyWord(target,false);
+  } else {
+    // target may have been removed already
+    if(!words.includes(target)){ target=null; input=""; targetClean=true; handleChar(ch); return; }
+    const expected=target.text[input.length];
+    if(ch===expected){
+      input+=ch; correctKeys++; correctChars++;
+      sndType(); renderAllWords(); renderHUD(); renderInput();
+      if(input===target.text) destroyWord(target,false);
+    } else {
+      targetClean=false; combo=0;
+      sndTypo(); flashTypo(target.el); renderHUD();
+    }
+  }
+}
+function handleBackspace(){
+  if(state!=="play"||!input) return;
+  input=input.slice(0,-1);
+  if(!input){ target=null; targetClean=true; }
+  renderAllWords(); renderInput();
+}
+function fireShockwave(){
+  if(state!=="play"||!shockAvailable) return;
+  shockAvailable=false;
+  sndShock();
+  playfield.style.transition=""; playfield.style.background="rgba(157,255,87,.25)";
+  setTimeout(()=>playfield.style.background="",350);
+  [...words].forEach(w=>destroyWord(w,true));
+  target=null; input=""; targetClean=true;
+  renderHUD(); renderInput();
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter"){
+    if(state==="start"||state==="over"){ e.preventDefault(); startGame(); }
+    return;
+  }
+  if(state!=="play") return;
+  if(e.key==="Backspace"){ e.preventDefault(); handleBackspace(); return; }
+  if(e.key===" "){ e.preventDefault(); fireShockwave(); return; }
+  if(e.key.length===1 && /[a-zA-Z]/.test(e.key)){ handleChar(e.key.toLowerCase()); }
+  // ignore all other keys (arrows, shift, etc.) — not counted as typos
+});
+
+$("start-btn").addEventListener("click", startGame);
+$("restart-btn").addEventListener("click", startGame);
+startScreen.addEventListener("click", e=>{ if(e.target!==$("start-btn") && state==="start") startGame(); });
+
+renderHUD(); renderInput();
+</script>
+</body>
+</html>

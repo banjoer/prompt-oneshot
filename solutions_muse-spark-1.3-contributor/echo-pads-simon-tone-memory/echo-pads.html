@@ -1,0 +1,184 @@
+<!-- Built 2026-10-30 00:10 UTC · Muse Spark 1.3 Contributor | vanilla, no libraries -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echo Pads — Simon-Style Tone Memory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#11131a;color:#e8eaf0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px}
+h1{font-size:1.6rem;letter-spacing:.5px;margin-bottom:4px}
+.sub{color:#9aa0b4;font-size:.9rem;margin-bottom:16px}
+.hud{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.pill{background:#1d2130;border:1px solid #333a52;border-radius:999px;padding:6px 14px;font-size:.95rem}
+.pill b{color:#ffd75e}
+#status{min-height:1.6em;font-size:1.15rem;font-weight:600;margin:6px 0 2px}
+#cue{min-height:1.4em;color:#8ef0a8;font-weight:600;font-size:1rem;margin-bottom:10px}
+#cue.bad{color:#ff7b7b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 16px}
+.pad{width:150px;height:150px;border:none;border-radius:18px;cursor:pointer;opacity:.55;font-size:1rem;font-weight:700;color:rgba(255,255,255,.85);transition:transform .08s,opacity .08s,box-shadow .08s,filter .08s;outline:none}
+.pad small{display:block;font-weight:400;opacity:.7;font-size:.75rem}
+.pad[data-pad="0"]{background:#1faa4b}
+.pad[data-pad="1"]{background:#d63a3a}
+.pad[data-pad="2"]{background:#d9b62a}
+.pad[data-pad="3"]{background:#2f6fe0}
+.pad.lit{opacity:1;transform:scale(1.05);filter:brightness(1.35)}
+.pad[data-pad="0"].lit{box-shadow:0 0 28px 6px rgba(46,255,120,.8)}
+.pad[data-pad="1"].lit{box-shadow:0 0 28px 6px rgba(255,80,80,.85)}
+.pad[data-pad="2"].lit{box-shadow:0 0 28px 6px rgba(255,230,80,.85)}
+.pad[data-pad="3"].lit{box-shadow:0 0 28px 6px rgba(90,160,255,.9)}
+.pad:active{transform:scale(.98)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;margin-bottom:8px}
+button.action{background:#ffd75e;border:none;border-radius:10px;padding:10px 22px;font-size:1rem;font-weight:700;cursor:pointer;color:#222}
+button.action:hover{filter:brightness(1.08)}
+button.action:disabled{opacity:.45;cursor:default}
+#againBtn{background:#ff7b7b;display:none}
+.modes{background:#1d2130;border:1px solid #333a52;border-radius:10px;padding:8px 14px;display:flex;gap:12px;align-items:center;font-size:.95rem}
+.hint{color:#9aa0b4;font-size:.8rem;margin-top:6px;max-width:420px;text-align:center}
+#over{display:none;background:#1d2130;border:1px solid #ff7b7b;border-radius:12px;padding:12px 20px;margin-top:10px;text-align:center}
+footer{margin-top:auto;padding-top:24px;color:#9aa0b4;font-size:.85rem}
+</style>
+</head>
+<body>
+<h1>🔊 Echo Pads</h1>
+<div class="sub">Simon-style tone memory — echo the growing sequence</div>
+<div class="hud">
+  <div class="pill">Round <b id="round">0</b></div>
+  <div class="pill">Best <b id="best">0</b> <span id="newbest" style="display:none;color:#8ef0a8">· New best!</span></div>
+</div>
+<div id="status" role="status">Press Start</div>
+<div id="cue"></div>
+<div class="grid" id="grid">
+  <button class="pad" data-pad="0" aria-label="green pad">●<small>1 · E4</small></button>
+  <button class="pad" data-pad="1" aria-label="red pad">●<small>2 · C4</small></button>
+  <button class="pad" data-pad="2" aria-label="yellow pad">●<small>3 · A3</small></button>
+  <button class="pad" data-pad="3" aria-label="blue pad">●<small>4 · E3</small></button>
+</div>
+<div class="controls">
+  <button class="action" id="startBtn">Start</button>
+  <button class="action" id="againBtn">Play Again</button>
+  <div class="modes" role="radiogroup" aria-label="difficulty">
+    <label><input type="radio" name="mode" value="normal" checked> Normal</label>
+    <label><input type="radio" name="mode" value="strict"> Strict</label>
+  </div>
+</div>
+<div class="hint">Changing Normal / Strict mid-game restarts the game in the new mode. Keys 1–4 also play pads.</div>
+<div id="over"></div>
+<footer>Built 2026-10-30 00:10 UTC · Muse Spark 1.3 Contributor</footer>
+<script>
+(function(){
+"use strict";
+var FREQS=[329.63,261.63,220.00,164.81];
+var STEP=420,GAP=180,PAUSE=700;
+var pads=Array.prototype.slice.call(document.querySelectorAll('.pad'));
+var statusEl=document.getElementById('status'),cueEl=document.getElementById('cue'),
+    roundEl=document.getElementById('round'),bestEl=document.getElementById('best'),
+    newBestEl=document.getElementById('newbest'),startBtn=document.getElementById('startBtn'),
+    againBtn=document.getElementById('againBtn'),overEl=document.getElementById('over');
+var seq=[],round=0,pos=0,accept=false,started=false,mode='normal';
+var best=parseInt(localStorage.getItem('echoPadsBest')||'0',10)||0;
+bestEl.textContent=best;
+var ctx=null;
+function audio(){if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();}if(ctx.state==='suspended'){ctx.resume();}return ctx;}
+function tone(freq,dur,type,vol,when){
+  var c=audio(),t=c.currentTime+(when||0);
+  var o=c.createOscillator(),g=c.createGain();
+  o.type=type||'sine';o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol||0.35,t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(t);o.stop(t+dur+0.05);
+}
+function light(i,on){pads[i].classList.toggle('lit',!!on);}
+function playStep(i,dur){light(i,true);tone(FREQS[i],dur/1000,'sine',0.35);setTimeout(function(){light(i,false);},dur);}
+function stepDur(){return Math.max(250,STEP-20*Math.floor(Math.max(0,round-1)/4));}
+function setStatus(s){statusEl.textContent=s;}
+function setCue(s,bad){cueEl.textContent=s||'';cueEl.classList.toggle('bad',!!bad);}
+function checkBest(){
+  if(round>best){best=round;localStorage.setItem('echoPadsBest',String(best));bestEl.textContent=best;
+    newBestEl.style.display='inline';setTimeout(function(){newBestEl.style.display='none';},2500);}
+}
+function randPad(){return Math.floor(Math.random()*4);}
+function startGame(){
+  audio();
+  mode=document.querySelector('input[name=mode]:checked').value;
+  seq=[randPad()];round=1;pos=0;started=true;
+  roundEl.textContent=round;overEl.style.display='none';againBtn.style.display='none';
+  startBtn.textContent='Restart';setCue('');checkBest();playSeq();
+}
+function playSeq(){
+  accept=false;setStatus('Watch…');setCue('');
+  var d=stepDur(),i=0;
+  (function next(){
+    if(i>=seq.length){setStatus('Your turn');pos=0;accept=true;return;}
+    playStep(seq[i],d);i++;setTimeout(next,d+GAP);
+  })();
+}
+function roundDone(){
+  accept=false;setStatus('Your turn');setCue('Nice! 🎉');
+  if(round%5===0){for(var k=0;k<4;k++){tone(FREQS[k],0.18,'sine',0.3,k*0.13);}}
+  setTimeout(function(){seq.push(randPad());round++;roundEl.textContent=round;setCue('');checkBest();playSeq();},PAUSE);
+}
+function mistake(){
+  accept=false;tone(110,0.4,'sawtooth',0.4);
+  if(mode==='normal'){
+    setCue('Wrong — watch again',true);
+    setTimeout(playSeq,1200);
+  }else{
+    tone(220,0.25,'square',0.3,0.4);tone(146.8,0.4,'square',0.3,0.65);
+    started=false;setStatus('Game over');
+    var done=round-1;
+    overEl.innerHTML='Strict mode — run over.<br>Rounds completed: <b>'+done+'</b> · Best: <b>'+best+'</b>';
+    overEl.style.display='block';againBtn.style.display='inline-block';startBtn.textContent='Start';
+  }
+}
+// press with sustain + minimum 150ms
+var live={};
+function pressDown(i){
+  if(!accept||!started)return null;
+  light(i,true);
+  var c=audio(),o=c.createOscillator(),g=c.createGain();
+  o.type='sine';o.frequency.value=FREQS[i];
+  g.gain.setValueAtTime(0.0001,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.35,c.currentTime+0.02);
+  o.connect(g);g.connect(c.destination);o.start();
+  var h={o:o,g:g,t0:performance.now()};
+  live[i]=h;return h;
+}
+function pressUp(i){
+  var h=live[i];if(!h)return;delete live[i];
+  var held=performance.now()-h.t0,extra=Math.max(0,150-held);
+  var t=h.o.context.currentTime+extra/1000;
+  h.g.gain.cancelScheduledValues(t);h.g.gain.setValueAtTime(h.g.gain.value,t);
+  h.g.gain.exponentialRampToValueAtTime(0.0001,t+0.08);
+  setTimeout(function(){try{h.o.stop();}catch(e){}},extra+150);
+  light(i,false);
+}
+function handlePress(i){
+  if(!accept||!started)return;
+  if(i===seq[pos]){pos++;if(pos>=seq.length){roundDone();}}
+  else{mistake();}
+}
+pads.forEach(function(p){
+  var i=+p.dataset.pad;
+  p.addEventListener('pointerdown',function(e){e.preventDefault();pressDown(i);});
+  p.addEventListener('pointerup',function(){pressUp(i);handlePress(i);});
+  p.addEventListener('pointerleave',function(){if(live[i]){pressUp(i);handlePress(i);}});
+});
+document.querySelectorAll('input[name=mode]').forEach(function(r){
+  r.addEventListener('change',function(){
+    if(started){startGame();}else{mode=r.value;}
+  });
+});
+document.addEventListener('keydown',function(e){
+  var m={'1':0,'2':1,'3':2,'4':3};
+  if(e.key in m){var i=m[e.key];var h=pressDown(i);if(h){setTimeout(function(){pressUp(i);handlePress(i);},200);}}
+});
+startBtn.addEventListener('click',startGame);
+againBtn.addEventListener('click',startGame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,562 @@
+<!--
+  MergeGrid 2048 — single-file 2048 clone
+  Produced: 2026-10-30 09:00 UTC
+  Author/Model: Muse Spark 1.3 Contributor (OpenCode agent)
+  Third-party libraries: none (vanilla HTML/CSS/JS only)
+  Run: open mergegrid-2048.html in any modern browser (file:// double-click). No build, no server.
+  Architecture: pure board/move model (computeMove) + DOM renderer (tile elements + CSS transform transitions).
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MergeGrid 2048</title>
+<style>
+  :root{
+    --board-size: min(92vw, 440px);
+    --gap: 10px;
+    --pad: 10px;
+    --bg: #faf8ef;
+    --board-bg: #bbada0;
+    --cell-bg: rgba(238,228,218,.35);
+    --text: #776e65;
+    --accent: #8f7a66;
+    --btn: #8f7a66;
+    --btn-hover:#9f8b77;
+    --radius: 8px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;padding:16px 12px 28px;
+    user-select:none;-webkit-user-select:none;
+  }
+  .wrap{width:var(--board-size);max-width:440px}
+  header.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  h1{font-size:44px;margin:0;line-height:1;color:#776e65;font-weight:800}
+  h1 small{display:block;font-size:13px;font-weight:600;color:#a29382}
+  .scores{display:flex;gap:8px}
+  .score-box{background:#bbada0;color:#fff;border-radius:6px;padding:6px 12px;min-width:76px;text-align:center}
+  .score-box .label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#eee4da}
+  .score-box .val{font-size:20px;font-weight:800;line-height:1.1}
+  .sub{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-size:14px;color:#8a7f72}
+  .controls{display:flex;gap:8px;margin:8px 0 12px}
+  button{
+    flex:1;border:0;border-radius:6px;background:var(--btn);color:#f9f6f2;
+    padding:10px 8px;font-size:15px;font-weight:700;cursor:pointer;
+    transition:background .15s, opacity .15s, transform .05s;
+  }
+  button:hover:not(:disabled){background:var(--btn-hover)}
+  button:active:not(:disabled){transform:scale(.97)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.secondary{background:#a29382}
+  #soundBtn{flex:0 0 44px}
+  /* Board */
+  .board{
+    position:relative;width:var(--board-size);height:var(--board-size);
+    max-width:440px;max-height:440px;
+    background:var(--board-bg);border-radius:10px;
+    touch-action:none;overflow:hidden;
+  }
+  .grid{
+    position:absolute;inset:var(--pad);
+    display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);
+    gap:var(--gap);
+  }
+  .grid-cell{background:var(--cell-bg);border-radius:var(--radius)}
+  .tile-layer{position:absolute;inset:var(--pad);pointer-events:none}
+  .tile{
+    position:absolute;left:0;top:0;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:var(--radius);
+    font-weight:800;
+    transition:transform 150ms ease-in-out;
+    will-change:transform;
+    z-index:2;
+  }
+  .tile-inner{
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    border-radius:var(--radius);
+    transition:transform .18s ease, background .12s;
+  }
+  .tile.merging{ z-index:1; }
+  .tile-inner.pop{animation:mergePop 220ms ease}
+  .tile-inner.spawn{animation:spawnPop 200ms ease}
+  @keyframes mergePop{0%{transform:scale(0.9)}45%{transform:scale(1.22)}100%{transform:scale(1)}}
+  @keyframes spawnPop{0%{transform:scale(0)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+  /* tile colors */
+  .v2{background:#eee4da;color:#776e65}.v4{background:#ede0c8;color:#776e65}
+  .v8{background:#f2b179;color:#f9f6f2}.v16{background:#f59563;color:#f9f6f2}
+  .v32{background:#f67c5f;color:#f9f6f2}.v64{background:#f65e3b;color:#f9f6f2}
+  .v128{background:#edcf72;color:#f9f6f2}.v256{background:#edcc61;color:#f9f6f2}
+  .v512{background:#edc850;color:#f9f6f2}.v1024{background:#edc53f;color:#f9f6f2}
+  .v2048{background:#edc22e;color:#f9f6f2;box-shadow:0 0 24px rgba(237,194,46,.8)}
+  .vsuper{background:#3c3a32;color:#f9f6f2}
+  /* overlays */
+  .overlay{
+    position:absolute;inset:0;z-index:10;
+    background:rgba(238,228,218,.82);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    text-align:center;border-radius:10px;
+    opacity:1;transition:opacity .2s;
+  }
+  .overlay.hidden{opacity:0;pointer-events:none}
+  .overlay h2{margin:0;font-size:42px;color:#776e65}
+  .overlay p{margin:0;font-size:16px}
+  .overlay .row{display:flex;gap:8px;width:80%;max-width:300px}
+  .hint{font-size:12.5px;color:#a29382;margin-top:10px;text-align:center;line-height:1.6}
+  footer{margin-top:14px;font-size:11.5px;color:#b3a898;text-align:center}
+  @media (max-width:380px){ h1{font-size:34px} .score-box{min-width:64px;padding:5px 8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>2048<small>MergeGrid edition</small></h1>
+    <div class="scores">
+      <div class="score-box"><div class="label">Score</div><div class="val" id="score">0</div></div>
+      <div class="score-box"><div class="label">Best</div><div class="val" id="best">0</div></div>
+    </div>
+  </header>
+  <div class="sub"><span id="moves">Moves: 0</span><span>Join tiles → reach 2048</span></div>
+  <div class="controls">
+    <button id="undoBtn" title="Undo (U)" disabled>↩ Undo</button>
+    <button id="newBtn" class="secondary" title="New game (N)">New game</button>
+    <button id="soundBtn" class="secondary" title="Toggle sound">🔊</button>
+  </div>
+  <div class="board" id="board" aria-label="2048 board">
+    <div class="grid" id="gridBg"></div>
+    <div class="tile-layer" id="tileLayer"></div>
+    <div class="overlay hidden" id="winOverlay">
+      <h2>You win! 🎉</h2>
+      <p id="winScore">Score: 0</p>
+      <div class="row">
+        <button id="keepBtn">Keep playing</button>
+        <button id="winNewBtn" class="secondary">New game</button>
+      </div>
+    </div>
+    <div class="overlay hidden" id="overOverlay">
+      <h2>Game over</h2>
+      <p id="overScore">Score: 0</p>
+      <div class="row">
+        <button id="retryBtn">New game</button>
+        <button id="rescueBtn" class="secondary">↩ Undo</button>
+      </div>
+    </div>
+  </div>
+  <div class="hint">
+    Arrows / WASD to move · <b>U</b> undo · <b>N</b> new game<br>
+    Swipe (touch) or click-drag also works
+  </div>
+  <footer id="signoff">Built 2026-10-30 09:00 UTC · Muse Spark 1.3 Contributor</footer>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   MODEL (pure, no DOM): values grid + move computation.
+   A move returns per-tile origin→destination + merges + score.
+   Example: row [2,2,4,0] move left → [4,4,0,0], score +4.
+   ============================================================ */
+const N = 4;
+const GLIDE_MS = 150;
+const BEST_KEY = "mergegrid.best";
+const STATE_KEY = "mergegrid.state";
+
+let tiles = new Map();      // id -> {id,value,r,c}
+let nextId = 1;
+let score = 0, best = 0, moves = 0;
+let history = [];           // stack of {values, score, moves}
+let animating = false, queuedDir = null;
+let pendingTimers = [];
+let keepPlaying = false, wonShown = false;
+let soundOn = true;
+let audioCtx = null;
+
+const $ = id => document.getElementById(id);
+const boardEl = $("board"), tileLayer = $("tileLayer");
+const scoreEl = $("score"), bestEl = $("best"), movesEl = $("moves");
+const undoBtn = $("undoBtn");
+
+/* ---------- pure helpers ---------- */
+function valuesGrid(){
+  const g = Array.from({length:N},()=>Array(N).fill(0));
+  for(const t of tiles.values()) g[t.r][t.c] = t.value;
+  return g;
+}
+function gridToTiles(values){
+  tiles.clear(); tileLayer.innerHTML="";
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(values[r][c]>0){
+      const t={id:nextId++,value:values[r][c],r,c};
+      tiles.set(t.id,t);
+      createTileEl(t,false);
+    }
+  }
+  layout();
+}
+// Pure move model: input values grid -> {actions, merged, gained, moved}
+// action: {fromR,fromC,toR,toC,value,mergeWith:boolean(disappears into merge)}
+function computeMove(values, dir){
+  // dir: 'left'|'right'|'up'|'down'
+  const actions=[]; const merged=[]; let gained=0; let moved=false;
+  const at=(r,c)=>values[r][c];
+  function processLine(cells){ // cells: [{r,c}] in traversal order (from edge of motion)
+    const line = cells.filter(({r,c})=>at(r,c)>0).map(({r,c})=>({r,c,v:at(r,c)}));
+    let target=0;
+    let lastValue=null, lastTargetIdx=-1, lastMerged=false;
+    for(let i=0;i<line.length;i++){
+      const {r,c,v}=line[i];
+      const dest=cells[target];
+      if(lastValue===v && !lastMerged){
+        // merge into previous target
+        actions.push({fromR:r,fromC:c,toR:cells[lastTargetIdx].r,toC:cells[lastTargetIdx].c,value:v,disappear:true});
+        merged.push({r:cells[lastTargetIdx].r,c:cells[lastTargetIdx].c,value:v*2});
+        gained+=v*2;
+        // the earlier tile also "merges" (will be replaced)
+        moved=true;
+        lastMerged=true; lastValue=null;
+        // NOTE: no target++ here — the merged pair occupies one slot;
+        // target already points at the next free slot.
+      } else {
+        actions.push({fromR:r,fromC:c,toR:dest.r,toC:dest.c,value:v,disappear:false});
+        if(r!==dest.r||c!==dest.c) moved=true;
+        lastValue=v; lastTargetIdx=target; lastMerged=false;
+        target++;
+      }
+    }
+  }
+  if(dir==="left") for(let r=0;r<N;r++) processLine([0,1,2,3].map(c=>({r,c})));
+  if(dir==="right") for(let r=0;r<N;r++) processLine([3,2,1,0].map(c=>({r,c})));
+  if(dir==="up") for(let c=0;c<N;c++) processLine([0,1,2,3].map(r=>({r,c})));
+  if(dir==="down") for(let c=0;c<N;c++) processLine([3,2,1,0].map(r=>({r,c})));
+  // A merge always counts as moved even if positions coincide
+  if(merged.length>0) moved=true;
+  return {actions,merged,gained,moved};
+}
+
+/* ---------- DOM / renderer ---------- */
+function cellMetrics(){
+  const pad=10, gap=10;
+  const size=boardEl.clientWidth;
+  const cell=(size-pad*2-gap*(N-1))/N;
+  return {pad,gap,cell};
+}
+function tileClass(v){
+  if(v<=2048) return "v"+v;
+  return "vsuper";
+}
+function fontFor(v,cell){
+  const len=String(v).length;
+  let s=cell*0.42;
+  if(len>=4) s=cell*0.34;
+  if(len>=5) s=cell*0.27;
+  if(len>=6) s=cell*0.22;
+  return Math.round(s)+"px";
+}
+function createTileEl(t, spawnAnim){
+  const m=cellMetrics();
+  const el=document.createElement("div");
+  el.className="tile"; el.dataset.id=t.id;
+  el.style.width=m.cell+"px"; el.style.height=m.cell+"px";
+  const inner=document.createElement("div");
+  inner.className="tile-inner "+tileClass(t.value)+(spawnAnim?" spawn":"");
+  inner.textContent=t.value;
+  el.appendChild(inner);
+  tileLayer.appendChild(el);
+  positionEl(el,t.r,t.c,false);
+  return el;
+}
+function positionEl(el,r,c,animate=true){
+  const m=cellMetrics();
+  const x=c*(m.cell+m.gap), y=r*(m.cell+m.gap);
+  el.style.transform=`translate(${x}px, ${y}px)`;
+}
+function layout(){
+  const m=cellMetrics();
+  for(const t of tiles.values()){
+    const el=tileLayer.querySelector(`[data-id="${t.id}"]`);
+    if(!el) continue;
+    el.style.width=m.cell+"px"; el.style.height=m.cell+"px";
+    const inner=el.firstChild;
+    inner.className="tile-inner "+tileClass(t.value);
+    inner.style.fontSize=fontFor(t.value,m.cell);
+    positionEl(el,t.r,t.c,false);
+  }
+}
+function refreshHUD(){
+  scoreEl.textContent=score;
+  bestEl.textContent=best;
+  movesEl.textContent="Moves: "+moves;
+  undoBtn.disabled = history.length===0;
+  $("rescueBtn").disabled = history.length===0;
+}
+function saveAll(){
+  try{
+    localStorage.setItem(BEST_KEY,String(best));
+    localStorage.setItem(STATE_KEY,JSON.stringify({
+      values:valuesGrid(),score,moves,history:history.slice(-20),
+      keepPlaying,wonShown,nextId
+    }));
+  }catch(e){}
+}
+function loadAll(){
+  try{
+    best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;
+    const raw=localStorage.getItem(STATE_KEY);
+    if(raw){
+      const s=JSON.parse(raw);
+      if(s&&s.values&&s.values.length===N){
+        score=s.score||0; moves=s.moves||0;
+        history=Array.isArray(s.history)?s.history:[];
+        keepPlaying=!!s.keepPlaying; wonShown=!!s.wonShown;
+        nextId=s.nextId||1;
+        gridToTiles(s.values);
+        refreshHUD();
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ---------- audio (Web Audio, no files) ---------- */
+function blip(freq,dur=0.08,vol=0.06){
+  if(!soundOn) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended") audioCtx.resume();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type="sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+
+/* ---------- game flow ---------- */
+function emptyCells(values){
+  const out=[];
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(values[r][c]===0) out.push({r,c});
+  return out;
+}
+function spawnRandom(){
+  const v=valuesGrid();
+  const empty=emptyCells(v);
+  if(empty.length===0) return;
+  const {r,c}=empty[Math.floor(Math.random()*empty.length)];
+  const value=Math.random()<0.9?2:4;
+  const t={id:nextId++,value,r,c};
+  tiles.set(t.id,t);
+  createTileEl(t,true);
+  blip(520,0.06,0.03);
+}
+function findTileAt(r,c,value,exclude=new Set()){
+  for(const t of tiles.values()){
+    if(t.r===r&&t.c===c&&!exclude.has(t.id)&&(value===undefined||t.value===value)) return t;
+  }
+  return null;
+}
+function later(fn,ms){ const id=setTimeout(fn,ms); pendingTimers.push(id); }
+function clearPending(){ pendingTimers.forEach(clearTimeout); pendingTimers=[]; }
+
+function tryMove(dir){
+  if(!$("winOverlay").classList.contains("hidden") || !$("overOverlay").classList.contains("hidden")){
+    return; // overlays block moves (Undo/New still work via buttons)
+  }
+  if(animating){ queuedDir=dir; return; }
+  const values=valuesGrid();
+  const model=computeMove(values,dir);
+  if(!model.moved) return; // no spawn, no history (spec)
+
+  // push history (at least 3 steps; keep 20)
+  history.push({values:values.map(r=>r.slice()),score,moves});
+  if(history.length>20) history.shift();
+
+  animating=true;
+  refreshHUD(); saveAll();
+
+  // Map actions to live tiles. Because values may repeat, match greedily.
+  const used=new Set();
+  const toRemove=new Set();       // ids consumed by merges
+  const mergeTargets=new Map();   // "r,c" -> {value, survivorIds:[...]}
+  // First pass: locate tile objects
+  const mapped=model.actions.map(a=>{
+    const t=findTileAt(a.fromR,a.fromC,a.value,used);
+    if(t) used.add(t.id);
+    return {...a,tile:t};
+  });
+  // Group merges by destination
+  for(const m of model.merged){
+    mergeTargets.set(m.r+","+m.c,{value:m.value,ids:[]});
+  }
+  for(const a of mapped){
+    if(!a.tile) continue;
+    const key=a.toR+","+a.toC;
+    if(mergeTargets.has(key) && (a.disappear || true)){
+      // both tiles heading to a merge cell belong to the merge group.
+      // Distinguish: exactly two tiles per merge group.
+      mergeTargets.get(key).ids.push(a.tile.id);
+    }
+  }
+  // Glide: move every tile element to destination
+  for(const a of mapped){
+    if(!a.tile) continue;
+    a.tile.r=a.toR; a.tile.c=a.toC;
+    const el=tileLayer.querySelector(`[data-id="${a.tile.id}"]`);
+    if(el){
+      if(a.disappear) el.classList.add("merging");
+      positionEl(el,a.toR,a.toC,true);
+      const inner=el.firstChild;
+      inner.style.fontSize=fontFor(a.tile.value,cellMetrics().cell);
+    }
+  }
+
+  later(()=>{
+    // Remove consumed tiles, create merged results with pulse
+    for(const [,g] of mergeTargets){
+      for(const id of g.ids){
+        const el=tileLayer.querySelector(`[data-id="${id}"]`);
+        if(el) el.remove();
+        tiles.delete(id);
+      }
+    }
+    // Remaining (non-merged) tiles: find those NOT in a merge group
+    // (tiles in merge groups were all removed above)
+    for(const [key,g] of mergeTargets){
+      const [r,c]=key.split(",").map(Number);
+      const t={id:nextId++,value:g.value,r,c};
+      tiles.set(t.id,t);
+      const el=createTileEl(t,false);
+      el.firstChild.classList.add("pop");
+    }
+    score+=model.gained;
+    if(score>best){best=score;}
+    moves++;
+    if(model.gained>0) blip(300+Math.min(600,model.gained),0.12,0.07);
+    spawnRandom();
+    layout();
+    refreshHUD(); saveAll();
+    animating=false;
+
+    // win check
+    const maxV=Math.max(...[...tiles.values()].map(t=>t.value),0);
+    if(maxV>=2048 && !wonShown && !keepPlaying){
+      wonShown=true;
+      $("winScore").textContent="Score: "+score;
+      $("winOverlay").classList.remove("hidden");
+      saveAll();
+    } else if(isGameOver()){
+      $("overScore").textContent="Final score: "+score;
+      $("overOverlay").classList.remove("hidden");
+    }
+    if(queuedDir){ const d=queuedDir; queuedDir=null; tryMove(d); }
+  }, GLIDE_MS+30);
+}
+
+function isGameOver(){
+  const v=valuesGrid();
+  if(emptyCells(v).length>0) return false;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(c+1<N&&v[r][c]===v[r][c+1]) return false;
+    if(r+1<N&&v[r]&&v[r][c]===v[r+1][c]) return false;
+  }
+  return true;
+}
+
+function undo(){
+  if(history.length===0) return;
+  clearPending();
+  animating=false; queuedDir=null;
+  const snap=history.pop();
+  score=snap.score; moves=snap.moves;
+  $("overOverlay").classList.add("hidden");
+  gridToTiles(snap.values);
+  // pop-in feedback
+  blip(240,0.08,0.05);
+  refreshHUD(); saveAll();
+}
+
+function newGame(){
+  clearPending();
+  animating=false; queuedDir=null; history=[];
+  score=0; moves=0; keepPlaying=false; wonShown=false;
+  $("winOverlay").classList.add("hidden");
+  $("overOverlay").classList.add("hidden");
+  const empty=Array.from({length:N},()=>Array(N).fill(0));
+  gridToTiles(empty);
+  spawnRandom(); spawnRandom();
+  layout(); refreshHUD(); saveAll();
+}
+
+/* ---------- input ---------- */
+const DIRS={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",
+  w:"up",a:"left",s:"down",d:"right"};
+document.addEventListener("keydown",e=>{
+  const k=e.key;
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(k)) e.preventDefault();
+  const lk=k.toLowerCase();
+  if(k.startsWith("Arrow")){
+    tryMove(DIRS[k]);
+  } else if(lk==="w"||lk==="a"||lk==="s"||lk==="d"){
+    // note: 'd' would collide above; fix mapping explicitly
+    const m={w:"up",a:"left",s:"down",d:"right"};
+    tryMove(m[lk]);
+  } else if(lk==="u"){ undo(); }
+  else if(lk==="n"){ newGame(); }
+});
+// swipe: touch + mouse drag
+(function(){
+  let sx=0,sy=0,active=false;
+  const TH=24;
+  function dir(dx,dy){
+    if(Math.abs(dx)<TH&&Math.abs(dy)<TH) return null;
+    return Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up");
+  }
+  boardEl.addEventListener("touchstart",e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;active=true;},{passive:true});
+  boardEl.addEventListener("touchend",e=>{
+    if(!active) return; active=false;
+    const t=e.changedTouches[0];
+    const d=dir(t.clientX-sx,t.clientY-sy);
+    if(d) tryMove(d);
+  },{passive:true});
+  boardEl.addEventListener("mousedown",e=>{sx=e.clientX;sy=e.clientY;active=true;});
+  window.addEventListener("mouseup",e=>{
+    if(!active) return; active=false;
+    if(e.target&&boardEl.contains(e.target)){
+      const d=dir(e.clientX-sx,e.clientY-sy);
+      if(d) tryMove(d);
+    }
+  });
+  boardEl.addEventListener("touchmove",e=>e.preventDefault(),{passive:false});
+})();
+
+$("undoBtn").addEventListener("click",undo);
+$("rescueBtn").addEventListener("click",undo);
+$("newBtn").addEventListener("click",newGame);
+$("retryBtn").addEventListener("click",newGame);
+$("winNewBtn").addEventListener("click",newGame);
+$("keepBtn").addEventListener("click",()=>{keepPlaying=true;$("winOverlay").classList.add("hidden");saveAll();});
+$("soundBtn").addEventListener("click",()=>{soundOn=!soundOn;$("soundBtn").textContent=soundOn?"🔊":"🔇";});
+
+/* ---------- boot ---------- */
+(function init(){
+  for(let i=0;i<N*N;i++){const d=document.createElement("div");d.className="grid-cell";$("gridBg").appendChild(d);}
+  if(!loadAll()){ newGame(); }
+  else {
+    if(isGameOver()){ $("overScore").textContent="Final score: "+score; $("overOverlay").classList.remove("hidden"); }
+    else if(Math.max(...[...tiles.values()].map(t=>t.value),0)>=2048 && !keepPlaying && wonShown){/* keep hidden after reload */}
+    refreshHUD();
+  }
+  window.addEventListener("resize",layout);
+  if(window.ResizeObserver) new ResizeObserver(layout).observe(boardEl);
+})();
+</script>
+</body>
+</html>

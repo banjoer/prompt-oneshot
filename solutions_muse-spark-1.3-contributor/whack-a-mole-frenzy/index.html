@@ -1,0 +1,98 @@
+<!-- Built 2026-10-30 08:00 UTC · Muse Spark 1.3 Contributor -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whack-a-Mole Frenzy</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a2b1a;color:#fff;text-align:center;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:2rem;margin-bottom:8px}
+.hud{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;background:#0d1a0d;padding:12px 20px;border-radius:12px;margin:12px 0;font-size:1.1rem;font-weight:bold}
+.hud span{white-space:nowrap}
+#time{color:#ffd54f;font-size:1.3rem}
+#grid{display:grid;grid-template-columns:repeat(3,100px);gap:12px;margin:16px 0}
+.hole{width:100px;height:100px;background:#3e2723;border-radius:50%;border:4px solid #5d4037;display:flex;align-items:center;justify-content:center;font-size:3rem;cursor:pointer;user-select:none;position:relative;box-shadow:inset 0 8px 12px rgba(0,0,0,.6);transition:transform .05s}
+.hole:active{transform:scale(.95)}
+.mole{animation:pop .15s ease-out;display:inline-block}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.whacked{animation:whack .25s ease-out}
+@keyframes whack{0%{transform:scale(1)}40%{transform:scale(1.5) rotate(15deg)}100%{transform:scale(0)}}
+.hole.golden{border-color:gold;box-shadow:0 0 18px gold,inset 0 8px 12px rgba(0,0,0,.6)}
+.hole.miss-flash{animation:missflash .3s}
+@keyframes missflash{0%,100%{background:#3e2723}50%{background:#c62828}}
+button{font-size:1.2rem;font-weight:bold;padding:12px 32px;border:none;border-radius:10px;background:#66bb6a;color:#0d1a0d;cursor:pointer;margin:8px}
+button:hover:not(:disabled){background:#81c784}
+button:disabled{display:none}
+#gameover{display:none;background:#0d1a0d;border:2px solid #66bb6a;border-radius:12px;padding:20px 40px;margin-top:8px}
+#gameover.show{display:block}
+#newbest{display:none;color:gold;font-weight:bold;font-size:1.3rem;margin:8px 0;animation:pop .3s}
+#newbest.show{display:block}
+.rules{font-size:.85rem;opacity:.8;max-width:420px;margin-bottom:8px}
+footer{margin-top:auto;padding-top:20px;font-size:.8rem;opacity:.7}
+</style>
+</head>
+<body>
+<h1>🔨 Whack-a-Mole Frenzy 🐹</h1>
+<div class="hud">
+<span>Score: <b id="score">0</b></span>
+<span>Misses: <b id="misses">0</b></span>
+<span id="time">Time: 30s</span>
+<span>Best: <b id="best">0</b></span>
+</div>
+<div class="rules">Hit the 🐹 for +1! Golden 🌟 moles are worth +3. Empty holes = miss. Moles get faster as you score!</div>
+<div id="grid"></div>
+<button id="startBtn">Start</button>
+<div id="gameover">
+<h2>⏰ Time's Up!</h2>
+<p>Final score: <b id="finalScore">0</b></p>
+<p>Total misses: <b id="finalMisses">0</b></p>
+<div id="newbest">🎉 New best! 🎉</div>
+<button id="againBtn">Play Again</button>
+</div>
+<footer>Built 2026-10-30 08:00 UTC · Muse Spark 1.3 Contributor</footer>
+<script>
+const grid=document.getElementById('grid');
+const scoreEl=document.getElementById('score'),missEl=document.getElementById('misses'),
+timeEl=document.getElementById('time'),bestEl=document.getElementById('best'),
+startBtn=document.getElementById('startBtn'),over=document.getElementById('gameover'),
+fsEl=document.getElementById('finalScore'),fmEl=document.getElementById('finalMisses'),
+nbEl=document.getElementById('newbest'),againBtn=document.getElementById('againBtn');
+let holes=[],score=0,misses=0,timeLeft=30,playing=false,moleIndex=-1,moleTimer=null,tickTimer=null,isGolden=false;
+let best=parseInt(localStorage.getItem('whackBest')||'0',10)||0;
+bestEl.textContent=best;
+for(let i=0;i<9;i++){const d=document.createElement('div');d.className='hole';d.dataset.i=i;
+d.addEventListener('click',()=>hit(i,d));grid.appendChild(d);holes.push(d);}
+function visibleTime(){return Math.max(350,1000-50*Math.floor(score/5));}
+function updateHUD(){scoreEl.textContent=score;missEl.textContent=misses;timeEl.textContent='Time: '+timeLeft+'s';bestEl.textContent=best;}
+function beep(f,d){try{const c=beep.ctx||(beep.ctx=new (window.AudioContext||window.webkitAudioContext)());
+const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);
+o.frequency.value=f;o.type='square';g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);
+o.stop(c.currentTime+d);}catch(e){}}
+function spawnMole(){if(!playing)return;hideMole();
+let n;do{n=Math.floor(Math.random()*9);}while(n===moleIndex);
+moleIndex=n;isGolden=Math.random()<0.1;
+const h=holes[n];h.innerHTML='<span class="mole">'+(isGolden?'🌟':'🐹')+'</span>';
+h.classList.toggle('golden',isGolden);
+clearTimeout(moleTimer);moleTimer=setTimeout(()=>{if(playing)spawnMole();},visibleTime());}
+function hideMole(){if(moleIndex>=0){holes[moleIndex].innerHTML='';holes[moleIndex].classList.remove('golden');}moleIndex=-1;}
+function hit(i,el){if(!playing)return;
+if(i===moleIndex){const m=el.firstChild;if(m)m.classList.add('whacked');
+beep(isGolden?880:520,0.12);score+=isGolden?3:1;updateHUD();
+clearTimeout(moleTimer);moleTimer=setTimeout(spawnMole,60);}
+else{misses++;updateHUD();beep(150,0.15);el.classList.remove('miss-flash');void el.offsetWidth;el.classList.add('miss-flash');}}
+function startGame(){score=0;misses=0;timeLeft=30;playing=true;moleIndex=-1;
+over.classList.remove('show');nbEl.classList.remove('show');startBtn.disabled=true;updateHUD();spawnMole();
+clearInterval(tickTimer);tickTimer=setInterval(()=>{timeLeft--;updateHUD();if(timeLeft<=0)endGame();},1000);}
+function endGame(){playing=false;clearInterval(tickTimer);clearTimeout(moleTimer);hideMole();
+startBtn.disabled=false;startBtn.style.display='none';
+fsEl.textContent=score;fmEl.textContent=misses;
+if(score>best){best=score;localStorage.setItem('whackBest',String(best));nbEl.classList.add('show');}
+updateHUD();over.classList.add('show');}
+startBtn.addEventListener('click',()=>{startBtn.style.display='none';startGame();});
+againBtn.addEventListener('click',startGame);
+updateHUD();
+</script>
+</body>
+</html>

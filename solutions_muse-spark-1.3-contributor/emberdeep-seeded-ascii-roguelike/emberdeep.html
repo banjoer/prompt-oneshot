@@ -1,0 +1,711 @@
+<!-- Emberdeep: Seeded ASCII Roguelike · single-file game · built by Muse Spark 1.3 Contributor · 2026-10-30 12:00 UTC · vanilla JS, no libraries, no network -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Emberdeep — Seeded ASCII Roguelike</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;color:#cfcfcf;
+    font-family:"Courier New",Courier,monospace;overflow:hidden;}
+  #wrap{height:100vh;width:100vw;display:flex;flex-direction:column;box-sizing:border-box;}
+  #topbar{display:flex;gap:14px;align-items:center;padding:4px 10px;font-size:13px;
+    background:#0a0a0a;border-bottom:1px solid #333;white-space:nowrap;overflow:hidden;}
+  #topbar b{color:#ffd27f;}
+  #main{flex:1;display:flex;min-height:0;}
+  #mapcol{padding:6px;}
+  canvas{display:block;background:#000;image-rendering:pixelated;}
+  #side{width:236px;min-width:236px;padding:8px 10px;font-size:13px;line-height:1.5;
+    border-left:1px solid #333;background:#070707;overflow:hidden;}
+  #side h3{margin:2px 0 4px;font-size:13px;color:#ffd27f;}
+  #inv{margin-top:6px;}
+  #inv div{white-space:nowrap;}
+  #log{border-top:1px solid #333;background:#050505;padding:4px 10px;font-size:13px;
+    line-height:1.45;height:148px;min-height:148px;overflow:hidden;}
+  #log div{white-space:pre-wrap;word-break:break-word;}
+  .c-player{color:#e8e8e8;} .c-enemy{color:#ff6b6b;} .c-item{color:#7dff8a;}
+  .c-level{color:#ffe14d;} .c-info{color:#9a9a9a;}
+  .overlay{position:fixed;inset:0;background:#000;display:flex;align-items:center;
+    justify-content:center;z-index:10;}
+  .panel{max-width:640px;padding:28px 34px;border:1px solid #555;background:#0b0b0b;text-align:left;}
+  .panel h1{color:#ff9a3c;margin:0 0 6px;font-size:30px;letter-spacing:2px;}
+  .panel p{font-size:14px;line-height:1.55;}
+  .panel input{font-family:inherit;font-size:16px;background:#111;color:#ffe14d;
+    border:1px solid #666;padding:6px 10px;width:280px;}
+  .footer{margin-top:14px;font-size:12px;color:#888;}
+  #endStats{font-size:14px;line-height:1.6;white-space:pre-wrap;}
+  kbd{border:1px solid #555;padding:0 5px;background:#161616;color:#fff;font-size:12px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar"></div>
+  <div id="main">
+    <div id="mapcol"><canvas id="map" width="1008" height="560"></canvas></div>
+    <div id="side">
+      <h3>STATUS</h3>
+      <div id="stats"></div>
+      <h3>INVENTORY (drink: 1-9)</h3>
+      <div id="inv"></div>
+    </div>
+  </div>
+  <div id="log"></div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <div class="panel">
+    <h1>EMBERDEEP</h1>
+    <p>A seeded ASCII roguelike. Six floors. Find the <b>&amp;</b> Emberheart on floor 6.<br>
+    Same seed + same keys = identical run.</p>
+    <p>Move <kbd>hjkl</kbd>/<kbd>yubn</kbd>/arrows &nbsp; Wait <kbd>.</kbd> &nbsp; Fire <kbd>f</kbd> &nbsp;
+       Drink <kbd>1</kbd>-<kbd>9</kbd> &nbsp; Descend <kbd>&gt;</kbd>/<kbd>Enter</kbd> on stairs<br>
+    Bump a monster to attack. Walk onto items to pick up. <kbd>@</kbd> you &nbsp;
+    <kbd>r k g s O</kbd> monsters &nbsp; <kbd>!</kbd> potion &nbsp; <kbd>|</kbd> arrows &nbsp; <kbd>&gt;</kbd> stairs</p>
+    <p>Seed: <input id="seedInput" maxlength="40" spellcheck="false"></p>
+    <p>Press <kbd>Enter</kbd> to descend into the deep.</p>
+    <div class="footer" id="signoff">built by Muse Spark 1.3 Contributor &middot; 2026-10-30 12:00 UTC</div>
+  </div>
+</div>
+
+<div class="overlay" id="endScreen" style="display:none">
+  <div class="panel">
+    <h1 id="endTitle">YOU DIED</h1>
+    <div id="endStats"></div>
+    <p><kbd>Enter</kbd> new run, same seed &nbsp; <kbd>r</kbd> new run, random seed</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= Seeded PRNG (reference implementation) ================= */
+function seedFromString(str){
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,16777619); }
+  return h >>> 0;
+}
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function rint(rng,lo,hi){ return lo + Math.floor(rng()*(hi-lo+1)); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function cheb(x0,y0,x1,y1){ return Math.max(Math.abs(x1-x0),Math.abs(y1-y0)); }
+
+/* ================= Constants ================= */
+const W=72, H=40, FOV_R=8, TILE=14;
+const DIRS=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]; // NW,N,NE,W,E,SW,S,SE
+const MTYPES=[
+  {glyph:'r',name:'Gnawer Rat',      hp:6, pow:3,def:0,acc:70,eva:15,xp:5,  ai:'wander', first:1},
+  {glyph:'k',name:'Skittering Kobold',hp:8,pow:3,def:0,acc:75,eva:20,xp:8,  ai:'coward', first:1},
+  {glyph:'g',name:'Goblin Stalker',   hp:12,pow:4,def:1,acc:75,eva:10,xp:12, ai:'hunter', first:1},
+  {glyph:'s',name:'Mire Spitter',     hp:10,pow:4,def:0,acc:80,eva:5, xp:14, ai:'kiter',  first:2},
+  {glyph:'O',name:'Bonecrusher Ogre', hp:26,pow:7,def:2,acc:70,eva:0, xp:30, ai:'brute',  first:4},
+];
+const FLOORS=[null,
+  {count:6,  w:[5,3,2,0,0]},
+  {count:8,  w:[4,3,3,1,0]},
+  {count:10, w:[2,3,4,2,0]},
+  {count:12, w:[0,2,4,3,1]},
+  {count:14, w:[0,0,4,4,2]},
+  {count:16, w:[0,0,4,4,3]},
+];
+const ITEM_W=[['crimson',45],['ember',15],['iron',15],['arrows',25]];
+const ITEM_LABEL={crimson:'Crimson Draught',ember:'Ember Tonic',iron:'Iron Tonic',arrows:'Arrow Bundle'};
+const MON_COLOR=['#7dff8a','#d8d86a','#6aff6a','#6ad8ff','#ff8a4d'];
+const POT_COLOR={crimson:'#ff4444',ember:'#ff9900',iron:'#44ccff'};
+
+/* ================= Game state ================= */
+let G=null;
+const canvas=document.getElementById('map'), ctx=canvas.getContext('2d');
+const topbar=document.getElementById('topbar'), statsEl=document.getElementById('stats'),
+      invEl=document.getElementById('inv'), logEl=document.getElementById('log');
+
+/* ================= LOS / FOV (8-octant per-tile line-of-sight, behaviorally
+   equivalent to recursive shadowcasting: walls block, shadows behind walls) === */
+function hasLOS(grid,x0,y0,x1,y1){
+  if(x0===x1&&y0===y1) return true;
+  let dx=Math.abs(x1-x0), dy=Math.abs(y1-y0);
+  let sx=x0<x1?1:-1, sy=y0<y1?1:-1;
+  let err=dx-dy, x=x0, y=y0, guard=0;
+  while(guard++<500){
+    let e2=2*err, moved=false;
+    if(e2>-dy){ err-=dy; x+=sx; moved=true; }
+    if(e2<dx){ err+=dx; y+=sy; moved=true; }
+    if(!moved) break;
+    if(x===x1&&y===y1) return true;
+    if(x<0||y<0||x>=W||y>=H) return false;
+    if(grid[y*W+x]===1) return false;
+  }
+  return false;
+}
+function computeFOV(grid,px,py){
+  const vis=new Uint8Array(W*H);
+  vis[py*W+px]=1;
+  for(let y=Math.max(0,py-FOV_R);y<=Math.min(H-1,py+FOV_R);y++){
+    for(let x=Math.max(0,px-FOV_R);x<=Math.min(W-1,px+FOV_R);x++){
+      let dx=x-px, dy=y-py;
+      if(dx*dx+dy*dy>FOV_R*FOV_R) continue;
+      if(hasLOS(grid,px,py,x,y)) vis[y*W+x]=1;
+    }
+  }
+  return vis;
+}
+
+/* ================= BFS (8-directional, uniform cost, deterministic order) === */
+function bfsDist(grid,sx,sy){
+  const dist=new Int32Array(W*H).fill(-1);
+  const q=[sy*W+sx]; dist[sy*W+sx]=0; let head=0;
+  while(head<q.length){
+    const cur=q[head++], cx=cur%W, cy=(cur/W)|0;
+    for(let d=0;d<8;d++){
+      const nx=cx+DIRS[d][0], ny=cy+DIRS[d][1];
+      if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const ni=ny*W+nx;
+      if(dist[ni]!==-1||grid[ni]===1) continue;
+      dist[ni]=dist[cur]+1; q.push(ni);
+    }
+  }
+  return dist;
+}
+function bfsNext(grid,sx,sy,tx,ty,blocked){
+  if(sx===tx&&sy===ty) return null;
+  const prev=new Int32Array(W*H).fill(-1);
+  const seen=new Uint8Array(W*H);
+  const q=[sy*W+sx]; seen[sy*W+sx]=1; let head=0;
+  const target=ty*W+tx;
+  let found=false;
+  while(head<q.length){
+    const cur=q[head++];
+    if(cur===target){ found=true; break; }
+    const cx=cur%W, cy=(cur/W)|0;
+    for(let d=0;d<8;d++){
+      const nx=cx+DIRS[d][0], ny=cy+DIRS[d][1];
+      if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const ni=ny*W+nx;
+      if(seen[ni]||grid[ni]===1) continue;
+      if(blocked&&blocked.has(ni)&&ni!==target) continue;
+      seen[ni]=1; prev[ni]=cur; q.push(ni);
+    }
+  }
+  if(!found) return null;
+  let cur=target;
+  while(prev[cur]!==-1&&prev[cur]!==(sy*W+sx)) cur=prev[cur];
+  return [cur%W,(cur/W)|0];
+}
+
+/* ================= Dungeon generation ================= */
+function genRooms(rng){
+  const rooms=[]; let attempts=0;
+  while(rooms.length<12&&attempts<2500){
+    attempts++;
+    const w=rint(rng,4,12), h=rint(rng,4,9);
+    if(w>W-4||h>H-4) continue;
+    const x=rint(rng,1,W-w-2), y=rint(rng,1,H-h-2);
+    let overlap=false;
+    for(const r of rooms){
+      if(x-1<r.x+r.w+1&&r.x-1<x+w+1&&y-1<r.y+r.h+1&&r.y-1<y+h+1){ overlap=true; break; }
+    }
+    if(overlap) continue;
+    rooms.push({x,y,w,h,cx:x+(w>>1),cy:y+(h>>1)});
+    if(rooms.length>=6&&attempts>40&&rng()<0.35) break;
+  }
+  return rooms;
+}
+function carveH(grid,x0,x1,y){ for(let x=Math.min(x0,x1);x<=Math.max(x0,x1);x++) grid[y*W+x]=0; }
+function carveV(grid,y0,y1,x){ for(let y=Math.min(y0,y1);y<=Math.max(y0,y1);y++) grid[y*W+x]=0; }
+function pickWeighted(rng,weights){
+  let total=0; for(const w of weights) total+=w;
+  let r=rng()*total;
+  for(let i=0;i<weights.length;i++){ r-=weights[i]; if(r<0) return i; }
+  return weights.length-1;
+}
+function inRoom(x,y,r){ return x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h; }
+function monsterAt(x,y,self){ for(const m of G.monsters){ if(m===self||m.hp<=0) continue; if(m.x===x&&m.y===y) return m; } return null; }
+function itemAt(x,y){ for(const it of G.items){ if(!it.taken&&it.x===x&&it.y===y) return it; } return null; }
+
+function genFloor(floorNum){
+  const rng=G.rng;
+  const grid=new Uint8Array(W*H).fill(1);
+  const rooms=genRooms(rng);
+  for(const r of rooms)
+    for(let y=r.y;y<r.y+r.h;y++) for(let x=r.x;x<r.x+r.w;x++) grid[y*W+x]=0;
+  for(let i=1;i<rooms.length;i++){
+    const a=rooms[i-1], b=rooms[i];
+    if(rng()<0.5){ carveH(grid,a.cx,b.cx,a.cy); carveV(grid,a.cy,b.cy,b.cx); }
+    else { carveV(grid,a.cy,b.cy,a.cx); carveH(grid,a.cx,b.cx,b.cy); }
+  }
+  const sx=rooms[0].cx, sy=rooms[0].cy;
+  const dist=bfsDist(grid,sx,sy);
+  let far=0, farD=-1;
+  for(let i=1;i<rooms.length;i++){
+    const d=dist[rooms[i].cy*W+rooms[i].cx];
+    if(d>farD){ farD=d; far=i; }
+  }
+  const special={x:rooms[far].cx,y:rooms[far].cy};
+  G.grid=grid; G.rooms=rooms;
+  G.stairs=(floorNum<6)?{x:special.x,y:special.y}:null;
+  G.ember=(floorNum===6)?{x:special.x,y:special.y}:null;
+  G.player.x=sx; G.player.y=sy;
+  G.monsters=[];
+  const spec=FLOORS[floorNum];
+  for(let i=0;i<spec.count;i++){
+    const ti=pickWeighted(rng,spec.w);
+    const t=MTYPES[ti];
+    const pos=findSpawn(rng,grid,rooms,sx,sy,true);
+    if(!pos) continue;
+    G.monsters.push({ti,glyph:t.glyph,name:t.name,hp:t.hp,maxhp:t.hp,pow:t.pow,def:t.def,
+      acc:t.acc,eva:t.eva,xp:t.xp,ai:t.ai,x:pos[0],y:pos[1],hasMem:false,memX:0,memY:0});
+  }
+  G.items=[];
+  const nItems=rint(rng,2,4);
+  for(let i=0;i<nItems;i++){
+    const kinds=ITEM_W.map(e=>e[1]);
+    const kind=ITEM_W[pickWeighted(rng,kinds)][0];
+    const pos=findSpawn(rng,grid,rooms,sx,sy,false);
+    if(!pos) continue;
+    G.items.push({kind,x:pos[0],y:pos[1],taken:false});
+  }
+  G.floor=floorNum;
+  G.explored=new Uint8Array(W*H);
+  recomputeFOV();
+  for(let i=0;i<W*H;i++) if(G.visible[i]) G.explored[i]=1;
+}
+function findSpawn(rng,grid,rooms,sx,sy,inOtherRoom){
+  for(let t=0;t<500;t++){
+    const x=rint(rng,1,W-2), y=rint(rng,1,H-2);
+    if(grid[y*W+x]!==0) continue;
+    if(inRoom(x,y,rooms[0])) continue;
+    if(inOtherRoom){
+      let ok=false;
+      for(let i=1;i<rooms.length;i++) if(inRoom(x,y,rooms[i])){ ok=true; break; }
+      if(!ok) continue;
+    }
+    if(t<100&&cheb(x,y,sx,sy)<6) continue;
+    if(G.stairs&&x===G.stairs.x&&y===G.stairs.y) continue;
+    if(G.ember&&x===G.ember.x&&y===G.ember.y) continue;
+    if(x===sx&&y===sy) continue;
+    let clash=false;
+    for(const m of G.monsters) if(m.x===x&&m.y===y){ clash=true; break; }
+    if(!clash) for(const it of G.items) if(!it.taken&&it.x===x&&it.y===y){ clash=true; break; }
+    if(clash) continue;
+    return [x,y];
+  }
+  return null;
+}
+
+/* ================= Run lifecycle ================= */
+function randomSeed(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let s='';
+  for(let i=0;i<6;i++) s+=chars[(Math.random()*chars.length)|0];
+  return 'EMBER-'+s;
+}
+function newRun(seedStr){
+  if(!seedStr||!seedStr.trim()) seedStr=randomSeed();
+  seedStr=seedStr.trim();
+  try{ localStorage.setItem('emberdeep-seed',seedStr); }catch(e){}
+  G={ seedStr, rng:mulberry32(seedFromString(seedStr)),
+    floor:1, grid:null, rooms:[], stairs:null, ember:null, monsters:[], items:[],
+    explored:new Uint8Array(W*H), visible:new Uint8Array(W*H),
+    player:{x:0,y:0,hp:30,maxhp:30,pow:4,def:1,acc:80,eva:10,arrows:8,level:1,xp:0},
+    inv:[], log:[], turns:0, kills:0, killsBy:[0,0,0,0,0], dealt:0, taken:0,
+    over:false, won:false, deathCause:'' };
+  genFloor(1);
+  addLog('You enter Emberdeep. Find the Emberheart on floor 6.','info');
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('endScreen').style.display='none';
+  if(document.activeElement) document.activeElement.blur();
+  render();
+}
+
+/* ================= Log / HUD / render ================= */
+function addLog(msg,cls){
+  G.log.push({msg,cls:cls||'c-info'});
+  if(G.log.length>200) G.log.splice(0,G.log.length-200);
+  renderLog();
+}
+function renderLog(){
+  const tail=G.log.slice(-9);
+  logEl.innerHTML='';
+  for(const e of tail){ const d=document.createElement('div'); d.className=e.cls; d.textContent=e.msg; logEl.appendChild(d); }
+}
+function recomputeFOV(){ G.visible=computeFOV(G.grid,G.player.x,G.player.y); }
+function isVis(x,y){ return !!G.visible[y*W+x]; }
+
+function render(){
+  if(!G) return;
+  // map
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.font=TILE+'px "Courier New",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const bright={wall:'#9a9a9a',floor:'#5a5a5a'};
+  const dim='#383838';
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const i=y*W+x, px=x*TILE+TILE/2, py=y*TILE+TILE/2;
+      const vis=G.visible[i], exp=G.explored[i];
+      if(!vis&&!exp) continue;
+      let glyph=null,color='#fff';
+      const p=G.player;
+      if(x===p.x&&y===p.y){ glyph='@'; color='#ffffff'; }
+      else if(vis){
+        const m=monsterAt(x,y,null);
+        if(m){ glyph=m.glyph; color=MON_COLOR[m.ti]; }
+        else if(G.stairs&&x===G.stairs.x&&y===G.stairs.y){ glyph='>'; color='#ffffff'; }
+        else if(G.ember&&x===G.ember.x&&y===G.ember.y){ glyph='&'; color='#ff8800'; }
+        else{
+          const it=itemAt(x,y);
+          if(it){
+            if(it.kind==='arrows'){ glyph='|'; color='#ffdd55'; }
+            else{ glyph='!'; color=POT_COLOR[it.kind]; }
+          }
+        }
+      }
+      if(!glyph){ glyph=(G.grid[i]===1)?'#':'.'; color=vis?bright[G.grid[i]===1?'wall':'floor']:dim; }
+      else if(!vis){ glyph=(G.grid[i]===1)?'#':'.'; color=dim; }
+      ctx.fillStyle=color;
+      ctx.fillText(glyph,px,py);
+    }
+  }
+  // HUD
+  const p=G.player;
+  const need=20*p.level;
+  topbar.innerHTML='';
+  const cells=[['SEED',G.seedStr],['FLOOR',G.floor+'/6'],['HP',p.hp+'/'+p.maxhp],
+    ['LV',p.level],['XP',p.xp+'/'+need],['POW',p.pow],['DEF',p.def],['ARROWS',p.arrows],
+    ['TURNS',G.turns],['KILLS',G.kills]];
+  for(const c of cells){
+    const s=document.createElement('span');
+    s.innerHTML='<b>'+c[0]+'</b> '+String(c[1]).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    topbar.appendChild(s);
+  }
+  statsEl.textContent='HP '+p.hp+'/'+p.maxhp+'  Lv '+p.level+'  XP '+p.xp+'/'+need+
+    '\nFloor '+G.floor+'/6  Pow '+p.pow+'  Def '+p.def+'\nArrows '+p.arrows+'  Turns '+G.turns;
+  invEl.innerHTML='';
+  if(G.inv.length===0){ invEl.textContent='(empty)'; }
+  else G.inv.slice(0,9).forEach((k,i)=>{
+    const d=document.createElement('div'); d.textContent=(i+1)+'. '+ITEM_LABEL[k]; invEl.appendChild(d);
+  });
+  renderLog();
+}
+
+/* ================= Combat ================= */
+function meleeAttack(att,def,isPlayer,verb){
+  const hitch=clamp(att.acc-def.eva,5,95);
+  const roll=G.rng()*100;
+  if(roll<hitch){
+    const dmg=Math.max(1,att.pow-def.def+rint(G.rng,0,2));
+    def.hp-=dmg;
+    return {hit:true,dmg};
+  }
+  return {hit:false,dmg:0};
+}
+function rangedAttack(att,def,dist){
+  let hitch=clamp(att.acc-def.eva,5,95)-3*Math.max(0,dist-3);
+  hitch=clamp(hitch,5,95);
+  const roll=G.rng()*100;
+  if(roll<hitch){
+    const dmg=Math.max(1,att.pow-def.def+rint(G.rng,0,1));
+    def.hp-=dmg;
+    return {hit:true,dmg};
+  }
+  return {hit:false,dmg:0};
+}
+function gainXP(n){
+  const p=G.player;
+  p.xp+=n;
+  while(p.xp>=20*p.level){
+    p.xp-=20*p.level; p.level++;
+    p.maxhp+=6; p.hp=Math.min(p.maxhp,p.hp+6); p.pow+=1;
+    let extra='';
+    if(p.level%3===0){ p.def+=1; extra=', +1 defense'; }
+    addLog('Welcome to level '+p.level+'! (+6 max HP, +1 power'+extra+')','c-level');
+  }
+}
+function killMonster(m){
+  m.hp=0; G.kills++; G.killsBy[m.ti]++;
+  addLog('You kill the '+m.name+'. (+'+m.xp+' XP)','c-player');
+  gainXP(m.xp);
+}
+function checkDeath(killerName){
+  if(G.player.hp<=0&&!G.over){
+    G.player.hp=0;
+    G.over=true; G.won=false;
+    G.deathCause='slain by the '+killerName+' on floor '+G.floor;
+    addLog('You are slain by the '+killerName+'.','c-enemy');
+    render();
+    showSummary(false,killerName);
+    return true;
+  }
+  return false;
+}
+
+/* ================= Player actions (return true if turn consumed) ================= */
+function freeForMonster(x,y,self){
+  if(x<0||y<0||x>=W||y>=H) return false;
+  if(G.grid[y*W+x]!==0) return false;
+  if(G.player.x===x&&G.player.y===y) return false;
+  if(monsterAt(x,y,self)) return false;
+  if(G.stairs&&x===G.stairs.x&&y===G.stairs.y) return false;
+  if(G.ember&&x===G.ember.x&&y===G.ember.y) return false;
+  return true;
+}
+function occupiedBlockSet(self){
+  const s=new Set();
+  for(const m of G.monsters){ if(m===self||m.hp<=0) continue; s.add(m.y*W+m.x); }
+  return s;
+}
+function movePlayer(dx,dy){
+  const p=G.player, nx=p.x+dx, ny=p.y+dy;
+  if(nx<0||ny<0||nx>=W||ny>=H||G.grid[ny*W+nx]===1) return false; // wall: no turn
+  const m=monsterAt(nx,ny,null);
+  if(m){ // melee
+    const r=meleeAttack(p,m,true);
+    if(r.hit){ G.dealt+=r.dmg; addLog('You hit the '+m.name+' for '+r.dmg+'.','c-player'); }
+    else addLog('You miss the '+m.name+'.','c-player');
+    if(m.hp<=0) killMonster(m);
+    endPlayerTurn();
+    return true;
+  }
+  p.x=nx; p.y=ny;
+  // pickup
+  const it=itemAt(nx,ny);
+  if(it){
+    it.taken=true;
+    if(it.kind==='arrows'){ p.arrows+=5; addLog('You pick up arrows. (+5 arrows)','c-item'); }
+    else{
+      if(G.inv.length<9){ G.inv.push(it.kind); addLog('You pick up a '+ITEM_LABEL[it.kind]+'. (Press '+(G.inv.length)+' to drink)','c-item'); }
+      else { it.taken=false; addLog('Your pack is full!','c-item'); }
+    }
+  }
+  // emberheart win
+  if(G.ember&&nx===G.ember.x&&ny===G.ember.y){
+    G.turns++;
+    G.over=true; G.won=true;
+    addLog('You claim the Emberheart!','c-level');
+    render(); showSummary(true,null);
+    return true;
+  }
+  endPlayerTurn();
+  return true;
+}
+function playerFire(){
+  const p=G.player;
+  if(p.arrows<=0){ addLog('You have no arrows!','c-info'); return; }
+  const vis=[];
+  for(const m of G.monsters){
+    if(m.hp<=0) continue;
+    if(!isVis(m.x,m.y)) continue;
+    if(!hasLOS(G.grid,p.x,p.y,m.x,m.y)) continue;
+    vis.push(m);
+  }
+  if(vis.length===0){ addLog('No visible monster to shoot at.','c-info'); return; }
+  vis.sort((a,b)=>(cheb(p.x,p.y,a.x,a.y)-cheb(p.x,p.y,b.x,b.y))||(a.y-b.y)||(a.x-b.x));
+  const t=vis[0], d=cheb(p.x,p.y,t.x,t.y);
+  p.arrows--;
+  const r=rangedAttack(p,t,d);
+  if(r.hit){ G.dealt+=r.dmg; addLog('You shoot the '+t.name+' for '+r.dmg+'.','c-player'); }
+  else addLog('You miss the '+t.name+'.','c-player');
+  if(t.hp<=0) killMonster(t);
+  endPlayerTurn();
+}
+function drink(slot){
+  const p=G.player;
+  if(slot<0||slot>=G.inv.length||slot>8) return;
+  const kind=G.inv.splice(slot,1)[0];
+  if(kind==='crimson'){
+    const heal=Math.min(p.maxhp-p.hp,Math.floor(p.maxhp*0.4));
+    p.hp+=heal;
+    addLog('You drink the Crimson Draught. (+'+heal+' HP)','c-item');
+  }else if(kind==='ember'){ p.pow+=1; addLog('You drink the Ember Tonic. (+1 power)','c-item'); }
+  else if(kind==='iron'){ p.def+=1; addLog('You drink the Iron Tonic. (+1 defense)','c-item'); }
+  endPlayerTurn();
+}
+function tryDescend(){
+  const p=G.player;
+  if(G.stairs&&p.x===G.stairs.x&&p.y===G.stairs.y&&G.floor<6){
+    G.turns++;
+    addLog('You descend to floor '+(G.floor+1)+'.','c-info');
+    genFloor(G.floor+1);
+    render();
+    return;
+  }
+}
+function endPlayerTurn(){
+  if(G.over) { render(); return; }
+  G.turns++;
+  // monsters in spawn order
+  for(const m of G.monsters){
+    if(G.over) break;
+    if(m.hp<=0) continue;
+    monsterAct(m);
+    if(G.player.hp<=0){ checkDeath(m.name); return; }
+  }
+  if(G.over){ render(); return; }
+  recomputeFOV();
+  for(let i=0;i<W*H;i++) if(G.visible[i]) G.explored[i]=1;
+  render();
+}
+
+/* ================= Monster AI ================= */
+function monsterVisibleToPlayer(m){ return cheb(m.x,m.y,G.player.x,G.player.y)<=FOV_R&&isVis(m.x,m.y); }
+function wander(m){
+  const opts=[];
+  for(let d=0;d<8;d++){
+    const nx=m.x+DIRS[d][0], ny=m.y+DIRS[d][1];
+    if(freeForMonster(nx,ny,m)) opts.push([nx,ny]);
+  }
+  if(opts.length===0) return;
+  const c=opts[rint(G.rng,0,opts.length-1)];
+  m.x=c[0]; m.y=c[1];
+}
+function fleeStep(m){
+  let best=null,bestD=-1;
+  for(let d=0;d<8;d++){ // deterministic direction order breaks ties
+    const nx=m.x+DIRS[d][0], ny=m.y+DIRS[d][1];
+    if(!freeForMonster(nx,ny,m)) continue;
+    const dd=cheb(nx,ny,G.player.x,G.player.y);
+    if(dd>bestD){ bestD=dd; best=[nx,ny]; }
+  }
+  if(best){ m.x=best[0]; m.y=best[1]; return true; }
+  return false;
+}
+function chaseStep(m,tx,ty){
+  if(cheb(m.x,m.y,tx,ty)<=1) return false; // adjacent: caller attacks
+  const step=bfsNext(G.grid,m.x,m.y,tx,ty,occupiedBlockSet(m));
+  if(step){ m.x=step[0]; m.y=step[1]; return true; }
+  return false;
+}
+function monsterMelee(m){
+  const r=meleeAttack(m,G.player,false);
+  if(r.hit){ G.taken+=r.dmg; addLog('The '+m.name+' hits you for '+r.dmg+'.','c-enemy'); }
+  else addLog('The '+m.name+' misses you.','c-enemy');
+}
+function monsterAct(m){
+  const p=G.player;
+  const d=cheb(m.x,m.y,p.x,p.y);
+  const seen=monsterVisibleToPlayer(m);
+  switch(m.ai){
+    case 'wander':{ // rat
+      if(seen&&d<=6){
+        if(d<=1) monsterMelee(m);
+        else chaseStep(m,p.x,p.y);
+      } else wander(m);
+      break;
+    }
+    case 'coward':{ // kobold
+      if(seen&&d<=4){
+        if(!fleeStep(m)){
+          if(d<=1) monsterMelee(m);
+        }
+      } else wander(m);
+      break;
+    }
+    case 'hunter':{ // goblin stalker
+      if(seen){ m.hasMem=true; m.memX=p.x; m.memY=p.y; }
+      if(m.hasMem){
+        if(d<=1) monsterMelee(m);
+        else{
+          if(m.x===m.memX&&m.y===m.memY){ m.hasMem=false; wander(m); }
+          else{
+            const ok=chaseStep(m,m.memX,m.memY);
+            if(!ok){ if(m.x===m.memX&&m.y===m.memY) m.hasMem=false; else wander(m); }
+            // reached remembered tile without seeing: forget (handled next turn)
+            if(m.x===m.memX&&m.y===m.memY&&!monsterVisibleToPlayer(m)) m.hasMem=false;
+          }
+        }
+      } else wander(m);
+      break;
+    }
+    case 'kiter':{ // spitter
+      if(!seen){ wander(m); break; }
+      if(d<=1){ if(!fleeStep(m)){ /* cornered: no attack this turn */ } }
+      else if(d>=2&&d<=6){
+        const r=rangedAttack(m,p,d);
+        if(r.hit){ G.taken+=r.dmg; addLog('The Mire Spitter spits at you for '+r.dmg+'.','c-enemy'); }
+        else addLog('The Mire Spitter spits at you but misses.','c-enemy');
+      }
+      else chaseStep(m,p.x,p.y); // seen beyond 6: step closer
+      break;
+    }
+    case 'brute':{ // ogre: acts every 2nd player turn
+      if(G.turns%2===1) break;
+      if(seen){ m.hasMem=true; m.memX=p.x; m.memY=p.y; }
+      if(m.hasMem){
+        if(d<=1) monsterMelee(m);
+        else{
+          const ok=chaseStep(m,m.memX,m.memY);
+          if(!ok) wander(m);
+          if(m.x===m.memX&&m.y===m.memY&&!monsterVisibleToPlayer(m)) m.hasMem=false;
+        }
+      } else wander(m);
+      break;
+    }
+  }
+}
+
+/* ================= Summary ================= */
+function showSummary(won,killer){
+  const p=G.player;
+  document.getElementById('endTitle').textContent=won?'VICTORIOUS!':'YOU DIED';
+  document.getElementById('endTitle').style.color=won?'#7dff8a':'#ff6b6b';
+  const cause=won?'claimed the Emberheart on floor 6':('slain by a '+killer+' on floor '+G.floor);
+  const lines=[
+    'Seed: '+G.seedStr,
+    'Outcome: '+(won?'victorious':'slain'),
+    'Floor reached: '+G.floor,
+    'Level: '+p.level+'   XP: '+p.xp,
+    'Kills: '+G.kills+'  (rat '+G.killsBy[0]+' / kobold '+G.killsBy[1]+' / goblin '+G.killsBy[2]+' / spitter '+G.killsBy[3]+' / ogre '+G.killsBy[4]+')',
+    'Turns taken: '+G.turns,
+    'Damage dealt: '+G.dealt+'   Damage taken: '+G.taken,
+    won?'You claimed the Emberheart!':'Cause of death: slain by a '+killer+' on floor '+G.floor+'.',
+  ];
+  document.getElementById('endStats').textContent=lines.join('\n');
+  document.getElementById('endScreen').style.display='flex';
+  G.lastCause=cause;
+}
+
+/* ================= Input ================= */
+document.addEventListener('keydown',function(e){
+  const startVis=document.getElementById('startScreen').style.display!=='none';
+  const endVis=document.getElementById('endScreen').style.display!=='none';
+  if(startVis){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      newRun(document.getElementById('seedInput').value);
+    }
+    return;
+  }
+  if(endVis){
+    if(e.key==='Enter'){ e.preventDefault(); newRun(G?G.seedStr:''); }
+    else if(e.key==='r'||e.key==='R'){ e.preventDefault(); newRun(randomSeed()); }
+    return;
+  }
+  if(!G||G.over) return;
+  const k=e.key, code=e.code;
+  // descend
+  if(k==='>'||k==='Enter'){ e.preventDefault(); tryDescend(); return; }
+  // wait (numpad5 has key '5' but code Numpad5)
+  if(k==='.'||code==='Numpad5'){ e.preventDefault(); addLog('You wait.','c-player'); endPlayerTurn(); return; }
+  if(k==='f'||k==='F'){ e.preventDefault(); playerFire(); return; }
+  if(k>='1'&&k<='9'&&code!=='Numpad5'){ e.preventDefault(); drink(parseInt(k,10)-1); return; }
+  const lk=k.length===1?k.toLowerCase():k;
+  const mv={'arrowup':[0,-1],'arrowdown':[0,1],'arrowleft':[-1,0],'arrowright':[1,0],
+    'h':[-1,0],'j':[0,1],'k':[0,-1],'l':[1,0],
+    'y':[-1,-1],'u':[1,-1],'b':[-1,1],'n':[1,1]}[lk.toLowerCase()];
+  if(mv){ e.preventDefault(); movePlayer(mv[0],mv[1]); return; }
+});
+
+window.addEventListener('load',function(){
+  let last='';
+  try{ last=localStorage.getItem('emberdeep-seed')||''; }catch(e){}
+  document.getElementById('seedInput').value=last||randomSeed();
+  document.getElementById('seedInput').focus();
+  document.getElementById('seedInput').select();
+});
+</script>
+</body>
+</html>

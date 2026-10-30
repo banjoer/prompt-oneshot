@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<!--
+  STACKWELL — Guideline Tetromino Stacker
+  Single-file falling-block game (Canvas 2D, vanilla JS, no libraries).
+  Produced: 2026-10-30 08:00 UTC | Author/Model: Muse Spark 1.3 Contributor (Meta MSL) via OpenCode
+  Third-party libraries: NONE (vanilla JS only).
+  Controls: Left/Right move, Down soft drop, Space hard drop, Up/X rotate CW,
+            Z rotate CCW, C/Shift hold, P/Esc pause, R restart.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stackwell — Guideline Tetromino Stacker</title>
+<style>
+  :root{
+    --bg:#0b0e1a; --panel:#151a2e; --panel2:#1c2340; --line:#2a3358;
+    --txt:#e8ecff; --dim:#8b93b8; --accent:#00f0f0; --warn:#f0a000;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:radial-gradient(1200px 700px at 50% -10%, #1a2145 0%, var(--bg) 60%);
+    color:var(--txt); font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:14px 10px 8px; user-select:none;
+  }
+  h1{font-size:26px; letter-spacing:4px; font-weight:800;}
+  h1 span{color:var(--accent);}
+  .sub{color:var(--dim); font-size:12px; letter-spacing:2px; margin:2px 0 10px;}
+  #layout{display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap;}
+  .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line); border-radius:12px; padding:12px; width:170px;}
+  .panel h2{font-size:11px; letter-spacing:2px; color:var(--dim); margin-bottom:8px; text-align:center;}
+  .panel.right{width:170px;}
+  #hud .row{display:flex; justify-content:space-between; align-items:baseline; margin:7px 0;}
+  #hud .lbl{font-size:11px; letter-spacing:1.5px; color:var(--dim);}
+  #hud .val{font-size:20px; font-weight:800; font-variant-numeric:tabular-nums;}
+  #hud .val.small{font-size:16px;}
+  #stage{position:relative;}
+  #board{background:#070a16; border:1px solid var(--line); border-radius:12px; display:block;
+    box-shadow:0 0 0 4px #10152b, 0 12px 50px rgba(0,240,240,.12);}
+  .overlay{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(5,8,20,.78); border-radius:12px; text-align:center; z-index:5;}
+  .overlay.hidden{display:none;}
+  .overlay h2{font-size:34px; letter-spacing:6px; margin-bottom:8px;}
+  .overlay p{color:var(--dim); font-size:13px; margin:4px 0;}
+  .overlay .big{font-size:26px; color:#fff; font-weight:800;}
+  #newHi{display:none; background:#f0f000; color:#111; font-weight:800; font-size:13px;
+    letter-spacing:2px; padding:5px 14px; border-radius:20px; margin:8px 0; animation:pulse 0.6s infinite alternate;}
+  @keyframes pulse{from{transform:scale(1);}to{transform:scale(1.08);}}
+  button{background:var(--accent); border:none; color:#04222a; font-weight:800; letter-spacing:1px;
+    padding:10px 22px; border-radius:8px; cursor:pointer; font-size:14px; margin-top:10px;}
+  button:hover{filter:brightness(1.15);}
+  canvas.mini{background:#070a16; border:1px solid var(--line); border-radius:8px; display:block; margin:0 auto 10px;}
+  #holdBox.dimmed{opacity:.35; filter:grayscale(1);}
+  #controls{font-size:12px; line-height:1.75; color:var(--dim);}
+  #controls b{color:var(--txt); background:#262e55; border:1px solid #39437a; border-bottom-width:2px;
+    border-radius:5px; padding:0 6px; font-size:11px; margin-right:2px; white-space:nowrap;}
+  footer{margin-top:10px; color:var(--dim); font-size:11.5px; letter-spacing:.4px; text-align:center; max-width:900px;}
+  footer b{color:var(--txt);}
+</style>
+</head>
+<body>
+<h1>STACK<span>WELL</span></h1>
+<div class="sub">GUIDELINE TETROMINO STACKER &middot; 7-BAG &middot; SRS KICKS &middot; 60 HZ GRAVITY</div>
+<div id="layout">
+  <div class="panel" id="hud">
+    <h2>SCORE</h2>
+    <div class="row"><span class="lbl">SCORE</span><span class="val" id="score">0</span></div>
+    <div class="row"><span class="lbl">HI-SCORE</span><span class="val small" id="hiscore">0</span></div>
+    <div class="row"><span class="lbl">LEVEL</span><span class="val" id="level">1</span></div>
+    <div class="row"><span class="lbl">LINES</span><span class="val" id="lines">0</span></div>
+    <h2 style="margin-top:12px">HOLD <span style="font-weight:400">(C)</span></h2>
+    <div id="holdBox"><canvas class="mini" id="holdCanvas" width="120" height="80"></canvas></div>
+  </div>
+  <div id="stage">
+    <canvas id="board" width="300" height="600"></canvas>
+    <div class="overlay hidden" id="pauseOverlay"><h2>PAUSED</h2><p>Press <b>P</b> or <b>Esc</b> to resume</p></div>
+    <div class="overlay hidden" id="overOverlay">
+      <h2>GAME OVER</h2>
+      <p>FINAL SCORE</p><div class="big" id="finalScore">0</div>
+      <p>HI-SCORE: <b id="finalHi" style="color:#fff">0</b></p>
+      <div id="newHi">★ NEW HI-SCORE ★</div>
+      <p>Press <b>R</b> or <b>Enter</b> to restart</p>
+      <button id="restartBtn">RESTART (R)</button>
+    </div>
+  </div>
+  <div class="panel right">
+    <h2>NEXT &times; 3</h2>
+    <canvas class="mini" id="next0" width="120" height="80"></canvas>
+    <canvas class="mini" id="next1" width="120" height="80"></canvas>
+    <canvas class="mini" id="next2" width="120" height="80"></canvas>
+    <h2>CONTROLS</h2>
+    <div id="controls">
+      <b>&larr;</b><b>&rarr;</b> move<br>
+      <b>&darr;</b> soft drop (+1/row)<br>
+      <b>Space</b> hard drop (+2/row)<br>
+      <b>&uarr;</b>/<b>X</b> rotate CW<br>
+      <b>Z</b> rotate CCW<br>
+      <b>C</b>/<b>Shift</b> hold<br>
+      <b>P</b>/<b>Esc</b> pause<br>
+      <b>R</b> restart
+    </div>
+  </div>
+</div>
+<footer>Produced <b>2026-10-30 08:00 UTC</b> by <b>Muse Spark 1.3 Contributor (Meta MSL) via OpenCode</b> &middot; vanilla Canvas 2D, no libraries, no network &middot; hi-score persists in localStorage</footer>
+<script>
+"use strict";
+/* =================Named data constants (required)================ */
+const COLORS = { I:"#00f0f0", O:"#f0f000", T:"#a000f0", S:"#00f000", Z:"#f00000", J:"#0000f0", L:"#f0a000" };
+const SHAPES = {
+  I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  O:[[1,1],[1,1]],
+  T:[[0,1,0],[1,1,1],[0,0,0]],
+  S:[[0,1,1],[1,1,0],[0,0,0]],
+  Z:[[1,1,0],[0,1,1],[0,0,0]],
+  J:[[1,0,0],[1,1,1],[0,0,0]],
+  L:[[0,0,1],[1,1,1],[0,0,0]]
+};
+/* SRS kick tables, +y = up in data. Negate y at use-site (grid is +y = down). */
+const KICKS_JLSTZ = {
+  "0>R":[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+  "R>0":[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+  "R>2":[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+  "2>R":[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+  "2>L":[[0,0],[1,0],[1,1],[0,-2],[1,-2]],
+  "L>2":[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+  "L>0":[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+  "0>L":[[0,0],[1,0],[1,1],[0,-2],[1,-2]]
+};
+const KICKS_I = {
+  "0>R":[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+  "R>0":[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+  "R>2":[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],
+  "2>R":[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+  "2>L":[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+  "L>2":[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+  "L>0":[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+  "0>L":[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]
+};
+const GRAVITY_FRAMES = {1:48,2:43,3:38,4:33,5:28,6:23,7:18,8:13,9:8,10:6,11:5,12:5,13:4,14:4,15:3,16:3,17:3,18:2,19:2};
+const SCORE_TABLE = { single:100, double:300, triple:500, tetris:800, softDropPerRow:1, hardDropPerRow:2 };
+const ROT_NAMES = ["0","R","2","L"];
+const COLS=10, HIDDEN=2, VIS=20, ROWS=HIDDEN+VIS;
+const CELL=30, STEP_MS=1000/60, DAS_MS=167, ARR_MS=33, LOCK_MS=500, CLEAR_MS=280;
+const HS_KEY="stackwell_hiscore";
+
+/* =================State================ */
+let grid, bag, queue, active, holdType, canHold;
+let score, level, lines, hiscore, gameOver, paused, clearing;
+let clearRows, clearTimer, gravityCount, lockTimer, softHeld;
+let dasDir, dasTimer, arrTimer; // dasDir: -1,0,1
+let keysHeld;
+function framesForLevel(lv){ if(lv>=20) return 1; return GRAVITY_FRAMES[lv]||48; }
+
+function newBag(){
+  const b=["I","O","T","S","Z","J","L"];
+  for(let i=b.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=b[i]; b[i]=b[j]; b[j]=t; }
+  return b;
+}
+function refillQueue(){ while(queue.length<7+3){ if(bag.length===0) bag=newBag(); queue.push(bag.pop()); } }
+function copyMat(m){ return m.map(r=>r.slice()); }
+function rotateCW(m){ const N=m.length,o=[]; for(let r=0;r<N;r++){o.push([]);for(let c=0;c<N;c++)o[r][c]=m[N-1-c][r];} return o; }
+function rotateCCW(m){ const N=m.length,o=[]; for(let r=0;r<N;r++){o.push([]);for(let c=0;c<N;c++)o[r][c]=m[c][N-1-r];} return o; }
+function spawnX(type){ return type==="O"?4:3; }
+
+function resetGame(){
+  grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  bag=[]; queue=[]; refillQueue();
+  holdType=null; canHold=true;
+  score=0; level=1; lines=0; gameOver=false; paused=false; clearing=false;
+  clearRows=[]; clearTimer=0; gravityCount=0; lockTimer=0; softHeld=false;
+  dasDir=0; dasTimer=0; arrTimer=0; keysHeld={left:false,right:false,down:false};
+  hiscore=parseInt(localStorage.getItem(HS_KEY)||"0",10)||0;
+  document.getElementById("overOverlay").classList.add("hidden");
+  document.getElementById("pauseOverlay").classList.add("hidden");
+  document.getElementById("newHi").style.display="none";
+  spawnNext();
+  updateHUD();
+}
+function spawnNext(){
+  refillQueue();
+  const type=queue.shift(); refillQueue();
+  const mat=copyMat(SHAPES[type]);
+  active={type,mat,rot:0,x:spawnX(type),y:0};
+  gravityCount=0; lockTimer=0;
+  // NB: canHold is reset in lockPiece(), NOT here — hold stays disabled until next lock.
+  if(collides(active.mat,active.x,active.y)){
+    // top-out: piece overlaps stack at spawn
+    gameOver=true;
+    showGameOver();
+  }
+}
+function collides(mat,px,py){
+  for(let r=0;r<mat.length;r++)for(let c=0;c<mat[r].length;c++){
+    if(!mat[r][c])continue;
+    const x=px+c,y=py+r;
+    if(x<0||x>=COLS||y>=ROWS)return true;
+    if(y<0)continue;
+    if(grid[y][x])return true;
+  }
+  return false;
+}
+function tryMove(dx,dy){
+  if(!active||gameOver||paused||clearing)return false;
+  if(!collides(active.mat,active.x+dx,active.y+dy)){
+    active.x+=dx; active.y+=dy;
+    if(dx!==0&&grounded())lockTimer=0; // reset lock delay on successful shift while grounded
+    return true;
+  }
+  return false;
+}
+function grounded(){ return collides(active.mat,active.x,active.y+1); }
+function tryRotate(dir){ // dir +1 CW, -1 CCW
+  if(!active||gameOver||paused||clearing)return false;
+  if(active.type==="O")return false;
+  const from=ROT_NAMES[active.rot];
+  const to=ROT_NAMES[(active.rot+(dir===1?1:3))%4];
+  const newMat=dir===1?rotateCW(active.mat):rotateCCW(active.mat);
+  const table=active.type==="I"?KICKS_I:KICKS_JLSTZ;
+  const tests=table[from+">"+to]||[[0,0]];
+  for(const [kx,ky] of tests){
+    const dx=kx, dy=-ky; // negate: data +y=up, grid +y=down
+    if(!collides(newMat,active.x+dx,active.y+dy)){
+      active.mat=newMat; active.x+=dx; active.y+=dy;
+      active.rot=(active.rot+(dir===1?1:3))%4;
+      if(grounded())lockTimer=0;
+      return true;
+    }
+  }
+  return false;
+}
+function ghostY(){
+  let y=active.y;
+  while(!collides(active.mat,active.x,y+1))y++;
+  return y;
+}
+function doHold(){
+  if(!active||gameOver||paused||clearing||!canHold)return;
+  const cur=active.type;
+  if(holdType===null){ holdType=cur; spawnNext(); }
+  else{
+    const t=holdType; holdType=cur;
+    active={type:t,mat:copyMat(SHAPES[t]),rot:0,x:spawnX(t),y:0};
+    gravityCount=0; lockTimer=0;
+    if(collides(active.mat,active.x,active.y)){ gameOver=true; showGameOver(); }
+  }
+  canHold=false;
+  document.getElementById("holdBox").classList.add("dimmed");
+  updateHUD();
+}
+function lockPiece(fromHard){
+  // stamp cells
+  const m=active.mat;
+  for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++){
+    if(!m[r][c])continue;
+    const x=active.x+c,y=active.y+r;
+    if(y>=0&&y<ROWS&&x>=0&&x<COLS)grid[y][x]=active.type;
+  }
+  // find full rows
+  const full=[];
+  for(let y=0;y<ROWS;y++){ if(grid[y].every(v=>v!==null))full.push(y); }
+  canHold=true;
+  document.getElementById("holdBox").classList.remove("dimmed");
+  if(full.length>0){
+    clearing=true; clearRows=full; clearTimer=0;
+  }else{
+    spawnNext();
+  }
+  updateHUD();
+}
+function finishClear(){
+  const n=clearRows.length;
+  const pts=[0,SCORE_TABLE.single,SCORE_TABLE.double,SCORE_TABLE.triple,SCORE_TABLE.tetris][n]||0;
+  score+=pts*level;
+  lines+=n;
+  const nl=Math.floor(lines/10)+1;
+  if(nl!==level)level=nl;
+  // remove rows (one event), drop above instantly
+  clearRows.sort((a,b)=>a-b);
+  const keep=[];
+  for(let y=0;y<ROWS;y++)if(!clearRows.includes(y))keep.push(grid[y]);
+  while(keep.length<ROWS)keep.unshift(Array(COLS).fill(null));
+  grid=keep;
+  if(score>hiscore){ hiscore=score; localStorage.setItem(HS_KEY,String(hiscore)); }
+  clearing=false; clearRows=[]; clearTimer=0;
+  spawnNext();
+  // gameOver may have been set by spawnNext
+  updateHUD();
+}
+function hardDrop(){
+  if(!active||gameOver||paused||clearing)return;
+  const gy=ghostY();
+  const dist=gy-active.y;
+  active.y=gy;
+  score+=dist*SCORE_TABLE.hardDropPerRow;
+  if(score>hiscore){ hiscore=score; localStorage.setItem(HS_KEY,String(hiscore)); }
+  lockPiece(true);
+}
+function updateHUD(){
+  document.getElementById("score").textContent=score;
+  document.getElementById("hiscore").textContent=hiscore;
+  document.getElementById("level").textContent=level;
+  document.getElementById("lines").textContent=lines;
+  drawMini(document.getElementById("holdCanvas"),holdType);
+  for(let i=0;i<3;i++)drawMini(document.getElementById("next"+i),queue[i]||null);
+}
+function showGameOver(){
+  const prevHi=parseInt(localStorage.getItem(HS_KEY)||"0",10)||0;
+  const isNew=score>prevHi&&score>0;
+  if(score>hiscore){ hiscore=score; localStorage.setItem(HS_KEY,String(hiscore)); }
+  document.getElementById("finalScore").textContent=score;
+  document.getElementById("finalHi").textContent=hiscore;
+  document.getElementById("newHi").style.display=isNew?"block":"none";
+  document.getElementById("overOverlay").classList.remove("hidden");
+  updateHUD();
+}
+
+/* =================Fixed-timestep update (60 Hz)================ */
+function step(){
+  if(paused||gameOver)return;
+  if(clearing){
+    clearTimer+=STEP_MS;
+    if(clearTimer>=CLEAR_MS)finishClear();
+    return;
+  }
+  if(!active)return;
+  // DAS/ARR auto-repeat
+  let moveDir=0;
+  if(keysHeld.left&&keysHeld.right)moveDir=dasDir!==0?dasDir:1;
+  else if(keysHeld.left)moveDir=-1;
+  else if(keysHeld.right)moveDir=1;
+  else moveDir=0;
+  if(moveDir!==0){
+    if(moveDir!==dasDir){ dasDir=moveDir; dasTimer=0; arrTimer=0; }
+    else{
+      dasTimer+=STEP_MS;
+      if(dasTimer>=DAS_MS){
+        arrTimer+=STEP_MS;
+        while(arrTimer>=ARR_MS){ arrTimer-=ARR_MS; tryMove(moveDir,0); }
+      }
+    }
+  }else{ dasDir=0; dasTimer=0; arrTimer=0; }
+  // gravity
+  const gf=framesForLevel(level);
+  const interval=softHeld?Math.min(2,gf):gf;
+  gravityCount++;
+  if(gravityCount>=interval){
+    gravityCount=0;
+    if(!collides(active.mat,active.x,active.y+1)){
+      active.y++;
+      if(softHeld){ score+=SCORE_TABLE.softDropPerRow; if(score>hiscore){hiscore=score;localStorage.setItem(HS_KEY,String(hiscore));} }
+      lockTimer=0;
+    }
+  }
+  // lock delay
+  if(grounded()){ lockTimer+=STEP_MS; if(lockTimer>=LOCK_MS){ lockPiece(false); } }
+  else lockTimer=0;
+}
+
+/* =================Rendering================ */
+const board=document.getElementById("board");
+const ctx=board.getContext("2d");
+function shade(hex,f){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.min(255,Math.max(0,Math.round(r*f))); g=Math.min(255,Math.max(0,Math.round(g*f))); b=Math.min(255,Math.max(0,Math.round(b*f)));
+  return "rgb("+r+","+g+","+b+")";
+}
+function drawCell(g,px,py,color,ghost,flashWhite){
+  const x=px*CELL,y=py*CELL;
+  if(flashWhite){ g.fillStyle="#ffffff"; g.fillRect(x,y,CELL,CELL); return; }
+  if(ghost){
+    g.strokeStyle=color; g.globalAlpha=0.55; g.lineWidth=2;
+    g.strokeRect(x+2,y+2,CELL-4,CELL-4);
+    g.globalAlpha=1; return;
+  }
+  g.fillStyle="rgba(0,0,0,0.55)"; g.fillRect(x,y,CELL,CELL);
+  g.fillStyle=color; g.fillRect(x+1,y+1,CELL-2,CELL-2);
+  g.fillStyle=shade(color,1.35); g.fillRect(x+1,y+1,CELL-2,5);
+  g.fillStyle=shade(color,0.55); g.fillRect(x+1,y+CELL-6,CELL-2,5);
+}
+function render(){
+  ctx.clearRect(0,0,board.width,board.height);
+  ctx.fillStyle="#070a16"; ctx.fillRect(0,0,board.width,board.height);
+  // grid lines
+  ctx.strokeStyle="rgba(60,70,120,0.25)"; ctx.lineWidth=1;
+  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL+.5,0);ctx.lineTo(c*CELL+.5,VIS*CELL);ctx.stroke();}
+  for(let r=0;r<=VIS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL+.5);ctx.lineTo(COLS*CELL,r*CELL+.5);ctx.stroke();}
+  const flashOn = clearing ? (Math.floor(clearTimer/70)%2===0) : false;
+  // stack (visible rows only)
+  for(let y=HIDDEN;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const v=grid[y][x];
+    if(v){
+      const isClear=clearing&&clearRows.includes(y);
+      drawCell(ctx,x,y-HIDDEN,isClear&&flashOn?"#fff":COLORS[v],false,isClear&&flashOn);
+    }
+  }
+  if(active&&!gameOver&&!clearing){
+    // ghost piece at hard-drop landing position
+    const gy=ghostY();
+    const m=active.mat;
+    for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++){
+      if(!m[r][c]||(gy===active.y))continue;
+      const gx=active.x+c, gvy=gy+r;
+      if(gvy>=HIDDEN&&gvy<ROWS&&gx>=0&&gx<COLS)drawCell(ctx,gx,gvy-HIDDEN,COLORS[active.type],true,false);
+    }
+    // active piece
+    for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++){
+      if(!m[r][c])continue;
+      const x=active.x+c,y=active.y+r;
+      if(y>=HIDDEN)drawCell(ctx,x,y-HIDDEN,COLORS[active.type],false,false);
+    }
+  }
+  if(paused||gameOver){ /* overlays are HTML */ }
+  updateHUDTextOnly();
+}
+let hudCache={s:-1,h:-1,l:-1,ln:-1};
+function updateHUDTextOnly(){
+  if(hudCache.s!==score){document.getElementById("score").textContent=score;hudCache.s=score;}
+  if(hudCache.h!==hiscore){document.getElementById("hiscore").textContent=hiscore;hudCache.h=hiscore;}
+  if(hudCache.l!==level){document.getElementById("level").textContent=level;hudCache.l=level;}
+  if(hudCache.ln!==lines){document.getElementById("lines").textContent=lines;hudCache.ln=lines;}
+}
+function drawMini(cv,type){
+  const g=cv.getContext("2d");
+  g.clearRect(0,0,cv.width,cv.height);
+  g.fillStyle="#070a16"; g.fillRect(0,0,cv.width,cv.height);
+  if(!type)return;
+  const m=SHAPES[type], N=m.length, cs=type==="I"?22:24;
+  const w=N*cs,h=N*cs;
+  const ox=(cv.width-w)/2, oy=(cv.height-h)/2;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(!m[r][c])continue;
+    g.fillStyle=COLORS[type];
+    g.fillRect(ox+c*cs+1,oy+r*cs+1,cs-2,cs-2);
+    g.fillStyle=shade(COLORS[type],1.3);
+    g.fillRect(ox+c*cs+1,oy+r*cs+1,cs-2,4);
+  }
+}
+
+/* =================Main loop (rAF + accumulator, never setInterval)================ */
+let last=0, acc=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  if(!last)last=t;
+  let dt=t-last; last=t;
+  if(dt>250)dt=250;
+  if(!paused){ acc+=dt; let n=0; while(acc>=STEP_MS&&n<5){ step(); acc-=STEP_MS; n++; } if(n===5)acc=0; }
+  render();
+}
+
+/* =================Input================ */
+function togglePause(){
+  if(gameOver)return;
+  paused=!paused;
+  document.getElementById("pauseOverlay").classList.toggle("hidden",!paused);
+  if(!paused){ last=0; acc=0; }
+}
+window.addEventListener("keydown",e=>{
+  const k=e.key;
+  if(["ArrowLeft","ArrowRight","ArrowDown","ArrowUp"," "].includes(k))e.preventDefault();
+  if(k==="p"||k==="P"||k==="Escape"){ togglePause(); return; }
+  if(k==="r"||k==="R"){ if(gameOver||true){ resetGame(); } return; }
+  if(gameOver){ if(k==="Enter"){ resetGame(); } return; }
+  if(paused||clearing)return;
+  switch(k){
+    case "ArrowLeft":
+      if(!e.repeat){ keysHeld.left=true; dasDir=-1; dasTimer=0; arrTimer=0; tryMove(-1,0); }
+      break;
+    case "ArrowRight":
+      if(!e.repeat){ keysHeld.right=true; dasDir=1; dasTimer=0; arrTimer=0; tryMove(1,0); }
+      break;
+    case "ArrowDown":
+      if(!e.repeat){ softHeld=true; keysHeld.down=true; }
+      break;
+    case " ":
+      if(!e.repeat)hardDrop();
+      break;
+    case "ArrowUp": case "x": case "X":
+      if(!e.repeat)tryRotate(1);
+      break;
+    case "z": case "Z":
+      if(!e.repeat)tryRotate(-1);
+      break;
+    case "c": case "C": case "Shift":
+      if(!e.repeat)doHold();
+      break;
+  }
+});
+window.addEventListener("keyup",e=>{
+  switch(e.key){
+    case "ArrowLeft": keysHeld.left=false; break;
+    case "ArrowRight": keysHeld.right=false; break;
+    case "ArrowDown": softHeld=false; keysHeld.down=false; break;
+  }
+});
+document.getElementById("restartBtn").addEventListener("click",()=>resetGame());
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
