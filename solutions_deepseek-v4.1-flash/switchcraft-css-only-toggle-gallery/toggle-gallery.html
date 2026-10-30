@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Switchcraft — a gallery of six hand-built, CSS-only animated toggle switches. Copy the CSS with one click.">
+<title>Switchcraft — CSS-Only Toggle Gallery</title>
+<script>
+  /* Apply a previously chosen theme before first paint to avoid a flash. */
+  (function () {
+    try {
+      var saved = localStorage.getItem('switchcraft-theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+    } catch (e) { /* storage can be blocked on file:// in some browsers */ }
+  })();
+</script>
+
+<!-- ─────────────────────────────────────────────────────────────
+     Page shell: theme tokens, header, grid, cards, footer.
+     ───────────────────────────────────────────────────────────── -->
+<style id="css-page" data-label="Page shell">
+  :root {
+    color-scheme: light;
+    --bg: #f5f6fb;
+    --bg-glow-1: rgba(99, 102, 241, .16);
+    --bg-glow-2: rgba(34, 211, 238, .14);
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --stage: #f8fafc;
+    --text: #111827;
+    --muted: #5b6478;
+    --border: #e5e9f2;
+    --border-strong: #d4daea;
+    --accent: #5457d6;
+    --accent-soft: #eef0ff;
+    --dot: rgba(84, 87, 214, .15);
+    --focus: #4f46e5;
+    --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 18px 40px -24px rgba(48, 52, 109, .4);
+    --ok-bg: #dcfce7;
+    --ok-border: #86efac;
+    --ok-fg: #166534;
+    --err-bg: #fee2e2;
+    --err-border: #fca5a5;
+    --err-fg: #991b1b;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #080b14;
+    --bg-glow-1: rgba(99, 102, 241, .24);
+    --bg-glow-2: rgba(34, 211, 238, .15);
+    --surface: #101828;
+    --surface-2: #0d1424;
+    --stage: #0c1120;
+    --text: #e8edf7;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --border-strong: #2b3a52;
+    --accent: #a5b4fc;
+    --accent-soft: #1c2547;
+    --dot: rgba(148, 163, 184, .17);
+    --focus: #a5b4fc;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 24px 50px -28px rgba(0, 0, 0, .85);
+    --ok-bg: #052e1a;
+    --ok-border: #166534;
+    --ok-fg: #86efac;
+    --err-bg: #3b0a0a;
+    --err-border: #7f1d1d;
+    --err-fg: #fca5a5;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #080b14;
+      --bg-glow-1: rgba(99, 102, 241, .24);
+      --bg-glow-2: rgba(34, 211, 238, .15);
+      --surface: #101828;
+      --surface-2: #0d1424;
+      --stage: #0c1120;
+      --text: #e8edf7;
+      --muted: #94a3b8;
+      --border: #1e293b;
+      --border-strong: #2b3a52;
+      --accent: #a5b4fc;
+      --accent-soft: #1c2547;
+      --dot: rgba(148, 163, 184, .17);
+      --focus: #a5b4fc;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 24px 50px -28px rgba(0, 0, 0, .85);
+      --ok-bg: #052e1a;
+      --ok-border: #166534;
+      --ok-fg: #86efac;
+      --err-bg: #3b0a0a;
+      --err-border: #7f1d1d;
+      --err-fg: #fca5a5;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font);
+    line-height: 1.5;
+    color: var(--text);
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(900px 520px at 6% -8%, var(--bg-glow-1), transparent 62%),
+      radial-gradient(820px 520px at 102% 0%, var(--bg-glow-2), transparent 58%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding: 22px clamp(16px, 4vw, 34px) 38px;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 50;
+    padding: 10px 16px;
+    border-radius: 0 0 10px 10px;
+    background: #4f46e5;
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: top .2s ease;
+  }
+  .skip-link:focus { top: 0; }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .site-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0 20px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border-radius: 15px;
+    font-size: 22px;
+    color: #fff;
+    background: linear-gradient(145deg, #6366f1 8%, #22d3ee 92%);
+    box-shadow: 0 10px 24px -10px rgba(79, 70, 229, .85);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.18rem, 2.4vw, 1.5rem);
+    font-weight: 750;
+    letter-spacing: -.025em;
+    line-height: 1.2;
+  }
+
+  .tagline {
+    margin: 3px 0 0;
+    font-size: .8rem;
+    color: var(--muted);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease, background-color .2s ease, transform .2s ease;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .btn.is-copied {
+    background: var(--ok-bg);
+    border-color: var(--ok-border);
+    color: var(--ok-fg);
+  }
+  .btn.is-error {
+    background: var(--err-bg);
+    border-color: var(--err-border);
+    color: var(--err-fg);
+  }
+
+  .theme-toggle {
+    width: auto;
+    height: 42px;
+    padding: 0 14px;
+    gap: 7px;
+    font-size: .8rem;
+  }
+
+  .theme-icon { font-size: 1rem; line-height: 1; }
+  .theme-icon.sun { display: none; }
+
+  :root[data-theme="dark"] .theme-icon.sun { display: inline; }
+  :root[data-theme="dark"] .theme-icon.moon { display: none; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon.sun { display: inline; }
+    :root:not([data-theme="light"]) .theme-icon.moon { display: none; }
+  }
+
+  /* ── Intro ──────────────────────────────────────────────── */
+  .lede {
+    display: grid;
+    gap: 12px;
+    max-width: 720px;
+    padding: 6px 0 26px;
+  }
+  .lede p {
+    margin: 0;
+    font-size: clamp(.92rem, 1.5vw, 1rem);
+    color: var(--muted);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chips li {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .nojs {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: .82rem;
+  }
+
+  /* ── Section heading ───────────────────────────────────── */
+  .section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 16px;
+    margin: 0 0 14px;
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .section-head p {
+    margin: 0;
+    font-size: .78rem;
+    color: var(--muted);
+  }
+
+  /* ── Gallery grid ──────────────────────────────────────── */
+  .gallery {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  @media (min-width: 640px) {
+    .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  }
+
+  @media (min-width: 1000px) {
+    .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  }
+
+  /* ── Card ──────────────────────────────────────────────── */
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 17px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+
+  @media (hover: hover) {
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-strong);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 26px 46px -26px rgba(48, 52, 109, .55);
+    }
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .card-head h3 {
+    margin: 0;
+    font-size: .98rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+
+  .badge {
+    flex: none;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: .63rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .card-desc {
+    margin: -4px 0 0;
+    min-height: 2.5em;
+    font-size: .79rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .stage {
+    display: grid;
+    place-items: center;
+    min-height: 116px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background-color: var(--stage);
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.4px);
+    background-size: 16px 16px;
+  }
+
+  .stage-dark {
+    background-color: #070c17;
+    background-image: radial-gradient(circle, rgba(34, 211, 238, .16) 1px, transparent 1.4px);
+    border-color: #1b2a44;
+  }
+
+  .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+  }
+
+  .card-foot .tag {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 96px;
+    padding: 7px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease, background-color .2s ease;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .copy-btn.is-copied {
+    background: var(--ok-bg);
+    border-color: var(--ok-border);
+    color: var(--ok-fg);
+  }
+  .copy-btn.is-error {
+    background: var(--err-bg);
+    border-color: var(--err-border);
+    color: var(--err-fg);
+  }
+
+  /* ── Footer ────────────────────────────────────────────── */
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 24px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: .79rem;
+    color: var(--muted);
+  }
+  .site-footer p { margin: 0; }
+  .site-footer strong { color: var(--text); font-weight: 650; }
+  .sep { padding: 0 4px; opacity: .55; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+
+<!-- ─────────────────────────────────────────────────────────────
+     Shared switch harness — layout, hidden input, focus ring,
+     on/off text. Copied together with any single switch below.
+     ───────────────────────────────────────────────────────────── -->
+<style id="css-base" data-label="Shared switch harness">
+  .toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .toggle .track {
+    position: relative;
+    display: block;
+    flex: none;
+    transition: background-color .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+
+  .toggle .knob {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .28);
+    transition: transform .38s cubic-bezier(.2, .85, .25, 1), background-color .3s ease, box-shadow .3s ease;
+    will-change: transform;
+  }
+
+  .toggle input:focus-visible + .track {
+    outline: 3px solid #6366f1;
+    outline-offset: 4px;
+  }
+
+  .toggle .state {
+    min-width: 2.3em;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    color: currentColor;
+  }
+  .toggle .state::before { content: "Off"; opacity: .65; }
+  .toggle input:checked ~ .state::before { content: "On"; opacity: 1; }
+</style>
+
+<!-- ── 1 · Classic Slide ──────────────────────────────────── -->
+<style id="css-classic" data-label="Classic Slide">
+  .toggle-classic .track {
+    width: 68px;
+    height: 38px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    box-shadow: inset 0 1px 3px rgba(15, 23, 42, .2);
+  }
+
+  .toggle-classic .knob {
+    top: 4px;
+    left: 4px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+  }
+
+  .toggle-classic input:checked + .track {
+    background: #22c55e;
+  }
+
+  .toggle-classic input:checked + .track .knob {
+    transform: translateX(30px);
+  }
+</style>
+
+<!-- ── 2 · Neon Glow ──────────────────────────────────────── -->
+<style id="css-neon" data-label="Neon Glow">
+  .toggle-neon .track {
+    width: 70px;
+    height: 38px;
+    border: 1px solid #26324a;
+    border-radius: 999px;
+    background: #0b1220;
+    box-shadow: inset 0 1px 4px #000;
+  }
+
+  .toggle-neon .knob {
+    top: 4px;
+    left: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #64748b;
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+
+  .toggle-neon input:checked + .track {
+    background: #06222b;
+    border-color: #22d3ee;
+    box-shadow:
+      inset 0 0 10px rgba(34, 211, 238, .35),
+      0 0 14px rgba(34, 211, 238, .55),
+      0 0 30px rgba(34, 211, 238, .28);
+  }
+
+  .toggle-neon input:checked + .track .knob {
+    transform: translateX(32px);
+    background: #ecfeff;
+    box-shadow:
+      0 0 6px #22d3ee,
+      0 0 16px #22d3ee,
+      0 0 28px rgba(34, 211, 238, .7);
+  }
+</style>
+
+<!-- ── 3 · Squishy ────────────────────────────────────────── -->
+<style id="css-squish" data-label="Squishy">
+  .toggle-squish .track {
+    width: 72px;
+    height: 40px;
+    border-radius: 999px;
+    background: #fbcfe8;
+    box-shadow: inset 0 2px 4px rgba(190, 24, 93, .18);
+  }
+
+  .toggle-squish .knob {
+    top: 4px;
+    left: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    translate: 0 0;
+    transition: translate .4s cubic-bezier(.3, .9, .3, 1), background-color .3s ease;
+    animation: sw-squish-out .42s cubic-bezier(.3, .9, .4, 1);
+  }
+
+  .toggle-squish input:checked + .track {
+    background: #f472b6;
+  }
+
+  .toggle-squish input:checked + .track .knob {
+    translate: 32px 0;
+    background: #fff7fb;
+    animation: sw-squish-in .5s cubic-bezier(.3, .9, .4, 1);
+  }
+
+  @keyframes sw-squish-in {
+    0%   { scale: 1 1; }
+    35%  { scale: 1.32 .72; }
+    70%  { scale: .9 1.1; }
+    100% { scale: 1 1; }
+  }
+
+  @keyframes sw-squish-out {
+    0%   { scale: 1 1; }
+    30%  { scale: 1.18 .84; }
+    65%  { scale: .95 1.05; }
+    100% { scale: 1 1; }
+  }
+</style>
+
+<!-- ── 4 · Day / Night ────────────────────────────────────── -->
+<style id="css-day" data-label="Day / Night">
+  .toggle-day .track {
+    width: 78px;
+    height: 40px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+    box-shadow: inset 0 2px 6px rgba(2, 132, 199, .25), 0 0 0 1px rgba(148, 163, 184, .28);
+    overflow: hidden;
+    transition: background .45s ease, box-shadow .45s ease;
+  }
+
+  .toggle-day .track::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 18% 30%, #fff 1px, transparent 1.5px),
+      radial-gradient(circle at 38% 68%, #fff 1.2px, transparent 1.7px),
+      radial-gradient(circle at 80% 28%, #fff 1px, transparent 1.5px),
+      radial-gradient(circle at 62% 22%, rgba(255, 255, 255, .75) 1px, transparent 1.4px);
+    opacity: 0;
+    transition: opacity .45s ease .08s;
+  }
+
+  .toggle-day .knob {
+    top: 5px;
+    left: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fde047;
+    box-shadow: 0 0 10px rgba(253, 224, 71, .9), 0 2px 6px rgba(2, 132, 199, .3);
+    translate: 0 0;
+    transition: translate .45s cubic-bezier(.3, .9, .3, 1), background-color .4s ease, box-shadow .4s ease;
+  }
+
+  .toggle-day .icon {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+    font-size: 15px;
+    line-height: 1;
+    transition: opacity .28s ease, transform .45s ease;
+  }
+
+  .toggle-day .icon-moon {
+    opacity: 0;
+    transform: rotate(-100deg) scale(.4);
+  }
+
+  .toggle-day input:checked + .track {
+    background: linear-gradient(180deg, #1e1b4b, #020617);
+    box-shadow: inset 0 2px 8px #000, 0 0 16px rgba(99, 102, 241, .28), 0 0 0 1px rgba(148, 163, 184, .32);
+  }
+
+  .toggle-day input:checked + .track::before { opacity: 1; }
+
+  .toggle-day input:checked + .track .knob {
+    translate: 38px 0;
+    background: #e2e8f0;
+    box-shadow: 0 0 12px rgba(226, 232, 240, .6), 0 2px 6px rgba(0, 0, 0, .4);
+  }
+
+  .toggle-day input:checked + .track .icon-sun {
+    opacity: 0;
+    transform: rotate(100deg) scale(.4);
+  }
+
+  .toggle-day input:checked + .track .icon-moon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+</style>
+
+<!-- ── 5 · Pulse ──────────────────────────────────────────── -->
+<style id="css-pulse" data-label="Pulse">
+  .toggle-pulse .track {
+    width: 72px;
+    height: 40px;
+    border-radius: 999px;
+    background: #a7f3d0;
+    box-shadow: inset 0 2px 4px rgba(6, 95, 70, .18);
+  }
+
+  .toggle-pulse .knob {
+    top: 4px;
+    left: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .toggle-pulse .knob::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border: 2px solid rgba(16, 185, 129, .9);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .toggle-pulse input:checked + .track {
+    background: #10b981;
+  }
+
+  .toggle-pulse input:checked + .track .knob {
+    transform: translateX(32px);
+    background: #ecfdf5;
+    box-shadow: 0 0 12px rgba(16, 185, 129, .6), 0 2px 6px rgba(15, 23, 42, .28);
+  }
+
+  .toggle-pulse input:checked + .track .knob::after {
+    animation: sw-pulse-ring 1.6s ease-out infinite;
+  }
+
+  @keyframes sw-pulse-ring {
+    0%   { transform: scale(.9); opacity: .9; }
+    70%  { transform: scale(1.8); opacity: 0; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+</style>
+
+<!-- ── 6 · Flip Lock ──────────────────────────────────────── -->
+<style id="css-flip" data-label="Flip Lock">
+  .toggle-flip .track {
+    width: 76px;
+    height: 42px;
+    border-radius: 12px;
+    background: #e2e8f0;
+    box-shadow: inset 0 2px 5px rgba(15, 23, 42, .16);
+    perspective: 400px;
+  }
+
+  .toggle-flip .knob {
+    top: 5px;
+    left: 5px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.5, .05, .2, 1);
+  }
+
+  .toggle-flip .face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #f8fafc;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, .22);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .toggle-flip .face-back {
+    background: #fef9c3;
+    transform: rotateY(180deg);
+  }
+
+  .toggle-flip input:checked + .track {
+    background: #bbf7d0;
+  }
+
+  .toggle-flip input:checked + .track .knob {
+    transform: translateX(34px) rotateY(180deg);
+  }
+</style>
+</head>
+
+<body>
+<a class="skip-link" href="#gallery">Skip to the gallery</a>
+
+<div class="page">
+  <noscript>
+    <p class="nojs">JavaScript is off — every switch below still toggles and animates. The theme toggle and copy buttons need JavaScript.</p>
+  </noscript>
+
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">⇄</div>
+      <div>
+        <h1>Switchcraft</h1>
+        <p class="tagline">Six CSS-only toggles · copy the rules, keep the motion</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" id="copy-all" type="button" aria-label="Copy the full stylesheet">Copy all CSS</button>
+      <button class="btn theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch to dark theme">
+        <span class="theme-icon moon" aria-hidden="true">☾</span>
+        <span class="theme-icon sun" aria-hidden="true">☀</span>
+        <span class="theme-label">Theme</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="lede" aria-labelledby="lede-title">
+    <p id="lede-title">Six hand-built switches that slide, squish, glow and pulse using nothing but CSS. Flip one — then copy its rules straight into your project. No libraries, no downloads, no animation JavaScript.</p>
+    <ul class="chips">
+      <li>Pure CSS motion</li>
+      <li>Keyboard ready</li>
+      <li>Light / dark</li>
+      <li>Works offline</li>
+    </ul>
+  </section>
+
+  <div class="section-head" id="gallery">
+    <h2>The collection</h2>
+    <p>6 switches · single file · vanilla only</p>
+  </div>
+
+  <main class="gallery" aria-label="Toggle switch gallery">
+    <!-- 1 · Classic Slide -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Classic Slide</h3>
+        <span class="badge">Pill</span>
+      </header>
+      <p class="card-desc">The dependable one — a soft knob glides across a rounded track.</p>
+      <div class="stage">
+        <label class="toggle toggle-classic">
+          <input type="checkbox" role="switch" aria-label="Classic Slide">
+          <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-classic" aria-label="Copy CSS for Classic Slide">Copy CSS</button>
+      </div>
+    </article>
+
+    <!-- 2 · Neon Glow -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Neon Glow</h3>
+        <span class="badge">Glow</span>
+      </header>
+      <p class="card-desc">A dark track that lights up cyan the moment it gets power.</p>
+      <div class="stage stage-dark">
+        <label class="toggle toggle-neon">
+          <input type="checkbox" role="switch" aria-label="Neon Glow">
+          <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-neon" aria-label="Copy CSS for Neon Glow">Copy CSS</button>
+      </div>
+    </article>
+
+    <!-- 3 · Squishy -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Squishy</h3>
+        <span class="badge">Springy</span>
+      </header>
+      <p class="card-desc">The knob stretches mid-slide, then settles back into shape.</p>
+      <div class="stage">
+        <label class="toggle toggle-squish">
+          <input type="checkbox" role="switch" aria-label="Squishy">
+          <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-squish" aria-label="Copy CSS for Squishy">Copy CSS</button>
+      </div>
+    </article>
+
+    <!-- 4 · Day / Night -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Day / Night</h3>
+        <span class="badge">Ambient</span>
+      </header>
+      <p class="card-desc">A sun melts into a moon as the sky fades to starlight.</p>
+      <div class="stage">
+        <label class="toggle toggle-day">
+          <input type="checkbox" role="switch" aria-label="Day / Night">
+          <span class="track" aria-hidden="true">
+            <span class="knob">
+              <span class="icon icon-sun">☀</span>
+              <span class="icon icon-moon">🌙</span>
+            </span>
+          </span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-day" aria-label="Copy CSS for Day / Night">Copy CSS</button>
+      </div>
+    </article>
+
+    <!-- 5 · Pulse -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Pulse</h3>
+        <span class="badge">Loop</span>
+      </header>
+      <p class="card-desc">A repeating ripple rings out while the switch is on.</p>
+      <div class="stage">
+        <label class="toggle toggle-pulse">
+          <input type="checkbox" role="switch" aria-label="Pulse">
+          <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-pulse" aria-label="Copy CSS for Pulse">Copy CSS</button>
+      </div>
+    </article>
+
+    <!-- 6 · Flip Lock -->
+    <article class="card">
+      <header class="card-head">
+        <h3>Flip Lock</h3>
+        <span class="badge">3D</span>
+      </header>
+      <p class="card-desc">A 180° flip reveals the lock state right on the knob.</p>
+      <div class="stage">
+        <label class="toggle toggle-flip">
+          <input type="checkbox" role="switch" aria-label="Flip Lock">
+          <span class="track" aria-hidden="true">
+            <span class="knob">
+              <span class="face face-front" aria-hidden="true">🔓</span>
+              <span class="face face-back" aria-hidden="true">🔒</span>
+            </span>
+          </span>
+          <span class="state" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="card-foot">
+        <span class="tag">CSS only</span>
+        <button class="copy-btn" type="button" data-css="css-flip" aria-label="Copy CSS for Flip Lock">Copy CSS</button>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <strong>Produced</strong>
+      <time datetime="2026-10-29T23:15:00+01:00">29 October 2026, 23:15 CET</time>
+      <span class="sep">·</span>
+      <strong>Author</strong> DeepSeek V4.1 Flash
+    </p>
+    <p>Six switches <span class="sep">·</span> 100% CSS motion <span class="sep">·</span> one HTML file</p>
+  </footer>
+
+  <p id="sr-live" class="sr-only" role="status" aria-live="polite"></p>
+</div>
+
+<script>
+  /* JavaScript is used for exactly two things here:
+     1. clipboard copying + button feedback
+     2. the page theme toggle + persistence
+     Switch visuals are 100% CSS. */
+  (function () {
+    'use strict';
+
+    var root = document.documentElement;
+    var STORE_KEY = 'switchcraft-theme';
+    var themeBtn = document.getElementById('theme-toggle');
+    var copyAllBtn = document.getElementById('copy-all');
+    var live = document.getElementById('sr-live');
+    var colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+    /* ── Theme ───────────────────────────────────────────── */
+
+    function effectiveTheme() {
+      var attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return colorScheme.matches ? 'dark' : 'light';
+    }
+
+    function syncThemeButton() {
+      var isDark = effectiveTheme() === 'dark';
+      themeBtn.setAttribute('aria-pressed', String(isDark));
+      themeBtn.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+    }
+
+    syncThemeButton();
+
+    themeBtn.addEventListener('click', function () {
+      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem(STORE_KEY, next); } catch (e) { /* ignore */ }
+      syncThemeButton();
+      announce(next === 'dark' ? 'Dark theme enabled' : 'Light theme enabled');
+    });
+
+    if (typeof colorScheme.addEventListener === 'function') {
+      colorScheme.addEventListener('change', function () {
+        if (!root.hasAttribute('data-theme')) syncThemeButton();
+      });
+    } else if (typeof colorScheme.addListener === 'function') {
+      colorScheme.addListener(function () {
+        if (!root.hasAttribute('data-theme')) syncThemeButton();
+      });
+    }
+
+    /* ── Clipboard ───────────────────────────────────────── */
+
+    function announce(message) {
+      live.textContent = '';
+      window.setTimeout(function () { live.textContent = message; }, 30);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        return navigator.clipboard.writeText(text).then(function () {
+          return true;
+        }).catch(function () {
+          return legacyCopy(text);
+        });
+      }
+      return Promise.resolve(legacyCopy(text));
+    }
+
+    /* Fallback for browsers that refuse the async clipboard on file:// */
+    function legacyCopy(text) {
+      try {
+        var field = document.createElement('textarea');
+        field.value = text;
+        field.setAttribute('readonly', '');
+        field.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0;';
+        document.body.appendChild(field);
+        field.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(field);
+        return ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function flash(button, message, isError) {
+      if (!button.dataset.originalLabel) {
+        button.dataset.originalLabel = button.textContent;
+      }
+      button.textContent = message;
+      button.classList.toggle('is-copied', !isError);
+      button.classList.toggle('is-error', !!isError);
+
+      if (button._resetTimer) window.clearTimeout(button._resetTimer);
+      button._resetTimer = window.setTimeout(function () {
+        button.textContent = button.dataset.originalLabel;
+        button.classList.remove('is-copied', 'is-error');
+        button._resetTimer = null;
+      }, isError ? 2200 : 1500);
+    }
+
+    function cleanCss(text) {
+      var lines = text.replace(/\r/g, '').split('\n');
+      var indent = Infinity;
+      lines.forEach(function (line) {
+        if (line.trim()) {
+          indent = Math.min(indent, line.match(/^\s*/)[0].length);
+        }
+      });
+      if (!isFinite(indent)) indent = 0;
+      return lines.map(function (line) {
+        return line.slice(indent);
+      }).join('\n').trim();
+    }
+
+    function cssForSwitch(button) {
+      var block = document.getElementById(button.dataset.css);
+      var base = document.getElementById('css-base');
+      if (!block) return '';
+      return '/* Switchcraft — ' + block.getAttribute('data-label') + ' */\n' +
+        '/* Shared harness */\n' + cleanCss(base.textContent) +
+        '\n\n/* ' + block.getAttribute('data-label') + ' */\n' + cleanCss(block.textContent) + '\n';
+    }
+
+    function handleCopy(button, getCss, successMessage) {
+      var css = getCss();
+      copyText(css).then(function (ok) {
+        if (ok) {
+          flash(button, 'Copied!', false);
+          announce(successMessage);
+        } else {
+          flash(button, 'Clipboard unavailable', true);
+          announce('Clipboard unavailable. The browser blocked clipboard access.');
+        }
+      });
+    }
+
+    var copyButtons = Array.prototype.slice.call(document.querySelectorAll('.copy-btn'));
+    copyButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        var cardName = button.closest('.card').querySelector('h3').textContent.trim();
+        handleCopy(button, function () {
+          return cssForSwitch(button);
+        }, cardName + ' CSS copied to clipboard.');
+      });
+    });
+
+    if (copyAllBtn) {
+      copyAllBtn.addEventListener('click', function () {
+        handleCopy(copyAllBtn, function () {
+          return Array.prototype.map.call(document.querySelectorAll('style'), function (sheet) {
+            var label = sheet.getAttribute('data-label') || 'CSS';
+            return '/* ' + label + ' */\n' + cleanCss(sheet.textContent);
+          }).join('\n\n') + '\n';
+        }, 'Full stylesheet copied to clipboard.');
+      });
+    }
+  })();
+</script>
+</body>
+</html>

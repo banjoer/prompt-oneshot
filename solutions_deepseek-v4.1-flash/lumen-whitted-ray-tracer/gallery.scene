@@ -1,0 +1,21 @@
+# gallery.scene — three spheres on a black-and-white checkered floor
+image 320 240
+background 0.05 0.07 0.10
+camera 0.0 2.5 9.0   0.0 1.0 0.0   0.0 1.0 0.0   50
+depth 4
+samples 2
+
+material floor_a ambient 0.05 0.05 0.05 diffuse 0.85 0.85 0.85 specular 0.10 0.10 0.10 shine 8  reflect 0.05
+material floor_b ambient 0.02 0.02 0.02 diffuse 0.15 0.15 0.15 specular 0.05 0.05 0.05 shine 4  reflect 0.05
+material red     ambient 0.05 0.01 0.01 diffuse 0.80 0.15 0.12 specular 0.40 0.40 0.40 shine 32 reflect 0.10
+material green   ambient 0.01 0.05 0.01 diffuse 0.15 0.75 0.20 specular 0.30 0.30 0.30 shine 16 reflect 0.05
+material mirror  ambient 0.02 0.02 0.02 diffuse 0.05 0.05 0.05 specular 0.90 0.90 0.90 shine 64 reflect 0.85
+
+plane 0 0 0  0 1 0  floor_a checker floor_b 1.0
+
+sphere -2.2 1.0  0.0 1.0 red
+sphere  0.0 1.2 -2.0 1.2 mirror
+sphere  2.2 0.8  0.5 0.8 green
+
+light -6 8 6  1.00 0.95 0.85
+light  7 5 3  0.35 0.35 0.45

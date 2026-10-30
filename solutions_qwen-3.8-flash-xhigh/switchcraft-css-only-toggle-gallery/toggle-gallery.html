@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Switchcraft — CSS-Only Toggle Gallery</title>
+
+<!-- Theme bootstrap: runs before first paint to avoid a flash of the wrong theme.
+     Only touches the page theme (an allowed JS responsibility) — never switch state. -->
+<script>
+(function () {
+  try {
+    var stored = localStorage.getItem('switchcraft-theme');
+    if (stored === 'dark' || stored === 'light') {
+      document.documentElement.setAttribute('data-theme', stored);
+    }
+    /* No attribute set on first visit → CSS follows prefers-color-scheme. */
+  } catch (e) { /* localStorage unavailable — stay on the OS default. */ }
+})();
+</script>
+
+<!-- ============ BASE: page shell, themes, layout. Not switch-specific. ============ -->
+<style id="css-base">
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    color-scheme: light;
+    --bg:        #eef1f7;
+    --card:      #ffffff;
+    --card-edge: #dce3ee;
+    --text:      #101828;
+    --muted:     #52607a;
+    --demo-bg:   #f4f7fb;
+    --demo-edge: #dde5f0;
+    --accent:    #2563eb;
+    --btn-bg:    #ffffff;
+    --btn-edge:  #c9d4e4;
+    --btn-hover: #eef3fb;
+    --shadow:    0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+  }
+
+  /* First visit: follow the OS. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg:        #0b1020;
+      --card:      #161d2e;
+      --card-edge: #2a3550;
+      --text:      #e8eef9;
+      --muted:     #9aa8bd;
+      --demo-bg:   #0f1626;
+      --demo-edge: #27334e;
+      --accent:    #60a5fa;
+      --btn-bg:    #1b2337;
+      --btn-edge:  #354365;
+      --btn-hover: #232e48;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+
+  /* Explicit user choice (persisted) always wins over the OS. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:        #0b1020;
+    --card:      #161d2e;
+    --card-edge: #2a3550;
+    --text:      #e8eef9;
+    --muted:     #9aa8bd;
+    --demo-bg:   #0f1626;
+    --demo-edge: #27334e;
+    --accent:    #60a5fa;
+    --btn-bg:    #1b2337;
+    --btn-edge:  #354365;
+    --btn-hover: #232e48;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+  }
+
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    transition: background-color .2s ease, color .2s ease;
+  }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.4rem clamp(1rem, 4vw, 2.5rem) .9rem;
+  }
+  .brand h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.02em; }
+  .tagline  { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; max-width: 46ch; }
+  .header-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+  main { flex: 1; padding: .6rem clamp(1rem, 4vw, 2.5rem) 1.5rem; }
+
+  /* Responsive gallery: 1 column narrow, reflows to 2–3 (or more) wide. */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 1.1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    padding: 1.1rem 1.2rem 1.2rem;
+    background: var(--card);
+    border: 1px solid var(--card-edge);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    transition: background-color .2s ease, border-color .2s ease;
+  }
+  .card h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
+  .card-desc { margin: 0; color: var(--muted); font-size: .88rem; flex: 1; }
+
+  .demo {
+    display: grid;
+    place-items: center;
+    min-height: 110px;
+    padding: 1rem;
+    background: var(--demo-bg);
+    border: 1px solid var(--demo-edge);
+    border-radius: 12px;
+    transition: background-color .2s ease, border-color .2s ease;
+  }
+
+  .btn {
+    appearance: none;
+    font: inherit;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-edge);
+    border-radius: 10px;
+    padding: .45rem .8rem;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .05s ease;
+  }
+  .btn:hover  { background: var(--btn-hover); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn.ok  { color: #0a7a3f; border-color: #0a7a3f; background: rgba(10,122,63,.12); }
+  .btn.err { color: #b42318; border-color: #b42318; background: rgba(180,35,24,.10); }
+  .copy-btn { align-self: flex-start; min-width: 8.5rem; }
+
+  footer.signoff {
+    padding: 1.1rem clamp(1rem, 4vw, 2.5rem) 1.6rem;
+    border-top: 1px solid var(--card-edge);
+    color: var(--muted);
+    font-size: .85rem;
+  }
+  footer.signoff strong { color: var(--text); }
+
+  /* Screen-reader-only live region for copy feedback. */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Stretch goal: honour prefers-reduced-motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+  }
+</style>
+
+<!-- ============ SWITCH 1 — Classic Slide ============ -->
+<style id="css-classic">
+/* Switchcraft — "Classic Slide"  (pure CSS, no JS needed)
+   Markup:
+   <input type="checkbox" id="s" class="sw-classic">
+   <label for="s" class="track-classic"><span class="knob"></span></label> */
+input.sw-classic {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-classic {
+  display: inline-flex;
+  align-items: center;
+  width: 66px; height: 34px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #b9c4d6;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.18);
+  cursor: pointer;
+  transition: background-color .3s ease;
+}
+.track-classic .knob {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+input.sw-classic:checked + .track-classic { background: #2563eb; }
+input.sw-classic:checked + .track-classic .knob { transform: translateX(32px); }
+input.sw-classic:focus-visible + .track-classic { outline: 3px solid #2563eb; outline-offset: 3px; }
+</style>
+
+<!-- ============ SWITCH 2 — Neon Glow ============ -->
+<style id="css-neon">
+/* Switchcraft — "Neon Glow"  (pure CSS, no JS needed)
+   Markup:
+   <input type="checkbox" id="s" class="sw-neon">
+   <label for="s" class="track-neon"><span class="knob"></span></label> */
+input.sw-neon {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-neon {
+  display: inline-flex;
+  align-items: center;
+  width: 66px; height: 34px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #141a2e;
+  border: 1px solid #39466e;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.7);
+  cursor: pointer;
+  transition: background-color .35s ease, border-color .35s ease, box-shadow .35s ease;
+}
+.track-neon .knob {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #3b4a6e;
+  box-shadow: 0 0 4px rgba(34,211,238,.15);
+  transition: transform .35s cubic-bezier(.4,0,.2,1), background-color .35s ease, box-shadow .35s ease;
+}
+input.sw-neon:checked + .track-neon {
+  background: #0a0f1f;
+  border-color: #22d3ee;
+  box-shadow: inset 0 0 10px rgba(34,211,238,.45), 0 0 16px rgba(34,211,238,.55);
+}
+input.sw-neon:checked + .track-neon .knob {
+  transform: translateX(32px);
+  background: #a5f3fc;
+  box-shadow: 0 0 10px 2px rgba(34,211,238,.95), 0 0 28px 6px rgba(34,211,238,.45);
+}
+input.sw-neon:focus-visible + .track-neon { outline: 3px solid #22d3ee; outline-offset: 3px; }
+</style>
+
+<!-- ============ SWITCH 3 — Squishy ============ -->
+<style id="css-squish">
+/* Switchcraft — "Squishy"  (pure CSS, no JS needed)
+   The knob squishes and stretches mid-slide via @keyframes;
+   the trip back settles with an elastic overshoot.
+   Markup:
+   <input type="checkbox" id="s" class="sw-squish">
+   <label for="s" class="track-squish"><span class="knob"></span></label> */
+input.sw-squish {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-squish {
+  display: inline-flex;
+  align-items: center;
+  width: 66px; height: 34px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #c3cede;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.15);
+  cursor: pointer;
+  transition: background-color .45s ease;
+}
+.track-squish .knob {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  transform: translateX(0) scale(1, 1);
+  /* Return trip: overshooting bezier gives the bouncy settle-back. */
+  transition: transform .5s cubic-bezier(.68,-.4,.32,1.4);
+}
+input.sw-squish:checked + .track-squish { background: #ec4899; }
+input.sw-squish:checked + .track-squish .knob {
+  transform: translateX(32px) scale(1, 1);
+  animation: squish-across .5s cubic-bezier(.4,0,.2,1);
+}
+@keyframes squish-across {
+  0%   { transform: translateX(0)  scale(1,   1);   }
+  25%  { transform: translateX(8px)  scale(1.35, .7); }  /* squish flat, stretch wide */
+  55%  { transform: translateX(22px) scale(.78, 1.22);}  /* stretch tall, squeeze thin */
+  80%  { transform: translateX(36px) scale(1.12, .9); }
+  100% { transform: translateX(32px) scale(1,   1);   }
+}
+input.sw-squish:focus-visible + .track-squish { outline: 3px solid #ec4899; outline-offset: 3px; }
+</style>
+
+<!-- ============ SWITCH 4 — Day / Night ============ -->
+<style id="css-daynight">
+/* Switchcraft — "Day / Night"  (pure CSS, no JS needed)
+   ☀️ on the knob morphs into 🌙 while the sky track fades to a starry night.
+   Markup:
+   <input type="checkbox" id="s" class="sw-daynight">
+   <label for="s" class="track-daynight"><span class="knob">
+     <span class="face face-sun">☀️</span><span class="face face-moon">🌙</span>
+   </span></label> */
+input.sw-daynight {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-daynight {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 78px; height: 36px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #bae6fd, #38bdf8);
+  box-shadow: inset 0 2px 5px rgba(2,60,105,.35), 0 0 0 1px rgba(0,0,0,.18);
+  cursor: pointer;
+  overflow: hidden;
+}
+/* Night layer (gradient-over-gradient isn't animatable, so crossfade instead). */
+.track-daynight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(2px 2px at 22% 32%, #fff 55%, transparent 65%),
+    radial-gradient(1.6px 1.6px at 48% 66%, #e2e8f0 55%, transparent 65%),
+    radial-gradient(2px 2px at 72% 28%, #fff 55%, transparent 65%),
+    radial-gradient(1.4px 1.4px at 88% 62%, #cbd5e1 55%, transparent 65%),
+    linear-gradient(180deg, #1e293b, #0b1120);
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+.track-daynight .knob {
+  position: relative;
+  z-index: 1;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: #fde68a;
+  box-shadow: 0 0 12px 3px rgba(253,224,71,.85), 0 1px 3px rgba(0,0,0,.3);
+  transition: transform .5s cubic-bezier(.4,0,.2,1), background-color .5s ease, box-shadow .5s ease;
+}
+.track-daynight .face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  line-height: 1;
+  transition: opacity .4s ease, transform .5s cubic-bezier(.4,0,.2,1);
+}
+.track-daynight .face-moon { opacity: 0; transform: rotate(-70deg) scale(.3); }
+input.sw-daynight:checked + .track-daynight::before { opacity: 1; }
+input.sw-daynight:checked + .track-daynight .knob {
+  transform: translateX(42px);
+  background: #e2e8f0;
+  box-shadow: 0 0 10px 2px rgba(226,232,240,.6), 0 1px 3px rgba(0,0,0,.5);
+}
+input.sw-daynight:checked + .track-daynight .face-sun  { opacity: 0; transform: rotate(70deg)  scale(.3); }
+input.sw-daynight:checked + .track-daynight .face-moon { opacity: 1; transform: rotate(0)      scale(1);  }
+input.sw-daynight:focus-visible + .track-daynight { outline: 3px solid #0ea5e9; outline-offset: 3px; }
+</style>
+
+<!-- ============ SWITCH 5 — Pulse ============ -->
+<style id="css-pulse">
+/* Switchcraft — "Pulse"  (pure CSS, no JS needed)
+   While on, the knob emits a repeating ripple ring (@keyframes).
+   Markup:
+   <input type="checkbox" id="s" class="sw-pulse">
+   <label for="s" class="track-pulse"><span class="knob"></span></label> */
+input.sw-pulse {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-pulse {
+  display: inline-flex;
+  align-items: center;
+  width: 66px; height: 34px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #3d4a61;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.3);
+  cursor: pointer;
+  transition: background-color .3s ease;
+}
+.track-pulse .knob {
+  position: relative;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #9fb0c8;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  transition: transform .3s cubic-bezier(.4,0,.2,1), background-color .3s ease;
+}
+/* The ripple ring: a shadow that grows outward and fades, forever while on. */
+.track-pulse .knob::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(52,211,153,0);
+}
+input.sw-pulse:checked + .track-pulse { background: #065f46; }
+input.sw-pulse:checked + .track-pulse .knob {
+  transform: translateX(32px);
+  background: #34d399;
+}
+input.sw-pulse:checked + .track-pulse .knob::before {
+  animation: pulse-ripple 1.25s cubic-bezier(.2,.6,.4,1) infinite;
+}
+@keyframes pulse-ripple {
+  0%   { box-shadow: 0 0 0 0   rgba(52,211,153,.75); }
+  100% { box-shadow: 0 0 0 16px rgba(52,211,153,0);  }
+}
+input.sw-pulse:focus-visible + .track-pulse { outline: 3px solid #10b981; outline-offset: 3px; }
+</style>
+
+<!-- ============ SWITCH 6 — Flip Lock ============ -->
+<style id="css-flip">
+/* Switchcraft — "Flip Lock"  (pure CSS, no JS needed)
+   The knob rotates 180° in 3D, flipping from 🔓 to 🔒.
+   Markup:
+   <input type="checkbox" id="s" class="sw-flip">
+   <label for="s" class="track-flip"><span class="knob">
+     <span class="face face-front">🔓</span><span class="face face-back">🔒</span>
+   </span></label> */
+input.sw-flip {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.track-flip {
+  display: inline-flex;
+  align-items: center;
+  width: 78px; height: 36px;
+  padding: 0 3px;
+  border-radius: 10px;
+  background: #3e4c66;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.3);
+  cursor: pointer;
+  perspective: 320px;
+  transition: background-color .4s ease;
+}
+.track-flip .knob {
+  position: relative;
+  width: 30px; height: 30px;
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.4,0,.2,1);
+}
+.track-flip .face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 5px rgba(0,0,0,.45);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.track-flip .face-back { transform: rotateY(180deg); }
+input.sw-flip:checked + .track-flip { background: #b45309; }
+input.sw-flip:checked + .track-flip .knob { transform: translateX(42px) rotateY(180deg); }
+input.sw-flip:focus-visible + .track-flip { outline: 3px solid #d97706; outline-offset: 3px; }
+</style>
+</head>
+
+<body>
+<header>
+  <div class="brand">
+    <h1>⚡ Switchcraft</h1>
+    <p class="tagline">Six hand-crafted, CSS-only animated toggle switches. Click them, tab to them, press Space — and copy any switch's CSS with one button. No animation JavaScript, anywhere.</p>
+  </div>
+  <div class="header-actions">
+    <button type="button" id="copy-all" class="btn" title="Copy the page's full stylesheet">📋 Copy all CSS</button>
+    <button type="button" id="theme-toggle" class="btn" aria-pressed="false" title="Switch light / dark theme">🌙 Dark</button>
+  </div>
+</header>
+
+<main>
+  <section class="grid" aria-label="Toggle switch gallery">
+
+    <article class="card">
+      <h2 id="name-classic">Classic Slide</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-classic" class="sw-classic" checked aria-labelledby="name-classic">
+        <label for="sw-classic" class="track-classic"><span class="knob"></span></label>
+      </div>
+      <p class="card-desc">A rounded pill track with a knob that slides across. The one every design system needs.</p>
+      <button type="button" class="btn copy-btn" data-css="css-classic">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2 id="name-neon">Neon Glow</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-neon" class="sw-neon" aria-labelledby="name-neon">
+        <label for="sw-neon" class="track-neon"><span class="knob"></span></label>
+      </div>
+      <p class="card-desc">A dark track that lights up cyan when on — glow, halo and all, purely from <code>box-shadow</code>.</p>
+      <button type="button" class="btn copy-btn" data-css="css-neon">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2 id="name-squish">Squishy</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-squish" class="sw-squish" aria-labelledby="name-squish">
+        <label for="sw-squish" class="track-squish"><span class="knob"></span></label>
+      </div>
+      <p class="card-desc">The knob stretches and squishes partway through the slide (<code>@keyframes</code>), then settles with elastic overshoot.</p>
+      <button type="button" class="btn copy-btn" data-css="css-squish">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2 id="name-daynight">Day / Night</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-daynight" class="sw-daynight" checked aria-labelledby="name-daynight">
+        <label for="sw-daynight" class="track-daynight"><span class="knob">
+          <span class="face face-sun">☀️</span><span class="face face-moon">🌙</span>
+        </span></label>
+      </div>
+      <p class="card-desc">☀️ morphs into 🌙 as the knob slides, and the sky track crossfades to a starry night.</p>
+      <button type="button" class="btn copy-btn" data-css="css-daynight">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2 id="name-pulse">Pulse</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-pulse" class="sw-pulse" aria-labelledby="name-pulse">
+        <label for="sw-pulse" class="track-pulse"><span class="knob"></span></label>
+      </div>
+      <p class="card-desc">Switch it on and the knob emits a repeating ripple ring — an endless <code>@keyframes</code> heartbeat.</p>
+      <button type="button" class="btn copy-btn" data-css="css-pulse">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2 id="name-flip">Flip Lock</h2>
+      <div class="demo">
+        <input type="checkbox" id="sw-flip" class="sw-flip" aria-labelledby="name-flip">
+        <label for="sw-flip" class="track-flip"><span class="knob">
+          <span class="face face-front">🔓</span><span class="face face-back">🔒</span>
+        </span></label>
+      </div>
+      <p class="card-desc">The knob rotates 180° in 3D (<code>backface-visibility</code>), revealing 🔒 on its hidden face.</p>
+      <button type="button" class="btn copy-btn" data-css="css-flip">Copy CSS</button>
+    </article>
+
+  </section>
+</main>
+
+<footer class="signoff">
+  <p><strong>Sign-off</strong> — Produced <strong>2026-10-30 at 00:09 CET (2026-10-29 23:09 UTC)</strong> by <strong>Qwen 3.8 Flash</strong> (reasoning effort: xhigh), running in OpenCode. All six switches animate with pure CSS; JavaScript on this page only handles the clipboard, the theme toggle and its persistence.</p>
+</footer>
+
+<!-- Screen-reader feedback for copy actions (aria-live stretch goal). -->
+<div id="live" class="sr-only" role="status" aria-live="polite"></div>
+
+<script>
+/* ===================================================================
+   Switchcraft JS — allowed scope ONLY:
+   1) theme toggle + localStorage persistence (+ OS preference default)
+   2) clipboard copying + button/screen-reader feedback
+   Nothing here touches switch state or animation: that is :checked CSS.
+   =================================================================== */
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'switchcraft-theme';
+  var root  = document.documentElement;
+  var live  = document.getElementById('live');
+  var themeBtn = document.getElementById('theme-toggle');
+  var copyAllBtn = document.getElementById('copy-all');
+
+  /* ---------- Theme ---------- */
+
+  function resolvedTheme() {
+    var attr = root.getAttribute('data-theme');
+    if (attr === 'dark' || attr === 'light') return attr;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ? 'dark' : 'light';
+  }
+
+  function renderThemeButton() {
+    var dark = resolvedTheme() === 'dark';
+    themeBtn.textContent = dark ? '☀️ Light' : '🌙 Dark';
+    themeBtn.setAttribute('aria-pressed', String(dark));
+  }
+
+  themeBtn.addEventListener('click', function () {
+    var next = resolvedTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);            // restyles the whole page instantly
+    try { localStorage.setItem(STORAGE_KEY, next); } catch (e) {} // persist across reloads
+    renderThemeButton();
+    announce('Theme set to ' + next);
+  });
+
+  /* Follow the OS live, but only while the user has not chosen explicitly. */
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var onChange = function () {
+      if (!root.getAttribute('data-theme')) renderThemeButton();
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+  renderThemeButton();
+
+  /* ---------- Clipboard + feedback ---------- */
+
+  function announce(msg) {
+    live.textContent = msg;
+  }
+
+  var timers = new WeakMap();
+
+  function flash(btn, label, kind) {
+    if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+    clearTimeout(timers.get(btn));
+    btn.textContent = label;
+    btn.classList.remove('ok', 'err');
+    if (kind) btn.classList.add(kind);
+    timers.set(btn, setTimeout(function () {
+      btn.textContent = btn.dataset.orig;
+      btn.classList.remove('ok', 'err');
+    }, 1500));
+    announce(label);
+  }
+
+  function copyText(text) {
+    /* Required path: navigator.clipboard.writeText. Reject if missing. */
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return Promise.reject(new Error('Clipboard API unavailable'));
+  }
+
+  function handleCopy(btn, text, announceName) {
+    copyText(text).then(function () {
+      flash(btn, '✅ Copied!', 'ok');
+      announce(announceName + ' CSS copied to clipboard');
+    }).catch(function () {
+      flash(btn, '⚠️ Clipboard unavailable', 'err');
+      announce('Clipboard unavailable — copying needs HTTPS or a file:// clipboard permission');
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.copy-btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      var block = document.getElementById(btn.getAttribute('data-css'));
+      if (!block) return;
+      handleCopy(btn, block.textContent.trim(),
+        btn.closest('.card').querySelector('h2').textContent);
+    });
+  });
+
+  /* Stretch goal: copy the full stylesheet in one click. */
+  copyAllBtn.addEventListener('click', function () {
+    var css = Array.prototype.map.call(
+      document.querySelectorAll('style[id]'),
+      function (s) { return '/* ===== ' + s.id + ' ===== */\n' + s.textContent.trim(); }
+    ).join('\n\n');
+    handleCopy(copyAllBtn, css, 'Full');
+  });
+})();
+</script>
+</body>
+</html>

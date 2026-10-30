@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switchcraft — CSS-Only Toggle Gallery</title>
+<style>
+/* ============ Page theme + layout (not part of copied switch CSS) ============ */
+:root {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --accent: #2563eb;
+  --accent-text: #ffffff;
+  --demo-bg: #f8fafc;
+  --shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --card: #1e293b;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --border: #334155;
+  --accent: #60a5fa;
+  --accent-text: #0b1220;
+  --demo-bg: #0f172a;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+/* OS fallback when JS is disabled / no stored theme: follow prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220;
+    --card: #1e293b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #334155;
+    --accent: #60a5fa;
+    --accent-text: #0b1220;
+    --demo-bg: #0f172a;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+header h1 { margin: 0 0 0.25rem; font-size: 2rem; letter-spacing: -0.02em; }
+header p { margin: 0.25rem auto 1rem; color: var(--muted); max-width: 46rem; line-height: 1.5; }
+.header-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.header-actions button, .copy-btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+}
+#theme-toggle { background: var(--text); color: var(--bg); border-color: var(--text); }
+#theme-toggle:focus-visible, .copy-btn:focus-visible, #copy-all:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+#copy-all { background: var(--card); color: var(--text); }
+main { width: 100%; max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 2rem; flex: 1; }
+.hint { text-align: center; color: var(--muted); margin: 0 0 1.25rem; }
+.gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 640px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .gallery { grid-template-columns: repeat(3, 1fr); } }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.card h2 { margin: 0; font-size: 1.15rem; }
+.card .desc { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; min-height: 2.6em; }
+.demo {
+  background: var(--demo-bg);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  transition: background 0.25s ease;
+}
+/* Pure-CSS On/Off readout: no JS involved. Status lives inside the <label>,
+   right after the <input>, so `input:checked ~ .sw-status` works. */
+.sw-status { margin-left: 12px; font-weight: 700; font-size: 0.9rem; min-width: 2.6em; text-align: left; }
+.sw-status::after { content: "Off"; color: var(--muted); }
+input:checked ~ .sw-status::after { content: "On"; color: var(--accent); }
+.copy-btn { background: var(--accent); color: var(--accent-text); border-color: transparent; align-self: flex-start; }
+.copy-btn.copied { background: #16a34a; color: #fff; }
+.copy-btn.unavailable { background: #dc2626; color: #fff; }
+footer {
+  text-align: center;
+  padding: 1.25rem 1rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+footer strong { color: var(--text); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ================= 1. Classic Slide (copyable block starts) ================= */
+.sw-classic { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-classic-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-classic-track { width: 64px; height: 32px; border-radius: 999px; background: #cbd5e1; display: inline-flex; align-items: center; padding: 4px; transition: background 0.25s ease; flex: none; }
+.sw-classic-knob { width: 24px; height: 24px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transform: translateX(0); transition: transform 0.25s ease; }
+.sw-classic-input:checked + .sw-classic-track { background: #22c55e; }
+.sw-classic-input:checked + .sw-classic-track .sw-classic-knob { transform: translateX(32px); }
+.sw-classic-input:focus-visible + .sw-classic-track { outline: 3px solid #3b82f6; outline-offset: 2px; }
+/* ================= 1. Classic Slide (copyable block ends) ================= */
+
+/* ================= 2. Neon Glow (copyable block starts) ================= */
+.sw-neon { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-neon-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-neon-track { width: 68px; height: 34px; border-radius: 999px; background: #111827; border: 2px solid #374151; display: inline-flex; align-items: center; padding: 3px; transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; flex: none; }
+.sw-neon-knob { width: 22px; height: 22px; border-radius: 50%; background: #6b7280; transform: translateX(0); transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
+.sw-neon-input:checked + .sw-neon-track { background: #0f172a; border-color: #22d3ee; box-shadow: 0 0 12px rgba(34, 211, 238, 0.7), inset 0 0 8px rgba(34, 211, 238, 0.35); }
+.sw-neon-input:checked + .sw-neon-track .sw-neon-knob { transform: translateX(34px); background: #22d3ee; box-shadow: 0 0 10px #22d3ee, 0 0 22px #22d3ee; }
+.sw-neon-input:focus-visible + .sw-neon-track { outline: 3px solid #22d3ee; outline-offset: 2px; }
+/* ================= 2. Neon Glow (copyable block ends) ================= */
+
+/* ================= 3. Squishy (copyable block starts) ================= */
+.sw-squishy { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-squishy-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-squishy-track { width: 70px; height: 34px; border-radius: 999px; background: #e2e8f0; display: inline-flex; align-items: center; padding: 5px; transition: background 0.3s ease; flex: none; }
+.sw-squishy-knob { width: 24px; height: 24px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); transform: translateX(0); transition: transform 0.4s cubic-bezier(0.6, -0.28, 0.3, 1.4); }
+.sw-squishy-input:checked + .sw-squishy-track { background: #8b5cf6; }
+.sw-squishy-input:checked + .sw-squishy-track .sw-squishy-knob { transform: translateX(36px); animation: squish-right 0.45s ease; }
+.sw-squishy-input:focus-visible + .sw-squishy-track { outline: 3px solid #8b5cf6; outline-offset: 2px; }
+@keyframes squish-right {
+  0% { transform: translateX(0) scale(1, 1); }
+  40% { transform: translateX(18px) scale(1.45, 0.65); }
+  100% { transform: translateX(36px) scale(1, 1); }
+}
+/* ================= 3. Squishy (copyable block ends) ================= */
+
+/* ================= 4. Day / Night (copyable block starts) ================= */
+.sw-daynight { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-daynight-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-daynight-track { width: 76px; height: 36px; border-radius: 999px; background: linear-gradient(180deg, #7dd3fc, #bae6fd); display: inline-flex; align-items: center; padding: 4px; transition: background 0.4s ease; flex: none; position: relative; }
+.sw-daynight-track::after { content: "\2726  \22C6"; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #fef9c3; opacity: 0; transition: opacity 0.4s ease; }
+.sw-daynight-knob { width: 28px; height: 28px; border-radius: 50%; background: #fbbf24; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; transform: translateX(0); transition: transform 0.4s ease, background 0.4s ease; position: relative; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+.sw-daynight-sun { transition: opacity 0.3s ease; }
+.sw-daynight-moon { position: absolute; inset: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
+.sw-daynight-input:checked + .sw-daynight-track { background: linear-gradient(180deg, #0f172a, #334155); }
+.sw-daynight-input:checked + .sw-daynight-track::after { opacity: 1; }
+.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-knob { transform: translateX(40px); background: #e2e8f0; }
+.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-sun { opacity: 0; }
+.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-moon { opacity: 1; }
+.sw-daynight-input:focus-visible + .sw-daynight-track { outline: 3px solid #f59e0b; outline-offset: 2px; }
+/* ================= 4. Day / Night (copyable block ends) ================= */
+
+/* ================= 5. Pulse (copyable block starts) ================= */
+.sw-pulse { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-pulse-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-pulse-track { width: 64px; height: 32px; border-radius: 999px; background: #cbd5e1; display: inline-flex; align-items: center; padding: 4px; transition: background 0.25s ease; flex: none; }
+.sw-pulse-knob { width: 24px; height: 24px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transform: translateX(0); transition: transform 0.25s ease; position: relative; }
+.sw-pulse-knob::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 3px solid #22c55e; opacity: 0; }
+.sw-pulse-input:checked + .sw-pulse-track { background: #22c55e; }
+.sw-pulse-input:checked + .sw-pulse-track .sw-pulse-knob { transform: translateX(32px); }
+.sw-pulse-input:checked + .sw-pulse-track .sw-pulse-knob::after { opacity: 1; animation: pulse-ring 1.4s ease-out infinite; }
+.sw-pulse-input:focus-visible + .sw-pulse-track { outline: 3px solid #16a34a; outline-offset: 2px; }
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+/* ================= 5. Pulse (copyable block ends) ================= */
+
+/* ================= 6. Flip Lock (copyable block starts) ================= */
+.sw-flip { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.sw-flip-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.sw-flip-track { width: 72px; height: 36px; border-radius: 999px; background: #cbd5e1; display: inline-flex; align-items: center; padding: 4px; transition: background 0.35s ease; flex: none; }
+.sw-flip-knob { width: 28px; height: 28px; transform: translateX(0); transition: transform 0.5s ease; perspective: 120px; }
+.sw-flip-flipper { display: block; width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s ease; }
+.sw-flip-front, .sw-flip-back { position: absolute; inset: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #ffffff; font-size: 15px; line-height: 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+.sw-flip-back { transform: rotateY(180deg); }
+.sw-flip-input:checked + .sw-flip-track { background: #14b8a6; }
+.sw-flip-input:checked + .sw-flip-track .sw-flip-knob { transform: translateX(36px); }
+.sw-flip-input:checked + .sw-flip-track .sw-flip-flipper { transform: rotateY(180deg); }
+.sw-flip-input:focus-visible + .sw-flip-track { outline: 3px solid #0d9488; outline-offset: 2px; }
+/* ================= 6. Flip Lock (copyable block ends) ================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Switchcraft &#9881;&#65039; CSS-Only Toggle Gallery</h1>
+  <p>Six hand-crafted toggle switches. Every on/off animation is pure CSS (<code>transition</code> / <code>@keyframes</code> driven by <code>:checked</code>). JavaScript only handles the page theme and the copy buttons.</p>
+  <div class="header-actions">
+    <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle light and dark theme">&#127769; Dark mode</button>
+    <button type="button" id="copy-all">Copy all CSS</button>
+  </div>
+</header>
+
+<main>
+  <p class="hint">Click a switch, click its label text, or focus it with <kbd>Tab</kbd> and press <kbd>Space</kbd>. All six work with JavaScript disabled.</p>
+  <section class="gallery" aria-label="Toggle switch gallery">
+
+    <article class="card">
+      <h2>1. Classic Slide</h2>
+      <p class="desc">Rounded pill track with a knob that slides across. Green when on.</p>
+      <div class="demo">
+        <label class="sw-classic">
+          <input type="checkbox" class="sw-classic-input" aria-label="Classic Slide toggle">
+          <span class="sw-classic-track" aria-hidden="true"><span class="sw-classic-knob"></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="classic">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2>2. Neon Glow</h2>
+      <p class="desc">Dark track; when on, knob and track glow with a cyan box-shadow.</p>
+      <div class="demo">
+        <label class="sw-neon">
+          <input type="checkbox" class="sw-neon-input" aria-label="Neon Glow toggle">
+          <span class="sw-neon-track" aria-hidden="true"><span class="sw-neon-knob"></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="neon">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2>3. Squishy</h2>
+      <p class="desc">Knob stretches mid-slide, then settles. Elastic return on switch-off.</p>
+      <div class="demo">
+        <label class="sw-squishy">
+          <input type="checkbox" class="sw-squishy-input" aria-label="Squishy toggle">
+          <span class="sw-squishy-track" aria-hidden="true"><span class="sw-squishy-knob"></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="squishy">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2>4. Day / Night</h2>
+      <p class="desc">Sun &#9728;&#65039; slides into moon &#127769;; sky-blue track fades to night.</p>
+      <div class="demo">
+        <label class="sw-daynight">
+          <input type="checkbox" class="sw-daynight-input" aria-label="Day Night toggle">
+          <span class="sw-daynight-track" aria-hidden="true"><span class="sw-daynight-knob"><span class="sw-daynight-sun">&#9728;&#65039;</span><span class="sw-daynight-moon">&#127769;</span></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="daynight">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2>5. Pulse</h2>
+      <p class="desc">When on, the knob emits a repeating ripple ring via <code>@keyframes</code>.</p>
+      <div class="demo">
+        <label class="sw-pulse">
+          <input type="checkbox" class="sw-pulse-input" aria-label="Pulse toggle">
+          <span class="sw-pulse-track" aria-hidden="true"><span class="sw-pulse-knob"></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="pulse">Copy CSS</button>
+    </article>
+
+    <article class="card">
+      <h2>6. Flip Lock</h2>
+      <p class="desc">Knob slides and rotates 180&deg;, flipping &#128275; to &#128272;.</p>
+      <div class="demo">
+        <label class="sw-flip">
+          <input type="checkbox" class="sw-flip-input" aria-label="Flip Lock toggle">
+          <span class="sw-flip-track" aria-hidden="true"><span class="sw-flip-knob"><span class="sw-flip-flipper"><span class="sw-flip-front">&#128275;</span><span class="sw-flip-back">&#128272;</span></span></span></span>
+          <span class="sw-status" aria-hidden="true"></span>
+        </label>
+      </div>
+      <button type="button" class="copy-btn" data-switch="flip">Copy CSS</button>
+    </article>
+
+  </section>
+</main>
+
+<footer>
+  <div><strong>Switchcraft</strong> &mdash; CSS-only toggle gallery. All switch motion is CSS <code>:checked</code>-driven; JS handles theme + clipboard only.</div>
+  <div>Produced on 29 October 2026, 22:24 UTC &bull; Model/author: Muse Spark 1.3 Contributor (OpenCode agent)</div>
+</footer>
+
+<div id="live" class="sr-only" aria-live="polite"></div>
+
+<script>
+// NOTE: This script intentionally touches ONLY the page theme and the
+// clipboard copy buttons. It never reads or writes switch checkbox state,
+// never toggles classes on switches, and never animates switches.
+(function () {
+  "use strict";
+  var THEME_KEY = "switchcraft-theme";
+  var root = document.documentElement;
+  var themeBtn = document.getElementById("theme-toggle");
+  var live = document.getElementById("live");
+
+  function announce(msg) { if (live) live.textContent = msg; }
+
+  /* ---------- Page theme (toggle + persistence) ---------- */
+  function preferredTheme() {
+    try {
+      var stored = localStorage.getItem(THEME_KEY);
+      if (stored === "light" || stored === "dark") return stored;
+    } catch (e) { /* storage unavailable (e.g. file:// restrictions): fall through */ }
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    return "light";
+  }
+  function applyTheme(theme) {
+    root.setAttribute("data-theme", theme);
+    if (themeBtn) {
+      var dark = theme === "dark";
+      themeBtn.setAttribute("aria-pressed", dark ? "true" : "false");
+      themeBtn.innerHTML = dark ? "&#9728;&#65039; Light mode" : "&#127769; Dark mode";
+    }
+  }
+  var currentTheme = preferredTheme();
+  applyTheme(currentTheme);
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      currentTheme = (root.getAttribute("data-theme") === "dark") ? "light" : "dark";
+      applyTheme(currentTheme);
+      try { localStorage.setItem(THEME_KEY, currentTheme); } catch (e) { /* ignore */ }
+      announce("Theme set to " + currentTheme);
+    });
+  }
+
+  /* ---------- Copy CSS (clipboard + button feedback only) ---------- */
+  var switchCSS = {
+classic: ".sw-classic {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-classic-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-classic-track {\n  width: 64px;\n  height: 32px;\n  border-radius: 999px;\n  background: #cbd5e1;\n  display: inline-flex;\n  align-items: center;\n  padding: 4px;\n  transition: background 0.25s ease;\n  flex: none;\n}\n.sw-classic-knob {\n  width: 24px;\n  height: 24px;\n  border-radius: 50%;\n  background: #ffffff;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);\n  transform: translateX(0);\n  transition: transform 0.25s ease;\n}\n.sw-classic-input:checked + .sw-classic-track {\n  background: #22c55e;\n}\n.sw-classic-input:checked + .sw-classic-track .sw-classic-knob {\n  transform: translateX(32px);\n}\n.sw-classic-input:focus-visible + .sw-classic-track {\n  outline: 3px solid #3b82f6;\n  outline-offset: 2px;\n}\n/* Required HTML:\n<label class=\"sw-classic\">\n  <input type=\"checkbox\" class=\"sw-classic-input\" aria-label=\"Classic Slide toggle\">\n  <span class=\"sw-classic-track\"><span class=\"sw-classic-knob\"></span></span>\n</label>\n*/",
+neon: ".sw-neon {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-neon-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-neon-track {\n  width: 68px;\n  height: 34px;\n  border-radius: 999px;\n  background: #111827;\n  border: 2px solid #374151;\n  display: inline-flex;\n  align-items: center;\n  padding: 3px;\n  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;\n  flex: none;\n}\n.sw-neon-knob {\n  width: 22px;\n  height: 22px;\n  border-radius: 50%;\n  background: #6b7280;\n  transform: translateX(0);\n  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;\n}\n.sw-neon-input:checked + .sw-neon-track {\n  background: #0f172a;\n  border-color: #22d3ee;\n  box-shadow: 0 0 12px rgba(34, 211, 238, 0.7), inset 0 0 8px rgba(34, 211, 238, 0.35);\n}\n.sw-neon-input:checked + .sw-neon-track .sw-neon-knob {\n  transform: translateX(34px);\n  background: #22d3ee;\n  box-shadow: 0 0 10px #22d3ee, 0 0 22px #22d3ee;\n}\n.sw-neon-input:focus-visible + .sw-neon-track {\n  outline: 3px solid #22d3ee;\n  outline-offset: 2px;\n}\n/* Required HTML:\n<label class=\"sw-neon\">\n  <input type=\"checkbox\" class=\"sw-neon-input\" aria-label=\"Neon Glow toggle\">\n  <span class=\"sw-neon-track\"><span class=\"sw-neon-knob\"></span></span>\n</label>\n*/",
+squishy: ".sw-squishy {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-squishy-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-squishy-track {\n  width: 70px;\n  height: 34px;\n  border-radius: 999px;\n  background: #e2e8f0;\n  display: inline-flex;\n  align-items: center;\n  padding: 5px;\n  transition: background 0.3s ease;\n  flex: none;\n}\n.sw-squishy-knob {\n  width: 24px;\n  height: 24px;\n  border-radius: 50%;\n  background: #ffffff;\n  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\n  transform: translateX(0);\n  transition: transform 0.4s cubic-bezier(0.6, -0.28, 0.3, 1.4);\n}\n.sw-squishy-input:checked + .sw-squishy-track {\n  background: #8b5cf6;\n}\n.sw-squishy-input:checked + .sw-squishy-track .sw-squishy-knob {\n  transform: translateX(36px);\n  animation: squish-right 0.45s ease;\n}\n.sw-squishy-input:focus-visible + .sw-squishy-track {\n  outline: 3px solid #8b5cf6;\n  outline-offset: 2px;\n}\n@keyframes squish-right {\n  0% { transform: translateX(0) scale(1, 1); }\n  40% { transform: translateX(18px) scale(1.45, 0.65); }\n  100% { transform: translateX(36px) scale(1, 1); }\n}\n/* Required HTML:\n<label class=\"sw-squishy\">\n  <input type=\"checkbox\" class=\"sw-squishy-input\" aria-label=\"Squishy toggle\">\n  <span class=\"sw-squishy-track\"><span class=\"sw-squishy-knob\"></span></span>\n</label>\n*/",
+daynight: ".sw-daynight {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-daynight-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-daynight-track {\n  width: 76px;\n  height: 36px;\n  border-radius: 999px;\n  background: linear-gradient(180deg, #7dd3fc, #bae6fd);\n  display: inline-flex;\n  align-items: center;\n  padding: 4px;\n  transition: background 0.4s ease;\n  flex: none;\n  position: relative;\n}\n.sw-daynight-track::after {\n  content: \"\\2726  \\22C6\";\n  position: absolute;\n  right: 8px;\n  top: 50%;\n  transform: translateY(-50%);\n  font-size: 10px;\n  color: #fef9c3;\n  opacity: 0;\n  transition: opacity 0.4s ease;\n}\n.sw-daynight-knob {\n  width: 28px;\n  height: 28px;\n  border-radius: 50%;\n  background: #fbbf24;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 16px;\n  line-height: 1;\n  transform: translateX(0);\n  transition: transform 0.4s ease, background 0.4s ease;\n  position: relative;\n  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\n}\n.sw-daynight-sun { transition: opacity 0.3s ease; }\n.sw-daynight-moon {\n  position: absolute;\n  inset: 0;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  opacity: 0;\n  transition: opacity 0.3s ease;\n}\n.sw-daynight-input:checked + .sw-daynight-track {\n  background: linear-gradient(180deg, #0f172a, #334155);\n}\n.sw-daynight-input:checked + .sw-daynight-track::after { opacity: 1; }\n.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-knob {\n  transform: translateX(40px);\n  background: #e2e8f0;\n}\n.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-sun { opacity: 0; }\n.sw-daynight-input:checked + .sw-daynight-track .sw-daynight-moon { opacity: 1; }\n.sw-daynight-input:focus-visible + .sw-daynight-track {\n  outline: 3px solid #f59e0b;\n  outline-offset: 2px;\n}\n/* Required HTML:\n<label class=\"sw-daynight\">\n  <input type=\"checkbox\" class=\"sw-daynight-input\" aria-label=\"Day Night toggle\">\n  <span class=\"sw-daynight-track\"><span class=\"sw-daynight-knob\"><span class=\"sw-daynight-sun\">&#9728;&#65039;</span><span class=\"sw-daynight-moon\">&#127769;</span></span></span>\n</label>\n*/",
+pulse: ".sw-pulse {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-pulse-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-pulse-track {\n  width: 64px;\n  height: 32px;\n  border-radius: 999px;\n  background: #cbd5e1;\n  display: inline-flex;\n  align-items: center;\n  padding: 4px;\n  transition: background 0.25s ease;\n  flex: none;\n}\n.sw-pulse-knob {\n  width: 24px;\n  height: 24px;\n  border-radius: 50%;\n  background: #ffffff;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);\n  transform: translateX(0);\n  transition: transform 0.25s ease;\n  position: relative;\n}\n.sw-pulse-knob::after {\n  content: \"\";\n  position: absolute;\n  inset: -4px;\n  border-radius: 50%;\n  border: 3px solid #22c55e;\n  opacity: 0;\n}\n.sw-pulse-input:checked + .sw-pulse-track { background: #22c55e; }\n.sw-pulse-input:checked + .sw-pulse-track .sw-pulse-knob { transform: translateX(32px); }\n.sw-pulse-input:checked + .sw-pulse-track .sw-pulse-knob::after {\n  opacity: 1;\n  animation: pulse-ring 1.4s ease-out infinite;\n}\n.sw-pulse-input:focus-visible + .sw-pulse-track {\n  outline: 3px solid #16a34a;\n  outline-offset: 2px;\n}\n@keyframes pulse-ring {\n  0% { transform: scale(0.6); opacity: 1; }\n  100% { transform: scale(1.6); opacity: 0; }\n}\n/* Required HTML:\n<label class=\"sw-pulse\">\n  <input type=\"checkbox\" class=\"sw-pulse-input\" aria-label=\"Pulse toggle\">\n  <span class=\"sw-pulse-track\"><span class=\"sw-pulse-knob\"></span></span>\n</label>\n*/",
+flip: ".sw-flip {\n  display: inline-flex;\n  align-items: center;\n  cursor: pointer;\n  position: relative;\n}\n.sw-flip-input {\n  position: absolute;\n  opacity: 0;\n  width: 1px;\n  height: 1px;\n  margin: 0;\n}\n.sw-flip-track {\n  width: 72px;\n  height: 36px;\n  border-radius: 999px;\n  background: #cbd5e1;\n  display: inline-flex;\n  align-items: center;\n  padding: 4px;\n  transition: background 0.35s ease;\n  flex: none;\n}\n.sw-flip-knob {\n  width: 28px;\n  height: 28px;\n  transform: translateX(0);\n  transition: transform 0.5s ease;\n  perspective: 120px;\n}\n.sw-flip-flipper {\n  display: block;\n  width: 100%;\n  height: 100%;\n  position: relative;\n  transform-style: preserve-3d;\n  transition: transform 0.5s ease;\n}\n.sw-flip-front, .sw-flip-back {\n  position: absolute;\n  inset: 0;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 50%;\n  background: #ffffff;\n  font-size: 15px;\n  line-height: 1;\n  backface-visibility: hidden;\n  -webkit-backface-visibility: hidden;\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);\n}\n.sw-flip-back { transform: rotateY(180deg); }\n.sw-flip-input:checked + .sw-flip-track { background: #14b8a6; }\n.sw-flip-input:checked + .sw-flip-track .sw-flip-knob { transform: translateX(36px); }\n.sw-flip-input:checked + .sw-flip-track .sw-flip-flipper { transform: rotateY(180deg); }\n.sw-flip-input:focus-visible + .sw-flip-track {\n  outline: 3px solid #0d9488;\n  outline-offset: 2px;\n}\n/* Required HTML:\n<label class=\"sw-flip\">\n  <input type=\"checkbox\" class=\"sw-flip-input\" aria-label=\"Flip Lock toggle\">\n  <span class=\"sw-flip-track\"><span class=\"sw-flip-knob\"><span class=\"sw-flip-flipper\"><span class=\"sw-flip-front\">&#128275;</span><span class=\"sw-flip-back\">&#128272;</span></span></span></span>\n</label>\n*/"
+  };
+
+  function copyText(text, onOk, onFail) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(text).then(onOk, function () { legacyCopy(text, onOk, onFail); });
+    } else {
+      legacyCopy(text, onOk, onFail);
+    }
+  }
+  function legacyCopy(text, onOk, onFail) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (ok) onOk(); else onFail();
+    } catch (e) { onFail(); }
+  }
+
+  function flashButton(btn, ok) {
+    var original = btn.getAttribute("data-original") || btn.textContent;
+    btn.setAttribute("data-original", original);
+    btn.textContent = ok ? "Copied!" : "Clipboard unavailable";
+    btn.classList.toggle("copied", !!ok);
+    btn.classList.toggle("unavailable", !ok);
+    announce(ok ? "CSS copied to clipboard." : "Clipboard unavailable in this browser.");
+    setTimeout(function () {
+      btn.textContent = btn.getAttribute("data-original");
+      btn.classList.remove("copied", "unavailable");
+    }, 1500);
+  }
+
+  var copyBtns = document.querySelectorAll(".copy-btn");
+  Array.prototype.forEach.call(copyBtns, function (btn) {
+    btn.addEventListener("click", function () {
+      var key = btn.getAttribute("data-switch");
+      var css = switchCSS[key];
+      if (!css) return;
+      copyText(css, function () { flashButton(btn, true); }, function () { flashButton(btn, false); });
+    });
+  });
+
+  var copyAll = document.getElementById("copy-all");
+  if (copyAll) {
+    copyAll.addEventListener("click", function () {
+      var all = ["classic", "neon", "squishy", "daynight", "pulse", "flip"]
+        .map(function (k) { return "/* ===== " + k + " ===== */\n" + switchCSS[k]; })
+        .join("\n\n");
+      copyText(all, function () { flashButton(copyAll, true); }, function () { flashButton(copyAll, false); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

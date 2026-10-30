@@ -1,0 +1,23 @@
+# corner.scene — a row of spheres between a wood-checkered floor and a back wall
+image 240 180
+background 0.02 0.02 0.03
+camera 0.0 3.0 10.0   0.0 1.0 -2.0   0.0 1.0 0.0   45
+depth 3
+samples 3
+
+material wall    ambient 0.04 0.04 0.05 diffuse 0.60 0.60 0.65 specular 0.05 0.05 0.05 shine 4  reflect 0.00
+material wood_a  ambient 0.05 0.04 0.03 diffuse 0.70 0.55 0.35 specular 0.10 0.10 0.10 shine 8  reflect 0.10
+material wood_b  ambient 0.02 0.02 0.02 diffuse 0.20 0.18 0.15 specular 0.05 0.05 0.05 shine 4  reflect 0.05
+material blue    ambient 0.01 0.02 0.06 diffuse 0.15 0.30 0.85 specular 0.50 0.50 0.50 shine 48 reflect 0.20
+material gold    ambient 0.06 0.04 0.01 diffuse 0.85 0.60 0.15 specular 0.60 0.60 0.60 shine 32 reflect 0.35
+material chrome  ambient 0.02 0.02 0.02 diffuse 0.10 0.10 0.10 specular 0.80 0.80 0.80 shine 64 reflect 0.75
+
+plane 0 0 0   0 1 0  wood_a checker wood_b 1.5
+plane 0 0 -6  0 0 1  wall
+
+sphere -1.6 0.75 -2.0 0.75 blue
+sphere  0.0 0.75 -3.2 0.75 chrome
+sphere  1.6 0.75 -2.0 0.75 gold
+
+light -4 7 4  1.00 0.90 0.80
+light  5 6 2  0.30 0.40 0.60
