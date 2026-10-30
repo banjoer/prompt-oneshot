@@ -91,6 +91,17 @@ effort, if known).
 | Dungeon Deck Delve — Deckbuilding Crawler | HTML/CSS/JS (single file, Phaser-optional) | 🟠 Hard | [prompt](oneshots/dungeon-deck-delve-deckbuilder.md) | Muse Spark 1.3 Contributor |
 | Sector-7 — From-Scratch Raycaster FPS | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/sector-7-raycaster-fps.md) | Muse Spark 1.3 Contributor |
 | Conveyor Lab — Factory Automation Sim | HTML/CSS/JS (single file, Phaser-optional) | 🔴 Extreme | [prompt](oneshots/conveyor-lab-factory-sim.md) | Muse Spark 1.3 Contributor |
+| Color Palette Generator | HTML/CSS/JS (single file) | 🟢 Easy | [prompt](oneshots/color-palette-generator.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Clock, Stopwatch & Countdown | HTML/CSS/JS (single file) | 🟢 Easy | [prompt](oneshots/clock-stopwatch-countdown.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Sortlines — Real-Time Sorting Visualizer | HTML/CSS/JS (single file) | 🟡 Medium | [prompt](oneshots/sortlines-sorting-visualizer.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Pixel Art Editor | HTML/CSS/JS (single file, canvas) | 🟡 Medium | [prompt](oneshots/pixel-art-editor.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Pomodoro Timer with Analytics | HTML/CSS/JS (single file) | 🟡 Medium | [prompt](oneshots/pomodoro-timer-analytics.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Kanban Board with Drag & Drop | HTML/CSS/JS (single file) | 🟠 Hard | [prompt](oneshots/kanban-board-drag-drop.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| LLM Speedometer — Synthetic Streaming Benchmark Lab | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/llm-speedometer-synth-lab.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| File Listing — Local File Inventory Studio | Python (Tkinter) | 🔴 Extreme | [prompt](oneshots/file-listing-inventory-studio.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Evo Walkers — 2D Genetic Algorithm | HTML/CSS/JS (single file, canvas) | 🔴 Extreme | [prompt](oneshots/evo-walkers-genetic-algorithm.md) | Muse Spark 1.3 Contributor · adapted from [w512/Prompt-Vault](https://github.com/w512/Prompt-Vault) |
+| Mosaic Studio — Layered Pixel-Image Editor | HTML/CSS/JS (single file, canvas) | 🟠 Hard | [prompt](oneshots/mosaic-studio-pixel-editor.md) | Muse Spark 1.3 Contributor · adapted from [VSBDev/one-shot-app-benchmarks](https://github.com/VSBDev/one-shot-app-benchmarks) |
+| Planform Studio — Floor-Plan CAD | HTML/CSS/JS (single file, SVG) | 🔴 Extreme | [prompt](oneshots/planform-studio-floor-plan-cad.md) | Muse Spark 1.3 Contributor · adapted from [VSBDev/one-shot-app-benchmarks](https://github.com/VSBDev/one-shot-app-benchmarks) |
 
 <!-- Row template:
 | <Title> | <e.g. Python, SQLite> | <🟢/🟡/🟠/🔴> <Easy/Medium/Hard/Extreme> | [prompt](oneshots/<file>.md) | <model name> · thinking: <effort, if known> |
