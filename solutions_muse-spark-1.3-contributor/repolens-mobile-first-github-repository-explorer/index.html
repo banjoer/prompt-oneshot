@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="RepoLens — mobile-first GitHub repository explorer. Browse code, read Markdown, keep a personal library.">
+<title>RepoLens — GitHub Repository Explorer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark" disabled>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+<style>
+/* ============ Tokens ============ */
+:root{
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --radius:12px; --radius-s:8px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --tap:44px;
+  --tr:.18s ease;
+}
+html[data-theme="dark"]{
+  --bg:#0d1117; --bg2:#11161d; --panel:#161d27; --panel2:#1c2532;
+  --border:#2a3442; --border-s:#232c38;
+  --text:#e6edf3; --muted:#9aa7b8; --faint:#6b7889;
+  --accent:#4493f8; --accent2:#1f6feb; --accent-ink:#fff;
+  --good:#3fb950; --warn:#d29922; --bad:#f85149;
+  --code-bg:#0b0f14; --mark-bg:#0d1117;
+  --shadow:0 8px 30px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg:#f6f8fa; --bg2:#ffffff; --panel:#ffffff; --panel2:#f0f3f6;
+  --border:#d6dde5; --border-s:#e4e9ef;
+  --text:#1c2530; --muted:#5b6a7c; --faint:#8a97a8;
+  --accent:#0969da; --accent2:#0969da; --accent-ink:#fff;
+  --good:#1a7f37; --warn:#9a6700; --bad:#d1242f;
+  --code-bg:#f6f8fa; --mark-bg:#ffffff;
+  --shadow:0 8px 24px rgba(31,41,55,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:var(--font); background:var(--bg); color:var(--text);
+  -webkit-text-size-adjust:100%; overscroll-behavior-y:none;
+  padding-top:var(--safe-t); padding-bottom:var(--safe-b);
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important; animation:none!important; scroll-behavior:auto!important} }
+a{color:var(--accent)}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px}
+
+/* ============ App frame ============ */
+#app{min-height:100dvh; display:flex; flex-direction:column; max-width:1280px; margin:0 auto;}
+.topbar{
+  position:sticky; top:0; z-index:40;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px calc(10px) 14px;
+  padding-left:calc(14px + var(--safe-l)); padding-right:calc(14px + var(--safe-r));
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border-s);
+}
+.brand{display:flex; align-items:center; gap:10px; min-width:0; flex:1; background:none;border:0; padding:6px 4px; text-align:left; cursor:pointer}
+.brand-mark{
+  width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent2),#8957e5); color:#fff; font-weight:800; font-size:17px; letter-spacing:-.5px;
+}
+.brand-name{font-weight:750; font-size:17px; letter-spacing:-.2px; line-height:1}
+.brand-sub{font-size:12px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.iconbtn{
+  min-width:var(--tap); min-height:var(--tap); border-radius:10px; border:1px solid var(--border);
+  background:var(--panel); display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  cursor:pointer; padding:0 10px; font-size:14px;
+}
+.iconbtn:active{transform:scale(.97)}
+.iconbtn.primary{background:var(--accent2); border-color:var(--accent2); color:var(--accent-ink); font-weight:650}
+.iconbtn.ghost{background:transparent}
+main{flex:1; display:flex; flex-direction:column; min-height:0}
+.view{display:none; flex:1; min-height:0}
+.view.active{display:flex; flex-direction:column}
+
+/* ============ Library ============ */
+.lib-wrap{padding:16px 14px 28px; padding-left:calc(14px + var(--safe-l)); padding-right:calc(14px + var(--safe-r)); display:flex; flex-direction:column; gap:14px; max-width:860px; width:100%; margin:0 auto}
+.hero{background:var(--panel); border:1px solid var(--border-s); border-radius:16px; padding:18px 16px; box-shadow:var(--shadow)}
+.hero h1{margin:0 0 6px; font-size:24px; letter-spacing:-.4px}
+.hero p{margin:0 0 14px; color:var(--muted); font-size:14px; line-height:1.5}
+.urlrow{display:flex; flex-direction:column; gap:8px}
+.urlrow .row{display:flex; gap:8px}
+#urlInput{
+  flex:1; min-height:48px; border-radius:12px; border:1px solid var(--border); background:var(--bg2); color:var(--text);
+  padding:10px 12px; font-size:16px; width:100%;
+}
+#urlInput::placeholder{color:var(--faint)}
+.hint{font-size:12.5px; color:var(--muted); line-height:1.5}
+.hint code{font-family:var(--mono); font-size:12px; background:var(--panel2); border:1px solid var(--border-s); padding:1px 5px; border-radius:6px}
+.errbox{display:none; background:color-mix(in srgb, var(--bad) 12%, transparent); border:1px solid color-mix(in srgb, var(--bad) 45%, transparent); color:var(--text); border-radius:10px; padding:10px 12px; font-size:13.5px}
+.errbox.show{display:block}
+.sec-head{display:flex; align-items:center; gap:10px; margin-top:4px}
+.sec-head h2{margin:0; font-size:15px; flex:1}
+.linkbtn{background:none;border:0;color:var(--bad); cursor:pointer; padding:10px; min-height:var(--tap); font-size:13.5px}
+.cards{display:grid; grid-template-columns:1fr; gap:10px}
+@media(min-width:640px){.cards{grid-template-columns:1fr 1fr}}
+.card{
+  background:var(--panel); border:1px solid var(--border-s); border-radius:14px; padding:12px;
+  display:flex; gap:12px; align-items:flex-start; cursor:pointer; text-align:left; width:100%;
+  transition:border-color var(--tr), transform var(--tr);
+}
+.card:hover{border-color:var(--accent)}
+.card:active{transform:scale(.99)}
+.avatar{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-weight:800;color:#fff;font-size:16px}
+.card-main{flex:1; min-width:0}
+.card-title{font-weight:700; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.card-desc{font-size:13px; color:var(--muted); margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.45}
+.card-meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center}
+.pill{font-size:11.5px; border:1px solid var(--border); border-radius:99px; padding:2px 8px; color:var(--muted); background:var(--bg2); display:inline-flex; align-items:center; gap:5px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.card-del{flex:none; border:0; background:transparent; color:var(--faint); font-size:18px; min-width:var(--tap); min-height:var(--tap); cursor:pointer; border-radius:8px}
+.card-del:hover{color:var(--bad); background:color-mix(in srgb, var(--bad) 10%, transparent)}
+.empty{
+  border:1.5px dashed var(--border); border-radius:14px; padding:26px 18px; text-align:center; color:var(--muted);
+  background:color-mix(in srgb, var(--panel) 70%, transparent);
+}
+.empty b{color:var(--text); display:block; margin-bottom:6px; font-size:15px}
+
+/* ============ Repo layout ============ */
+.repo-head{background:var(--panel); border-bottom:1px solid var(--border-s); padding:12px 14px; padding-left:calc(14px + var(--safe-l)); padding-right:calc(14px + var(--safe-r))}
+.repo-title-row{display:flex; align-items:flex-start; gap:10px}
+.repo-title{flex:1; min-width:0}
+.repo-title .path{font-size:16px; font-weight:750; overflow-wrap:anywhere; line-height:1.35}
+.repo-title .desc{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.repo-badges{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.repo-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+.smallbtn{border:1px solid var(--border); background:var(--bg2); border-radius:9px; padding:8px 11px; min-height:40px; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:var(--text)}
+.smallbtn:hover{border-color:var(--accent)}
+.crumbs{display:flex; align-items:center; gap:4px; overflow-x:auto; padding:10px 14px; padding-left:calc(14px + var(--safe-l)); padding-right:calc(14px + var(--safe-r)); border-bottom:1px solid var(--border-s); background:var(--bg2); scrollbar-width:none; -webkit-overflow-scrolling:touch}
+.crumbs::-webkit-scrollbar{display:none}
+.crumb{flex:none; border:0; background:transparent; color:var(--accent); font-size:13.5px; padding:10px 6px; cursor:pointer; min-height:var(--tap); font-weight:600}
+.crumb.dim{color:var(--muted); font-weight:500}
+.crumb-sep{color:var(--faint); flex:none}
+.repo-body{flex:1; display:flex; min-height:0; flex-direction:column}
+.panel-browser{flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden}
+.panel-reader{flex:1; min-width:0; display:none; flex-direction:column; overflow:hidden; border-top:1px solid var(--border-s)}
+.repo-body.reading .panel-browser{display:none}
+.repo-body.reading .panel-reader{display:flex}
+@media(min-width:900px){
+  .repo-body{flex-direction:row}
+  .repo-body.reading .panel-browser{display:flex}
+  .panel-browser{max-width:380px; border-right:1px solid var(--border-s); flex:none; width:380px}
+  .panel-reader{display:flex; border-top:0}
+  .only-mobile{display:none!important}
+}
+.filelist{overflow-y:auto; flex:1; padding:8px; -webkit-overflow-scrolling:touch}
+.frow{
+  width:100%; display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:10px;
+  border:1px solid transparent; background:transparent; cursor:pointer; min-height:52px; text-align:left;
+}
+.frow:hover{background:var(--panel2)}
+.frow.selected{background:color-mix(in srgb, var(--accent) 12%, transparent); border-color:color-mix(in srgb, var(--accent) 35%, transparent)}
+.ficon{width:36px;height:36px;border-radius:9px;flex:none;display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:700;background:var(--panel2);border:1px solid var(--border-s);color:var(--muted); overflow:hidden}
+.ficon.dir{background:color-mix(in srgb, var(--accent) 13%, transparent); border-color:color-mix(in srgb, var(--accent) 30%, transparent); color:var(--accent)}
+.fname{flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fsub{font-size:12px; color:var(--faint); margin-top:1px}
+.fchev{color:var(--faint); flex:none}
+.toolbar{display:flex; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border-s); background:var(--bg2); flex-wrap:wrap; align-items:center}
+.toolbar input[type="search"]{flex:1; min-width:140px; min-height:40px; border-radius:9px; border:1px solid var(--border); background:var(--panel); color:var(--text); padding:8px 10px; font-size:14px}
+.statebox{padding:28px 18px; text-align:center; color:var(--muted); font-size:14px}
+.spinner{width:26px;height:26px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);margin:0 auto 10px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{border-radius:10px; background:linear-gradient(90deg,var(--panel2) 25%,var(--border-s) 50%,var(--panel2) 75%); background-size:200% 100%; animation:sh 1.2s infinite; height:52px; margin:6px 2px}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* Reader */
+.reader-head{padding:10px 12px; border-bottom:1px solid var(--border-s); background:var(--panel); display:flex; flex-direction:column; gap:8px}
+.reader-title{font-family:var(--mono); font-size:13.5px; font-weight:700; overflow-wrap:anywhere}
+.reader-sub{font-size:12px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.reader-tools{display:flex; gap:6px; flex-wrap:wrap}
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:9px; overflow:hidden}
+.seg button{border:0; background:var(--bg2); padding:8px 12px; min-height:40px; font-size:13px; cursor:pointer; color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent2); color:#fff; font-weight:700}
+.reader-scroll{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; background:var(--bg)}
+.codewrap{background:var(--code-bg); border-top:1px solid var(--border-s)}
+.codewrap pre{margin:0; overflow-x:auto; padding:12px 0 20px; font-family:var(--mono); font-size:12.5px; line-height:1.6}
+.codewrap code{display:block; min-width:max-content; padding-right:16px}
+.codeline{display:flex; min-width:max-content}
+.ln{user-select:none; flex:none; width:52px; text-align:right; padding-right:12px; padding-left:12px; color:var(--faint); opacity:.8}
+.lc{white-space:pre; padding-right:16px}
+.codeline.hl{background:color-mix(in srgb, var(--accent) 10%, transparent)}
+.nowrap-off .lc{white-space:pre-wrap; overflow-wrap:anywhere}
+.md-body{max-width:720px; margin:0 auto; padding:20px 18px 60px; line-height:1.7; font-size:15.5px; background:var(--mark-bg)}
+.md-body h1,.md-body h2,.md-body h3,.md-body h4{line-height:1.3; letter-spacing:-.2px; margin:1.4em 0 .5em}
+.md-body h1{font-size:26px; border-bottom:1px solid var(--border-s); padding-bottom:.4em}
+.md-body h2{font-size:21px; border-bottom:1px solid var(--border-s); padding-bottom:.35em}
+.md-body pre{background:var(--code-bg); border:1px solid var(--border-s); border-radius:10px; padding:12px; overflow-x:auto; font-size:13px}
+.md-body code{font-family:var(--mono); font-size:.88em; background:color-mix(in srgb, var(--muted) 14%, transparent); padding:1.5px 5px; border-radius:6px}
+.md-body pre code{background:none; padding:0}
+.md-body table{border-collapse:collapse; width:100%; overflow:auto; display:block; font-size:14px}
+.md-body th,.md-body td{border:1px solid var(--border); padding:8px 10px}
+.md-body th{background:var(--panel2)}
+.md-body blockquote{border-left:3px solid var(--border); margin:1em 0; padding:.2em 0 .2em 14px; color:var(--muted)}
+.md-body img{max-width:100%; border-radius:8px}
+.md-body a{overflow-wrap:anywhere}
+.stale-note,.limit-note{margin:10px 14px; border-radius:10px; padding:10px 12px; font-size:13px; border:1px solid var(--warn); background:color-mix(in srgb, var(--warn) 10%, transparent)}
+.binarybox{margin:24px auto; max-width:420px; text-align:center; border:1px solid var(--border-s); background:var(--panel); border-radius:14px; padding:26px 18px}
+.binarybox img{max-width:100%; border-radius:10px; border:1px solid var(--border-s)}
+.backbar{display:flex; gap:8px; align-items:center; padding:8px 10px; background:var(--bg2); border-bottom:1px solid var(--border-s)}
+footer{border-top:1px solid var(--border-s); padding:16px 14px calc(20px + var(--safe-b)); color:var(--muted); font-size:12.5px; line-height:1.6; padding-left:calc(14px + var(--safe-l)); padding-right:calc(14px + var(--safe-r))}
+footer details{max-width:860px; margin:0 auto}
+footer summary{cursor:pointer; font-weight:700; color:var(--text); padding:8px 0}
+.signoff{margin-top:10px; border:1px solid var(--border-s); background:var(--panel); border-radius:10px; padding:10px 12px}
+
+/* Toasts */
+#toasts{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + var(--safe-b)); z-index:100; display:flex; flex-direction:column; gap:8px; width:min(420px, calc(100vw - 28px))}
+.toast{background:#1c2532; color:#e6edf3; border:1px solid #2a3442; border-radius:12px; padding:11px 14px; font-size:13.5px; box-shadow:var(--shadow); animation:up .22s ease}
+html[data-theme="light"] .toast{background:#1c2530; color:#fff}
+@keyframes up{from{opacity:0; transform:translateY(8px)}}
+/* Drawer on mobile */
+.scrim{display:none}
+@media(max-width:899px){
+  .repo-body.browsing .panel-reader{display:none}
+}
+/* Dialog */
+dialog{border:1px solid var(--border); background:var(--panel); color:var(--text); border-radius:14px; padding:0; width:min(560px, calc(100vw - 28px)); max-height:80dvh}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.dlg-head{padding:14px 16px; border-bottom:1px solid var(--border-s); display:flex; gap:10px; align-items:center}
+.dlg-head input{flex:1; min-height:44px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); padding:8px 12px; font-size:15px}
+.dlg-list{overflow:auto; max-height:55dvh; padding:8px}
+.qrow{width:100%; text-align:left; background:none; border:0; border-radius:10px; padding:10px 12px; cursor:pointer; font-family:var(--mono); font-size:13px; color:var(--text)}
+.qrow:hover,.qrow:focus-visible{background:var(--panel2)}
+.sr{position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.skip{position:absolute; left:8px; top:-60px; z-index:200; background:var(--accent2); color:#fff; padding:10px 14px; border-radius:10px; transition:top .15s}
+.skip:focus{top:8px}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div id="app">
+  <header class="topbar">
+    <button class="brand" id="brandBtn" aria-label="Go to library">
+      <span class="brand-mark" aria-hidden="true">R◍</span>
+      <span style="min-width:0">
+        <span class="brand-name">RepoLens</span>
+        <span class="brand-sub" id="brandSub" style="display:block">GitHub repository explorer</span>
+      </span>
+    </button>
+    <button class="iconbtn ghost" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">◐</button>
+    <button class="iconbtn" id="libBtn" aria-label="Open library">▤ Library</button>
+  </header>
+
+  <main id="main">
+    <!-- LIBRARY -->
+    <section class="view active" id="view-library" aria-label="Repository library">
+      <div class="lib-wrap">
+        <div class="hero">
+          <h1>Explore any public repo</h1>
+          <p>Paste a GitHub URL or <code>owner/repo</code>. Browse folders, read code with highlighting, and render Markdown — no install, no login.</p>
+          <div class="urlrow">
+            <div class="row">
+              <label class="sr" for="urlInput">GitHub repository URL</label>
+              <input id="urlInput" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/facebook/react  or  vercel/next.js">
+              <button class="iconbtn primary" id="openBtn" style="flex:none">Open</button>
+            </div>
+            <div class="errbox" id="urlError" role="alert"></div>
+            <div class="hint">Supports <code>github.com/owner/repo</code>, <code>/tree/branch/path</code>, <code>/blob/branch/file.md</code> and short <code>owner/repo</code>. Public repos only — private repos need a token (not supported here).</div>
+          </div>
+        </div>
+        <div class="sec-head">
+          <h2 id="libCount">Recent repositories</h2>
+          <button class="linkbtn" id="clearHist">Clear all</button>
+        </div>
+        <div class="cards" id="cards"></div>
+        <div class="empty" id="libEmpty" hidden>
+          <b>No saved repositories yet</b>
+          Paste a repository URL above and press Open. Your recent repos will appear here and survive refreshes.
+        </div>
+      </div>
+    </section>
+
+    <!-- REPO -->
+    <section class="view" id="view-repo" aria-label="Repository browser">
+      <div class="repo-head">
+        <div class="repo-title-row">
+          <button class="iconbtn ghost only-mobile" id="backToLib" aria-label="Back to library" style="flex:none">‹</button>
+          <div class="repo-title">
+            <div class="path" id="repoTitle">owner / repo</div>
+            <div class="desc" id="repoDesc"></div>
+            <div class="repo-badges" id="repoBadges"></div>
+          </div>
+        </div>
+        <div class="repo-actions">
+          <button class="smallbtn" id="rootBtn">⇤ Root</button>
+          <button class="smallbtn" id="quickBtn" aria-haspopup="dialog">⌕ Quick open <kbd style="opacity:.6">/</kbd></button>
+          <button class="smallbtn" id="browseToggle" aria-label="Toggle browser and reader">☰ Browse / Read</button>
+          <a class="smallbtn" id="ghLink" href="#" target="_blank" rel="noopener noreferrer">↗ GitHub</a>
+        </div>
+      </div>
+      <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
+      <div class="repo-body browsing" id="repoBody">
+        <div class="panel-browser" aria-label="File browser">
+          <div class="toolbar">
+            <label class="sr" for="filterInput">Filter files</label>
+            <input type="search" id="filterInput" placeholder="Filter this folder…">
+          </div>
+          <div class="filelist" id="filelist" role="list"></div>
+        </div>
+        <div class="panel-reader" aria-label="File reader">
+          <div class="backbar only-mobile">
+            <button class="smallbtn" id="backToBrowse">‹ Files</button>
+            <span style="font-size:12.5px;color:var(--muted)" id="readerCrumb"></span>
+          </div>
+          <div id="reader"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <details id="aboutBox">
+      <summary>About RepoLens · browsers · file:// notes · implementation</summary>
+      <div>
+        <p><b>Launch:</b> open <code>index.html</code> in a modern browser. No Node, no server, no build.</p>
+        <p><b>Supported browsers:</b> current Chrome, Edge, Firefox, Safari — including mobile Safari and Chrome for Android. Requires <code>fetch</code>, <code>async/await</code>, <code>localStorage</code>.</p>
+        <p><b>file:// notes:</b> the app runs from <code>file://</code>. CDN libraries (marked, DOMPurify, highlight.js) need internet on first load. <code>localStorage</code> may be blocked in some private modes or strict <code>file://</code> contexts (notably older mobile Safari); the app falls back to in-memory history/theme for that session and shows a toast explaining persistence is unavailable. If CDN is offline, Markdown falls back to raw source and code shows without highlighting. For the most reliable history persistence, serve over <code>http(s)</code> or allow site data.</p>
+        <p><b>Implementation:</b> GitHub REST <code>/repos/{o}/{r}</code> for metadata (discovers <code>default_branch</code>), <code>/contents/{path}?ref=branch</code> for listings, <code>download_url</code> (+ contents-API fallback) for files, <code>/git/trees/{branch}?recursive=1</code> for quick-open. Marked + DOMPurify for GFM rendering with relative-link/image resolution to <code>raw.githubusercontent.com</code>; internal <code>.md</code> links route inside the app. highlight.js with extension→language map, line numbers, wrap + font-size controls. History/bookmarks/theme in <code>localStorage</code> with memory fallback; in-memory dir + metadata cache; request-id guard against stale async races; 15&nbsp;s timeouts; rate-limit messaging from <code>X-RateLimit-*</code>.</p>
+        <div class="signoff" id="signoff">RepoLens · built <span id="buildDate">2026-10-31</span> · <span id="buildModel">Muse Spark 1.3 Contributor (Meta MSL) via OpenCode</span></div>
+      </div>
+    </details>
+  </footer>
+</div>
+
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<dialog id="quickDlg" aria-label="Quick open">
+  <div class="dlg-head">
+    <label class="sr" for="quickInput">Search files by name</label>
+    <input id="quickInput" placeholder="Type a filename… (e.g. README, Button.tsx)">
+    <button class="iconbtn" id="quickClose" aria-label="Close search">✕</button>
+  </div>
+  <div class="dlg-list" id="quickList"></div>
+</dialog>
+
+<script>
+"use strict";
+/* =====================================================================
+   RepoLens — single-file app. Sections:
+   1 Config  2 Utils+Store  3 Theme  4 GitHub API  5 URL parsing
+   6 State+Router  7 Library  8 Browser  9 Reader/Markdown  10 Extras
+   ===================================================================== */
+
+/* ---------- 1. Config ---------- */
+const GH_API = "https://api.github.com";
+const RAW = (o,r,b,p)=>`https://raw.githubusercontent.com/${o}/${r}/${encodeURIComponent(b)}/${p.split("/").map(encodeURIComponent).join("/")}`;
+const DISPLAY_LIMIT = 512*1024;   // practical display cap; beyond this we truncate with notice
+const FETCH_TIMEOUT = 15000;
+const LS_HIST="repolens_history_v1", LS_THEME="repolens_theme_v1", LS_BM="repolens_bookmarks_v1",
+      LS_CACHE="repolens_filecache_v1", LS_READ="repolens_read_v1";
+const EXT_LANG={js:"javascript",jsx:"javascript",mjs:"javascript",cjs:"javascript",ts:"typescript",tsx:"typescript",mts:"typescript",py:"python",java:"java",c:"c",h:"c",cpp:"cpp",cc:"cpp",hpp:"cpp",cs:"csharp",go:"go",rs:"rust",rb:"ruby",php:"php",swift:"swift",kt:"kotlin",scala:"scala",html:"xml",htm:"xml",vue:"xml",svelte:"xml",css:"css",scss:"css",less:"css",json:"json",jsonc:"json",yml:"yaml",yaml:"yaml",toml:"ini",ini:"ini",sql:"sql",sh:"bash",bash:"bash",zsh:"bash",ps1:"powershell",dockerfile:"dockerfile",md:"markdown",markdown:"markdown",xml:"xml",gradle:"gradle",lua:"lua",r:"r",pl:"perl",ex:"elixir",erl:"erlang"};
+const MD_EXTS=new Set(["md","markdown","mdown"]);
+const BINARY_EXTS=new Set(("png,jpg,jpeg,gif,webp,avif,ico,bmp,mp4,webm,mov,mp3,wav,ogg,pdf,zip,tar,gz,7z,rar,exe,dll,so,dylib,class,jar,war,ttf,otf,woff,woff2,eot,psd,ai,sketch,sqlite,db,lock").split(","));
+const IMG_EXTS=new Set(["png","jpg","jpeg","gif","webp","avif","bmp","ico","svg"]);
+
+/* ---------- 2. Utils + safe storage (file:// fallback) ---------- */
+const $=s=>document.querySelector(s);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function fmtBytes(n){if(n==null)return"";if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(1)+" KB";return (n/1048576).toFixed(2)+" MB"}
+function fmtTime(ts){const d=new Date(ts),now=new Date();const diff=now-d;const m=Math.floor(diff/60000);
+  if(m<1)return"just now";if(m<60)return m+"m ago";const h=Math.floor(m/60);if(h<24)return h+"h ago";
+  const days=Math.floor(h/24);if(days<7)return days+"d ago";return d.toLocaleDateString()}
+function b64ToText(b64){
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder("utf-8",{fatal:false}).decode(bytes);
+}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;$("#toasts").appendChild(t);setTimeout(()=>{t.style.opacity="0";setTimeout(()=>t.remove(),300)},2600)}
+function debounce(fn,ms){let h;return(...a)=>{clearTimeout(h);h=setTimeout(()=>fn(...a),ms)}}
+// localStorage may throw on file:// / private mode → memory fallback
+const memFallback={};
+const store={
+  ok:true,
+  get(k,f){try{const v=localStorage.getItem(k);return v==null?f:JSON.parse(v)}catch(e){store.ok=false;return memFallback[k]!==undefined?memFallback[k]:f}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){store.ok=false;memFallback[k]=v}},
+  del(k){try{localStorage.removeItem(k)}catch(e){delete memFallback[k]}}
+};
+let storageWarned=false;
+function persistNote(){if(!store.ok&&!storageWarned){storageWarned=true;toast("Browser storage blocked — history lasts for this session only")}}
+function hueFor(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+function initials(owner,repo){return ((owner[0]||"?")+(repo[0]||"")).toUpperCase()}
+function extOf(path){const b=(path.split("/").pop()||"");if(b.startsWith(".")&&!b.slice(1).includes("."))return"";const i=b.lastIndexOf(".");return i<0?"":b.slice(i+1).toLowerCase()}
+function langOf(path){const e=extOf(path);if(EXT_LANG[e])return EXT_LANG[e];const base=(path.split("/").pop()||"").toLowerCase();
+  if(base==="dockerfile")return"dockerfile";if(base==="makefile"||base==="gemfile"||base==="rakefile")return"ruby";return"plaintext"}
+
+/* ---------- 3. Theme ---------- */
+function applyTheme(t){document.documentElement.dataset.theme=t;
+  const dark=t==="dark";$("#hljs-light").disabled=dark;$("#hljs-dark").disabled=!dark;
+  $("#themeBtn").textContent=dark?"◐":"◑";}
+function initTheme(){let t=store.get(LS_THEME,null);
+  if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";
+  applyTheme(t);}
+$("#themeBtn").addEventListener("click",()=>{const n=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  applyTheme(n);store.set(LS_THEME,n);persistNote();toast(n==="dark"?"Dark theme":"Light theme")});
+function readPrefs(){return Object.assign({font:12.5,wrap:false},store.get(LS_READ,{}))}
+function savePrefs(p){store.set(LS_READ,p)}
+
+/* ---------- 4. GitHub API ---------- */
+const memCache={repos:new Map(),dirs:new Map(),branches:new Map(),trees:new Map()};
+let reqSeq=0; // stale-request guard
+async function fetchJson(url,opts={}){
+  const c=new AbortController();const to=setTimeout(()=>c.abort(),FETCH_TIMEOUT);
+  try{
+    const r=await fetch(url,{...opts,signal:c.signal,headers:{Accept:"application/vnd.github+json",...(opts.headers||{})}});
+    const remain=r.headers.get("X-RateLimit-Remaining"), reset=r.headers.get("X-RateLimit-Reset");
+    if(!r.ok){
+      let msg=`GitHub error ${r.status}`;
+      let body="";try{body=await r.text()}catch(e){}
+      try{const j=JSON.parse(body);if(j.message)msg=j.message}catch(e){}
+      const err=new Error(msg);err.status=r.status;
+      if(r.status===403&&remain==="0"){const when=reset?new Date(reset*1000).toLocaleTimeString():"later";
+        err.message=`GitHub rate limit reached (60 req/hr for anonymous). Resets ~${when}. Wait a bit, then retry.`}
+      else if(r.status===404)err.message="Not found — check owner, repo, branch and path. Private repos need a token (unsupported).";
+      else if(r.status===451)err.message="Unavailable for legal reasons.";
+      throw err;
+    }
+    return await r.json();
+  }catch(e){if(e.name==="AbortError")throw new Error("Request timed out — check connection and retry.");
+    if(e instanceof TypeError)throw new Error("Network failed — are you offline? CDN/API need internet.");
+    throw e;
+  }finally{clearTimeout(to)}
+}
+async function fetchText(url){
+  const c=new AbortController();const to=setTimeout(()=>c.abort(),FETCH_TIMEOUT);
+  try{const r=await fetch(url,{signal:c.signal});
+    if(!r.ok)throw new Error(`File download failed (${r.status})`);
+    return await r.text();
+  }catch(e){if(e.name==="AbortError")throw new Error("File request timed out.");
+    throw e}finally{clearTimeout(to)}
+}
+async function getRepo(owner,repo){
+  const k=`${owner}/${repo}`.toLowerCase();
+  if(memCache.repos.has(k))return memCache.repos.get(k);
+  const j=await fetchJson(`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+  memCache.repos.set(k,j);return j;
+}
+async function getBranches(owner,repo){
+  const k=`${owner}/${repo}`.toLowerCase();
+  if(memCache.branches.has(k))return memCache.branches.get(k);
+  try{const j=await fetchJson(`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=100`);
+    const names=j.map(b=>b.name);memCache.branches.set(k,names);return names;
+  }catch(e){return[]}
+}
+// Resolve "branch/with/slashes + path" by longest branch-prefix match
+async function resolveBranchPath(owner,repo,remainder){
+  remainder=(remainder||"").replace(/^\/+/,"");
+  if(!remainder){const m=await getRepo(owner,repo);return{branch:m.default_branch,path:""}}
+  const branches=await getBranches(owner,repo);
+  let best=null;
+  for(const b of branches){if(remainder===b||remainder.startsWith(b+"/")){if(!best||b.length>best.length)best=b}}
+  if(best){let p=remainder.slice(best.length).replace(/^\/+/,"");return{branch:best,path:p}}
+  // fallback: first segment is branch
+  const i=remainder.indexOf("/");
+  if(i<0){ // could be branch-only or path-only on default branch; prefer branch if it exists? try as path on default
+    try{const m=await getRepo(owner,repo);
+      // probe: if contents with ref=remainder works treat as branch else path on default
+      return{branch:remainder,path:""};
+    }catch(e){const m=await getRepo(owner,repo);return{branch:m.default_branch,path:remainder}}
+  }
+  return{branch:remainder.slice(0,i),path:remainder.slice(i+1)};
+}
+async function getContents(owner,repo,path,branch){
+  const k=`${owner}/${repo}@${branch}:${path}`.toLowerCase();
+  if(memCache.dirs.has(k))return memCache.dirs.get(k);
+  let url=path?`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(branch)}`
+              :`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?ref=${encodeURIComponent(branch)}`;
+  const j=await fetchJson(url);
+  memCache.dirs.set(k,j);return j;
+}
+async function getTree(owner,repo,branch){
+  const k=`${owner}/${repo}@${branch}`.toLowerCase();
+  if(memCache.trees.has(k))return memCache.trees.get(k);
+  const j=await fetchJson(`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
+  memCache.trees.set(k,j);return j;
+}
+
+/* ---------- 5. URL parsing ---------- */
+function showUrlError(m){const e=$("#urlError");if(!m){e.classList.remove("show");e.textContent="";return}e.textContent=m;e.classList.add("show")}
+async function parseRepoInput(raw){
+  const input=(raw||"").trim();
+  if(!input)throw new Error("Paste a GitHub URL or owner/repo first.");
+  // strip surrounding <> and trailing .git / slashes
+  let s=input.replace(/^<|>$/g,"").trim().replace(/\.git\/?$/i,"").replace(/\/+$/,"");
+  // full URL?
+  const m=s.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(.*)$/i);
+  if(m){
+    const owner=m[1],repo=m[2];let rest=(m[3]||"").split(/[?#]/)[0];
+    if(!rest||rest==="/")return{owner,repo,branchHint:null,pathHint:"",wantFile:null};
+    let tm=rest.match(/^\/(tree|blob|blame)\/(.+)$/);
+    if(tm){
+      const kind=tm[1],rem=tm[2].split(/[?#]/)[0];
+      const {branch,path}=await resolveBranchPath(owner,repo,decodeURIComponent(rem));
+      return{owner,repo,branchHint:branch,pathHint:path,wantFile:kind!=="tree"?path:null,isBlob:kind!=="tree"};
+    }
+    // e.g. /owner/repo/src/dir (uncommon) → treat as path on default branch
+    const p=rest.replace(/^\/+/,"");
+    if(p)return{owner,repo,branchHint:null,pathHint:decodeURIComponent(p),wantFile:null};
+    return{owner,repo,branchHint:null,pathHint:"",wantFile:null};
+  }
+  // short notation owner/repo[/path...]? Spec says owner/repo; be lenient: extra segments = path
+  const sm=s.replace(/^(?:https?:\/\/)?/,"").match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\/(.+))?$/);
+  if(sm){
+    if(sm[1].includes(".")&&sm[1].includes(" "))throw new Error("That doesn't look like a GitHub repo. Try owner/repo.");
+    return{owner:sm[1],repo:sm[2],branchHint:null,pathHint:sm[3]?decodeURIComponent(sm[3]):"",wantFile:null};
+  }
+  throw new Error("Unsupported URL. Use https://github.com/owner/repo  or  owner/repo.");
+}
+
+/* ---------- 6. State + router (hash → back/forward works) ---------- */
+const state={owner:null,repo:null,branch:null,path:"",file:null, // file = path of open file or null
+  meta:null, entries:[], mdMode:"rendered", filter:""};
+function hashFor(o,r,b,p,f){let h=`#/${o}/${r}`;if(b)h+=`/tree/${b}`;if(p)h+=`/${p}`; // f duplicates p tail; keep single path + ?f=1
+  if(f&&f!==p)h+=`?f=${encodeURIComponent(f)}`;
+  else if(f)h+=`?f=1`;
+  return h}
+function readHash(){
+  const h=location.hash;
+  if(!h||h==="#/"||h==="#")return null;
+  // #/owner/repo/tree/branch.../path?f=..
+  const [main,qs]=h.slice(2).split("?");
+  const seg=main.split("/");
+  if(seg.length<2)return null;
+  const owner=decodeURIComponent(seg[0]),repo=decodeURIComponent(seg[1]);
+  let branch=null,path="";
+  if(seg[2]==="tree"){const rem=seg.slice(3).map(decodeURIComponent).join("/");
+    return{owner,repo,rem,qs}}
+  if(seg.length>2)path=seg.slice(2).map(decodeURIComponent).join("/");
+  return{owner,repo,rem:null,branch,path,qs};
+}
+let applyingHash=false;
+function syncHash(){
+  if(!state.owner){if(location.hash&&location.hash!=="#/"){applyingHash=true;location.hash="#/";applyingHash=false}return}
+  const base=state.path?`#/${state.owner}/${state.repo}/tree/${state.branch}/${state.path.split("/").map(encodeURIComponent).join("/")}`
+                       :`#/${state.owner}/${state.repo}/tree/${state.branch}`;
+  const want=state.file?base+`?f=${encodeURIComponent(state.file)}`:base;
+  if(location.hash!==want){applyingHash=true;location.hash=want;applyingHash=false}
+}
+window.addEventListener("hashchange",()=>{if(applyingHash)return;routeFromHash()});
+async function routeFromHash(){
+  const r=readHash();
+  if(!r){showView("library");return}
+  try{
+    if(r.rem!==undefined&&r.rem!==null){const {branch,path}=await resolveBranchPath(r.owner,r.repo,r.rem);
+      const f=r.qs&&r.qs.startsWith("f=")?decodeURIComponent(r.qs.slice(2)):null;
+      await openRepo(r.owner,r.repo,{branch,path,wantFile:f||null,fromHash:true});
+    }else await openRepo(r.owner,r.repo,{path:r.path||"",fromHash:true});
+  }catch(e){showView("library");toast(e.message)}
+}
+function showView(which){
+  $("#view-library").classList.toggle("active",which==="library");
+  $("#view-repo").classList.toggle("active",which==="repo");
+  $("#brandSub").textContent=which==="repo"&&state.owner?`${state.owner}/${state.repo} @ ${state.branch}`:"GitHub repository explorer";
+  if(which==="library")renderLibrary();
+}
+
+/* ---------- 7. Library / history ---------- */
+function getHist(){return store.get(LS_HIST,[])}
+function saveHist(h){store.set(LS_HIST,h);persistNote()}
+function upsertHist(entry){
+  let h=getHist();
+  h=h.filter(x=>!(x.owner.toLowerCase()===entry.owner.toLowerCase()&&x.repo.toLowerCase()===entry.repo.toLowerCase()));
+  h.unshift(entry);h=h.slice(0,50);saveHist(h);
+}
+function getBMs(){return store.get(LS_BM,{})}
+function renderLibrary(){
+  const h=getHist();
+  $("#libCount").textContent=`Recent repositories${h.length?` (${h.length})`:""}`;
+  $("#libEmpty").hidden=h.length>0;
+  const box=$("#cards");box.innerHTML="";
+  for(const e of h){
+    const b=document.createElement("div");b.className="card";b.tabIndex=0;b.setAttribute("role","button");
+    b.setAttribute("aria-label",`Open ${e.owner} ${e.repo}`);
+    const hue=hueFor(e.owner+"/"+e.repo);
+    b.innerHTML=`<span class="avatar" style="background:linear-gradient(135deg,hsl(${hue} 55% 45%),hsl(${(hue+50)%360} 60% 38%))">${esc(initials(e.owner,e.repo))}</span>
+      <span class="card-main"><span class="card-title">${esc(e.owner)} / ${esc(e.repo)}</span>
+      ${e.desc?`<span class="card-desc" style="display:block">${esc(e.desc)}</span>`:""}
+      <span class="card-meta">
+        ${e.lang?`<span class="pill"><span class="dot" style="background:hsl(${hue} 60% 50%)"></span>${esc(e.lang)}</span>`:""}
+        <span class="pill">⎇ ${esc(e.branch||"")}</span>
+        <span class="pill">${esc(fmtTime(e.ts))}</span>
+      </span></span>
+      <button class="card-del" aria-label="Remove ${esc(e.owner)}/${esc(e.repo)}">×</button>`;
+    const open=()=>openRepo(e.owner,e.repo,{branch:e.branch,path:""});
+    b.addEventListener("click",ev=>{if(ev.target.closest(".card-del"))return;open()});
+    b.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();open()}});
+    b.querySelector(".card-del").addEventListener("click",ev=>{ev.stopPropagation();
+      saveHist(getHist().filter(x=>!(x.owner===e.owner&&x.repo===e.repo)));renderLibrary();toast("Removed from library")});
+    box.appendChild(b);
+  }
+}
+$("#clearHist").addEventListener("click",()=>{if(!getHist().length){toast("Library is already empty");return}
+  if(confirm("Clear all saved repositories?")){saveHist([]);renderLibrary()}});
+$("#brandBtn").addEventListener("click",()=>{location.hash="#/"});
+$("#libBtn").addEventListener("click",()=>{location.hash="#/"});
+$("#backToLib").addEventListener("click",()=>{location.hash="#/"});
+
+/* ---------- 8. Open repo + browser ---------- */
+async function openRepo(owner,repo,opts={}){
+  showUrlError(null);
+  const my=++reqSeq;
+  showView("repo");
+  setBrowserLoading(true);
+  $("#reader").innerHTML=renderReaderEmpty();
+  setMobilePane("browse");
+  try{
+    const meta=await getRepo(owner,repo);
+    if(my!==reqSeq)return; // stale
+    let branch=opts.branch||meta.default_branch;
+    let path=opts.path||"";
+    let wantFile=opts.wantFile||null;
+    // If path points to a file (blob link or direct), split it: probe contents
+    if(wantFile){
+      const dir=wantFile.includes("/")?wantFile.slice(0,wantFile.lastIndexOf("/")):"";
+      state.owner=owner;state.repo=repo;state.branch=branch;state.path=dir;state.meta=meta;state.file=wantFile;
+    }else if(path){
+      // probe whether path is file or dir
+      try{
+        const probe=await getContents(owner,repo,path,branch);
+        if(my!==reqSeq)return;
+        if(!Array.isArray(probe)&&probe.type==="file"){state.owner=owner;state.repo=repo;state.branch=branch;
+          state.path=path.includes("/")?path.slice(0,path.lastIndexOf("/")):"";state.meta=meta;state.file=path;}
+        else{state.owner=owner;state.repo=repo;state.branch=branch;state.path=path;state.meta=meta;state.file=null}
+      }catch(pe){
+        // maybe wrong branch (slash-branch fallback): try resolving remainder again with branches
+        if(pe.status===404&&!opts.branch){
+          const {branch:b2,path:p2}=await resolveBranchPath(owner,repo,path);
+          branch=b2;path=p2;
+          try{const probe2=await getContents(owner,repo,path,branch);
+            if(!Array.isArray(probe2)&&probe2.type==="file"){state.owner=owner;state.repo=repo;state.branch=branch;
+              state.path=path.includes("/")?path.slice(0,path.lastIndexOf("/")):"";state.meta=meta;state.file=path;}
+            else{state.owner=owner;state.repo=repo;state.branch=branch;state.path=path;state.meta=meta;state.file=null}
+          }catch(e2){state.owner=owner;state.repo=repo;state.branch=branch;state.path="";state.meta=meta;state.file=null;
+            toast("Starting path not found — showing root")}
+        }else{state.owner=owner;state.repo=repo;state.branch=branch;state.path="";state.meta=meta;state.file=null;
+          if(pe.status!==404)throw pe; toast("Starting path not found — showing root")}
+      }
+    }else{state.owner=owner;state.repo=repo;state.branch=branch;state.path="";state.meta=meta;state.file=null}
+    upsertHist({owner,repo,url:`https://github.com/${owner}/${repo}`,branch:state.branch,ts:Date.now(),
+      desc:meta.description||"",lang:meta.language||""});
+    renderRepoHead();
+    if(!opts.fromHash)syncHash();
+    await loadDir();
+    if(state.file)await openFile(state.file,{push:false});
+    else setMobilePane("browse");
+  }catch(e){
+    if(my!==reqSeq)return;
+    setBrowserError(e.message);
+    toast(e.message);
+    if(!state.owner)showView("library");
+  }
+}
+function renderRepoHead(){
+  const m=state.meta;
+  $("#repoTitle").textContent=`${state.owner} / ${state.repo}`;
+  $("#repoDesc").textContent=m&&m.description?m.description:"";
+  $("#repoDesc").style.display=m&&m.description?"":"none";
+  const vis=m.private?"private":"public";
+  $("#repoBadges").innerHTML=
+    `<span class="pill">⎇ ${esc(state.branch)}</span>
+     <span class="pill">${esc(vis)}</span>
+     ${m.language?`<span class="pill"><span class="dot" style="background:#58a6ff"></span>${esc(m.language)}</span>`:""}
+     ${m.stargazers_count!=null?`<span class="pill">★ ${Number(m.stargazers_count).toLocaleString()}</span>`:""}`;
+  $("#ghLink").href=`https://github.com/${state.owner}/${state.repo}/tree/${encodeURIComponent(state.branch)}${state.path?"/"+state.path.split("/").map(encodeURIComponent).join("/"):""}`;
+  $("#brandSub").textContent=`${state.owner}/${state.repo} @ ${state.branch}`;
+  renderCrumbs();
+}
+function renderCrumbs(){
+  const c=$("#crumbs");c.innerHTML="";
+  const mk=(label,path,dim)=>{const b=document.createElement("button");b.className="crumb"+(dim?" dim":"");b.textContent=label;
+    b.addEventListener("click",()=>navTo(path));return b};
+  c.appendChild(mk(state.repo,"",state.path!==""));
+  if(state.path){const parts=state.path.split("/");
+    parts.forEach((p,i)=>{const s=document.createElement("span");s.className="crumb-sep";s.textContent="/";c.appendChild(s);
+      const sub=parts.slice(0,i+1).join("/");c.appendChild(mk(decodeURIComponent(p),sub,i!==parts.length-1))});}
+}
+async function navTo(path){state.path=path;state.file=null;$("#reader").innerHTML=renderReaderEmpty();
+  setMobilePane("browse");syncHash();renderRepoHead();await loadDir()}
+$("#rootBtn").addEventListener("click",()=>navTo(""));
+function setBrowserLoading(on){
+  const f=$("#filelist");
+  if(on)f.innerHTML=`<div class="statebox"><div class="spinner" role="status" aria-label="Loading"></div>Loading…</div><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
+}
+function setBrowserError(msg){
+  $("#filelist").innerHTML=`<div class="statebox"><b style="color:var(--text)">Couldn't load this folder</b><br>${esc(msg)}<br><br><button class="smallbtn" id="retryBtn">Retry</button></div>`;
+  $("#retryBtn")?.addEventListener("click",()=>loadDir());
+}
+async function loadDir(){
+  const my=++reqSeq;
+  setBrowserLoading(true);
+  try{
+    const j=await getContents(state.owner,state.repo,state.path,state.branch);
+    if(my!==reqSeq)return;
+    if(!Array.isArray(j)){ // path was a file after all
+      state.file=state.path;state.path=state.path.includes("/")?state.path.slice(0,state.path.lastIndexOf("/")):"";
+      renderRepoHead();await loadDir();await openFile(state.file,{push:true});return;
+    }
+    state.entries=j.slice().sort((a,b)=>(a.type===b.type?a.name.localeCompare(b.name):a.type==="dir"?-1:1));
+    renderFileList();
+  }catch(e){
+    if(my!==reqSeq)return;
+    if(e.message.includes("rate limit"))setBrowserError(e.message);
+    else if(/404|Not found/.test(e.message)){$("#filelist").innerHTML=`<div class="statebox"><b style="color:var(--text)">Nothing here</b><br>This path doesn't exist on <b>${esc(state.branch)}</b>.<br><br><button class="smallbtn" id="goRoot">Go to root</button></div>`;
+      $("#goRoot")?.addEventListener("click",()=>navTo(""));}
+    else setBrowserError(e.message+" ");
+  }
+}
+function fileIcon(e){
+  if(e.type==="dir")return `<span class="ficon dir" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 2.5A1.5 1.5 0 0 1 3 1h3.7a1 1 0 0 1 .7.3l1.2 1.2a1 1 0 0 0 .7.3H13a1.5 1.5 0 0 1 1.5 1.5v6.2A1.5 1.5 0 0 1 13 12h-10A1.5 1.5 0 0 1 1.5 10.5Z"/></svg></span>`;
+  const ex=extOf(e.name).slice(0,4).toUpperCase()||"···";
+  return `<span class="ficon" aria-hidden="true">${esc(ex)}</span>`;
+}
+function renderFileList(){
+  const f=$("#filelist");const q=(state.filter||"").toLowerCase();
+  const items=state.entries.filter(e=>!q||e.name.toLowerCase().includes(q));
+  // bookmark section
+  const bms=(getBMs()[`${state.owner}/${state.repo}`]||[]);
+  let html="";
+  if(bms.length&&!q)html+=`<div style="padding:8px 8px 2px;font-size:11.5px;color:var(--faint);font-weight:700;letter-spacing:.4px">BOOKMARKS</div>`;
+  f.innerHTML="";
+  if(bms.length&&!q){for(const b of bms){
+    const r=document.createElement("button");r.className="frow";r.setAttribute("role","listitem");
+    r.innerHTML=`<span class="ficon" aria-hidden="true">★</span><span style="flex:1;min-width:0"><span class="fname">★ ${esc(b.split("/").pop())}</span><span class="fsub" style="display:block">${esc(b)}</span></span><span class="fchev">›</span>`;
+    r.addEventListener("click",()=>openFile(b));f.appendChild(r);}}
+  if(state.path){const up=document.createElement("button");up.className="frow";up.setAttribute("role","listitem");
+    up.setAttribute("aria-label","Go to parent directory");
+    up.innerHTML=`<span class="ficon dir" aria-hidden="true">↑</span><span style="flex:1"><span class="fname">.. parent</span></span>`;
+    up.addEventListener("click",()=>{const p=state.path.includes("/")?state.path.slice(0,state.path.lastIndexOf("/")):"";navTo(p)});
+    f.appendChild(up);}
+  if(!items.length){const d=document.createElement("div");d.className="statebox";
+    d.innerHTML=q?`No matches for “${esc(state.filter)}”.`:`<b style="color:var(--text)">Empty folder</b><br>Nothing to show here.`;f.appendChild(d);return}
+  for(const e of items){
+    const r=document.createElement("button");r.className="frow"+(state.file===e.path?" selected":"");
+    r.setAttribute("role","listitem");r.setAttribute("aria-label",`${e.type} ${e.name}`);
+    r.innerHTML=`${fileIcon(e)}<span style="flex:1;min-width:0"><span class="fname">${esc(e.name)}</span><span class="fsub" style="display:block">${e.type==="dir"?"directory":esc((extOf(e.name)||"file").toUpperCase()+" · "+fmtBytes(e.size))}</span></span><span class="fchev" aria-hidden="true">›</span>`;
+    r.addEventListener("click",()=>{
+      if(e.type==="dir")navTo(e.path);
+      else openFile(e.path);
+    });
+    f.appendChild(r);
+  }
+}
+$("#filterInput").addEventListener("input",debounce(e=>{state.filter=e.target.value;renderFileList()},120));
+
+/* ---------- 9. Reader ---------- */
+function renderReaderEmpty(){
+  return `<div class="statebox" style="padding-top:60px"><div style="font-size:28px" aria-hidden="true">◍</div>
+    <b style="color:var(--text)">Select a file to read</b><br>Choose anything from the browser${innerWidth<900?" — tap ☰ to switch panels":""}.<br>
+    <span style="font-size:12.5px">Markdown renders beautifully · code gets highlighting + line numbers.</span></div>`;
+}
+function isMarkdown(p){return MD_EXTS.has(extOf(p))}
+function isBinary(entry,text){
+  const ex=extOf(entry?.name||entry?.path||"");
+  if(BINARY_EXTS.has(ex))return true;
+  if(text&&text.includes("\0"))return true;
+  return false;
+}
+function cacheGet(k){try{const c=store.get(LS_CACHE,{});const v=c[k];if(v&&(Date.now()-v.ts)<24*3600*1000)return v.text}catch(e){}return null}
+function cacheSet(k,text){try{if(text.length>100*1024)return;const c=store.get(LS_CACHE,{});c[k]= {text:text.slice(0,100*1024),ts:Date.now()};
+  const keys=Object.keys(c);if(keys.length>60)delete c[keys[0]];store.set(LS_CACHE,c)}catch(e){}}
+async function openFile(path,opts={}){
+  const my=++reqSeq;
+  state.file=path;
+  if(opts.push!==false)syncHash();
+  renderFileList();setMobilePane("read");
+  $("#readerCrumb").textContent=path.split("/").pop();
+  const rd=$("#reader");
+  rd.innerHTML=`<div class="statebox"><div class="spinner"></div>Loading ${esc(path.split("/").pop())}…</div>`;
+  try{
+    // find entry for size/download_url
+    let entry=state.entries.find(e=>e.path===path);
+    if(!entry){ // bookmarked / quick-opened file outside current dir
+      const j=await getContents(state.owner,state.repo,path,state.branch);
+      if(my!==reqSeq)return;
+      if(Array.isArray(j)){await navTo(path);return} // it's a folder — open it instead
+      if(j.type==="file"||j.download_url){entry={name:(j.name||path.split("/").pop()),path,size:j.size||0,type:"file",download_url:j.download_url||null,html_url:j.html_url||null,sha:j.sha};}
+      else{await navTo(path);return}
+    }
+    if(entry&&entry.type==="dir"){await navTo(entry.path);return}
+    const ex=extOf(path);
+    // image preview
+    if(IMG_EXTS.has(ex)){
+      const url=entry.download_url||RAW(state.owner,state.repo,state.branch,path);
+      if(my!==reqSeq)return;
+      rd.innerHTML=readerShell(path,entry,`<div class="binarybox"><img src="${esc(url)}" alt="${esc(entry.name)}"><p style="color:var(--muted);font-size:13px">${esc(fmtBytes(entry.size))} · image preview</p></div>`,"");
+      wireReaderTools(path,entry,"");return;
+    }
+    const size=entry.size||0;
+    if(size>10*1024*1024){rd.innerHTML=readerShell(path,entry,`<div class="binarybox"><b>File too large (${esc(fmtBytes(size))})</b><p style="color:var(--muted);font-size:13px">RepoLens caps previews at ~10 MB.</p><p><a class="smallbtn" href="${esc(entry.download_url||entry.html_url||"#")}" target="_blank" rel="noopener">Open raw ↗</a></p></div>`,"");wireReaderTools(path,entry,"");return}
+    // offline cache
+    const ck=`${state.owner}/${state.repo}@${state.branch}:${path}`;
+    let text=cacheGet(ck);
+    let stale=false;
+    if(text==null){
+      if(entry.download_url){try{text=await fetchText(entry.download_url)}catch(e){
+        // fallback: contents API (base64)
+        const j=await getContents(state.owner,state.repo,path,state.branch);
+        if(j.encoding==="base64")text=b64ToText(j.content.replace(/\s/g,""));
+        else text=await fetchText(j.download_url);
+      }}else{
+        const j=await getContents(state.owner,state.repo,path,state.branch);
+        if(j&&j.encoding==="base64")text=b64ToText((j.content||"").replace(/\s/g,""));
+        else text="";
+      }
+      if(my!==reqSeq)return;
+      cacheSet(ck,text||"");
+    }else stale=true;
+    if(isBinary(entry,text||"")){
+      rd.innerHTML=readerShell(path,entry,`<div class="binarybox"><b>Binary file</b><p style="color:var(--muted);font-size:13px">${esc(entry.name)} · ${esc(fmtBytes(size))}<br>Can't preview as text.</p><p style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><a class="smallbtn" href="${esc(entry.download_url||"")}" target="_blank" rel="noopener">Download ↗</a><a class="smallbtn" href="${esc(entry.html_url||`https://github.com/${state.owner}/${state.repo}/blob/${encodeURIComponent(state.branch)}/${path}`)}" target="_blank" rel="noopener">View on GitHub ↗</a></p></div>`,"");
+      wireReaderTools(path,entry,"");return;
+    }
+    text=text||"";
+    let truncated=false;
+    if(text.length>DISPLAY_LIMIT){text=text.slice(0,DISPLAY_LIMIT);truncated=true}
+    const fromCache=stale?`<div class="stale-note">Offline copy — may be stale. Reopening with internet refreshes it.</div>`:"";
+    if(isMarkdown(path)){
+      const mode=state.mdMode||"rendered";
+      rd.innerHTML=readerShell(path,entry,fromCache+(truncated?`<div class="limit-note">Preview truncated at ${fmtBytes(DISPLAY_LIMIT)} — <a href="${esc(entry.download_url||"")}" target="_blank" rel="noopener">open full raw ↗</a></div>`:"")+`<div id="mdHost"></div>`,text,{mdMode:mode,raw:text});
+      wireReaderTools(path,entry,text);
+      renderMarkdownInto($("#mdHost"),text,path,mode);
+    }else{
+      rd.innerHTML=readerShell(path,entry,fromCache+(truncated?`<div class="limit-note">Truncated at ${fmtBytes(DISPLAY_LIMIT)} of ${esc(fmtBytes(size||text.length))}.</div>`:"")+`<div class="codewrap"><pre aria-label="Source code"><code id="codeHost"></code></pre></div>`,text);
+      wireReaderTools(path,entry,text);
+      paintCode($("#codeHost"),text,path);
+    }
+  }catch(e){if(my!==reqSeq)return;
+    $("#reader").innerHTML=readerShell(path,{name:(path||"").split("/").pop(),size:0},`<div class="statebox"><b style="color:var(--text)">Couldn't open file</b><br>${esc(e.message)}<br><br><button class="smallbtn" id="frRetry">Retry</button></div>`,"");
+    $("#frRetry")?.addEventListener("click",()=>openFile(path,{push:false}));
+  }
+}
+function readerShell(path,entry,bodyHTML,fullText,opts={}){
+  const prefs=readPrefs();
+  const bms=getBMs();const key=`${state.owner}/${state.repo}`;
+  const marked2=(bms[key]||[]).includes(path);
+  const lang=(isMarkdown(path)&&opts.mdMode==="rendered")?"markdown":langOf(path);
+  return `<div class="reader-head">
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <button class="smallbtn" id="closeFile" aria-label="Close file">✕</button>
+      <div style="flex:1;min-width:0"><div class="reader-title">${esc(entry?.name||path.split("/").pop())}</div>
+      <div class="reader-sub"><span>${esc(path)}</span><span class="pill">${esc(lang)}</span>${entry?.size!=null?`<span class="pill">${esc(fmtBytes(entry.size))}</span>`:""}</div></div>
+      <button class="smallbtn" id="bmBtn" aria-pressed="${marked2}" title="Bookmark this file">${marked2?"★":"☆"}</button>
+    </div>
+    <div class="reader-tools">
+      ${isMarkdown(path)?`<span class="seg" role="group" aria-label="Markdown view"><button id="mdR" aria-pressed="${(opts.mdMode||state.mdMode||"rendered")==="rendered"}">Rendered</button><button id="mdW" aria-pressed="${(opts.mdMode||state.mdMode)==="raw"}">Raw</button></span>`:""}
+      <button class="smallbtn" id="copyBtn">⧉ Copy</button>
+      <button class="smallbtn" id="wrapBtn" aria-pressed="${prefs.wrap}">Wrap: ${prefs.wrap?"on":"off"}</button>
+      <button class="smallbtn" id="fontDec" aria-label="Decrease font">A−</button>
+      <button class="smallbtn" id="fontInc" aria-label="Increase font">A+</button>
+    </div>
+  </div>
+  <div class="reader-scroll" id="readerScroll" style="font-size:${prefs.font}px">${bodyHTML}</div>`;
+}
+function wireReaderTools(path,entry,fullText){
+  $("#closeFile")?.addEventListener("click",()=>{state.file=null;syncHash();$("#reader").innerHTML=renderReaderEmpty();renderFileList();setMobilePane("browse")});
+  $("#copyBtn")?.addEventListener("click",async()=>{
+    const mdRaw=(typeof fullText==="object"?fullText.raw:fullText)||"";
+    const t=typeof mdRaw==="string"?mdRaw:String(fullText||"");
+    try{await navigator.clipboard.writeText(t);toast("Copied to clipboard")}
+    catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();
+      try{document.execCommand("copy");toast("Copied to clipboard")}catch(e2){toast("Copy failed")}ta.remove()}});
+  $("#bmBtn")?.addEventListener("click",()=>{
+    const k=`${state.owner}/${state.repo}`;const all=getBMs();all[k]=all[k]||[];
+    if(all[k].includes(path)){all[k]=all[k].filter(x=>x!==path);toast("Bookmark removed")}
+    else{all[k].push(path);toast("Bookmarked")}
+    store.set(LS_BM,all);openFile(path,{push:false});renderFileList();});
+  $("#mdR")?.addEventListener("click",()=>{state.mdMode="rendered";openFile(path,{push:false})});
+  $("#mdW")?.addEventListener("click",()=>{state.mdMode="raw";openFile(path,{push:false})});
+  $("#wrapBtn")?.addEventListener("click",()=>{const p=readPrefs();p.wrap=!p.wrap;savePrefs(p);
+    $("#readerScroll")?.classList.toggle("nowrap-off",false);openFile(path,{push:false})});
+  $("#fontDec")?.addEventListener("click",()=>{const p=readPrefs();p.font=Math.max(10,p.font-1);savePrefs(p);$("#readerScroll").style.fontSize=p.font+"px"});
+  $("#fontInc")?.addEventListener("click",()=>{const p=readPrefs();p.font=Math.min(20,p.font+1);savePrefs(p);$("#readerScroll").style.fontSize=p.font+"px"});
+  const p0=readPrefs();if(p0.wrap)$("#readerScroll")?.classList.add("nowrap-off");
+}
+function paintCode(host,text,path){
+  const lang=langOf(path);
+  const lines=text.split("\n");
+  // fast path without hljs per-line: highlight whole, then split lines preserving spans is complex → per-chunk highlight
+  const useHl=window.hljs!=null;
+  host.innerHTML="";
+  const frag=document.createDocumentFragment();
+  const prefs=readPrefs();
+  host.parentElement.style.fontSize=prefs.font+"px";
+  if(prefs.wrap)host.parentElement.parentElement.classList.add("nowrap-off");
+  const CH=200; // paint in chunks to stay responsive on large files
+  let i=0;
+  function chunk(){
+    const end=Math.min(i+CH,lines.length);
+    for(;i<end;i++){
+      const div=document.createElement("div");div.className="codeline";
+      const ln=document.createElement("span");ln.className="ln";ln.textContent=i+1;ln.setAttribute("aria-hidden","true");
+      const lc=document.createElement("span");lc.className="lc";
+      const src=lines[i]||" ";
+      if(useHl&&lang!=="plaintext"){try{
+        const r=hljs.getLanguage(lang)?hljs.highlight(src,{language:lang}):hljs.highlightAuto(src);
+        lc.innerHTML=r.value;
+      }catch(e){lc.textContent=src}}else lc.textContent=src;
+      // anchor for deep link
+      div.id=`L${i+1}`;
+      div.appendChild(ln);div.appendChild(lc);frag.appendChild(div);
+    }
+    host.appendChild(frag.cloneNode(true));frag.textContent="";
+    if(i<lines.length)requestAnimationFrame(chunk);
+  }
+  chunk();
+}
+function renderMarkdownInto(host,src,curPath,mode){
+  if(mode==="raw"){host.innerHTML=`<div class="codewrap"><pre><code id="mdRawHost"></code></pre></div>`;
+    paintCode($("#mdRawHost"),src,curPath+".txt".replace(/\.txt$/,".md"));return}
+  if(!window.marked||!window.DOMPurify){
+    host.innerHTML=`<div class="limit-note">Markdown libraries still loading (need internet). Showing raw source:</div><div class="codewrap"><pre><code id="mdFb"></code></pre></div>`;
+    paintCode($("#mdFb"),src,"x.md");return}
+  try{
+    marked.setOptions({gfm:true,breaks:false});
+    const dir=curPath.includes("/")?curPath.slice(0,curPath.lastIndexOf("/")):"";
+    const resolveRel=(rel)=>{
+      if(!rel)return rel;
+      if(/^(https?:|mailto:|tel:|data:|#)/i.test(rel))return rel;
+      const clean=rel.split("#")[0].split("?")[0];
+      const hash=rel.includes("#")?"#"+rel.split("#").slice(1).join("#"):"";
+      const base=dir?dir.split("/"):[];
+      const parts=clean.split("/");
+      for(const p of parts){if(p===""||p===".")continue;if(p==="..")base.pop();else base.push(decodeURIComponent(p))}
+      return{joined:base.join("/"),hash};
+    };
+    let html=marked.parse(src);
+    html=DOMPurify.sanitize(html,{ADD_ATTR:["target","rel"]});
+    host.innerHTML=`<article class="md-body">${html}</article>`;
+    const art=host.querySelector("article");
+    // highlight fenced code
+    art.querySelectorAll("pre code").forEach(c=>{if(window.hljs){try{hljs.highlightElement(c)}catch(e){}}});
+    // rewrite links/images
+    art.querySelectorAll("img").forEach(img=>{
+      let s=img.getAttribute("src")||"";
+      if(!/^(https?:|data:|blob:)/i.test(s)){
+        const r=resolveRel(s);
+        const jp=typeof r==="object"?r.joined:r;
+        img.src=RAW(state.owner,state.repo,state.branch,jp);
+      }
+      img.loading="lazy";img.referrerPolicy="no-referrer";
+    });
+    art.querySelectorAll("a").forEach(a=>{
+      let href=a.getAttribute("href")||"";
+      if(!href)return;
+      if(href.startsWith("#")){a.href=`https://github.com/${state.owner}/${state.repo}/blob/${encodeURIComponent(state.branch)}/${curPath}${href}`;a.target="_blank";a.rel="noopener noreferrer";return}
+      if(/^(https?:|mailto:)/i.test(href)){
+        try{const u=new URL(href);
+          // github blob link to same repo → internal
+          const gm=u.href.match(/github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/);
+          if(gm&&gm[1].toLowerCase()===state.owner.toLowerCase()&&gm[2].toLowerCase()===state.repo.toLowerCase()){
+            a.href="#";a.addEventListener("click",ev=>{ev.preventDefault();openFile(decodeURIComponent(gm[4].split(/[?#]/)[0]),{push:true})});return}
+        }catch(e){}
+        a.target="_blank";a.rel="noopener noreferrer";return}
+      const r=resolveRel(href);
+      const jp=typeof r==="object"?r.joined:r, hh=typeof r==="object"?r.hash:"";
+      // Relative links stay inside RepoLens: markdown/code files open in the
+      // reader, anything else navigates the browser. Absolute in-repo GitHub
+      // blob URLs are handled above; unknown targets fall back to GitHub.
+      const isCodeLike=/\.(md|markdown|mdown|js|jsx|ts|tsx|py|java|json|ya?ml|css|html|sh|sql|txt)$/i.test(jp);
+      if(jp){a.href="#";a.addEventListener("click",ev=>{ev.preventDefault();
+        if(isCodeLike)openFile(jp,{push:true});
+        else navTo(jp);});}
+      else{a.href=`https://github.com/${state.owner}/${state.repo}/tree/${encodeURIComponent(state.branch)}/${jp}${hh}`;a.target="_blank";a.rel="noopener noreferrer"}
+    });
+  }catch(e){host.innerHTML=`<div class="statebox">Markdown failed to render: ${esc(e.message)}</div>`}
+}
+
+/* ---------- 10. Extras: quick-open, mobile panes, open action, keyboard ---------- */
+function setMobilePane(which){
+  const b=$("#repoBody");b.classList.toggle("reading",which==="read");b.classList.toggle("browsing",which!=="read");
+  $("#browseToggle").textContent=which==="read"?"☰ Files":"☰ Read";
+}
+$("#browseToggle").addEventListener("click",()=>{
+  const reading=$("#repoBody").classList.contains("reading");
+  setMobilePane(reading?"browse":"read")});
+$("#backToBrowse").addEventListener("click",()=>setMobilePane("browse"));
+async function doOpen(){
+  const v=$("#urlInput").value;
+  try{
+    showUrlError(null);
+    const p=await parseRepoInput(v);
+    await openRepo(p.owner,p.repo,{branch:p.branchHint||null,path:p.pathHint||"",wantFile:p.wantFile||null});
+  }catch(e){showUrlError(e.message)}
+}
+$("#openBtn").addEventListener("click",doOpen);
+$("#urlInput").addEventListener("keydown",e=>{if(e.key==="Enter")doOpen()});
+document.addEventListener("keydown",e=>{
+  if(e.key==="/"&&!/input|textarea/i.test(document.activeElement.tagName)&&state.owner){e.preventDefault();openQuick()}
+  if(e.key==="Escape"&&$("#quickDlg").open)$("#quickDlg").close();
+});
+async function openQuick(){
+  if(!state.owner){toast("Open a repository first");return}
+  const d=$("#quickDlg");$("#quickInput").value="";$("#quickList").innerHTML=`<div class="statebox"><div class="spinner"></div>Indexing files…</div>`;
+  d.showModal();setTimeout(()=>$("#quickInput").focus(),50);
+  try{
+    const t=await getTree(state.owner,state.repo,state.branch);
+    if(t.truncated)toast("Large repo — search covers first "+(t.tree.length)+" paths");
+    d._tree=t.tree.filter(n=>n.type==="blob").slice(0,8000);
+    renderQuick("");
+  }catch(e){$("#quickList").innerHTML=`<div class="statebox">Quick-open unavailable: ${esc(e.message)}</div>`}
+}
+function renderQuick(q){
+  const box=$("#quickList");const tree=$("#quickDlg")._tree||[];
+  const ql=q.toLowerCase();
+  const hits=tree.filter(n=>!ql||n.path.toLowerCase().includes(ql)).slice(0,80);
+  box.innerHTML=hits.length?"":`<div class="statebox">No matches.</div>`;
+  for(const n of hits){const b=document.createElement("button");b.className="qrow";b.textContent=n.path;
+    b.addEventListener("click",async()=>{$("#quickDlg").close();
+      // navigate browser to file's dir if needed, then open
+      const dir=n.path.includes("/")?n.path.slice(0,n.path.lastIndexOf("/")):"";
+      if(dir!==state.path){state.path=dir;renderRepoHead();try{const j=await getContents(state.owner,state.repo,dir,state.branch);
+        if(Array.isArray(j))state.entries=j.slice().sort((a,b)=>(a.type===b.type?a.name.localeCompare(b.name):a.type==="dir"?-1:1));}catch(e){}
+        renderFileList()}
+      openFile(n.path)});
+    box.appendChild(b)}
+}
+$("#quickInput").addEventListener("input",debounce(e=>renderQuick(e.target.value),120));
+$("#quickBtn").addEventListener("click",openQuick);
+$("#quickClose").addEventListener("click",()=>$("#quickDlg").close());
+
+/* ---------- init ---------- */
+function stampSignoff(){
+  const d=new Date();
+  try{$("#buildDate").textContent=d.toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"})}catch(e){$("#buildDate").textContent=d.toISOString()}
+}
+initTheme();stampSignoff();renderLibrary();
+if(location.hash&&location.hash!=="#/")routeFromHash();else showView("library");
+persistNote();
+</script>
+</body>
+</html>

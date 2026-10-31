@@ -49,3 +49,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | RegexZero: A From-Scratch NFA Regex Engine and Grep CLI | 🔴 Extreme | ⏳ Pending |
 | CellForge: A Swing Spreadsheet Engine | 🔴 Extreme | ⏳ Pending |
 | Emberdeep: A Seeded ASCII Roguelike in a Single HTML File | 🔴 Extreme | ⏳ Pending |
+| RepoLens — Mobile-First GitHub Repository Explorer | 🟠 Hard | ✅ Done |

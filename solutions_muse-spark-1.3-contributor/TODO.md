@@ -60,3 +60,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Sector-7 — From-Scratch Raycaster FPS | 🔴 Extreme | ✅ Done |
 | Conveyor Lab — Factory Automation Sim | 🔴 Extreme | ✅ Done |
 | Trophy Tide — Knights Tower Defense & Whale Boss | 🔴 Extreme | ✅ Done |
+| RepoLens — Mobile-First GitHub Repository Explorer | 🟠 Hard | ✅ Done |
