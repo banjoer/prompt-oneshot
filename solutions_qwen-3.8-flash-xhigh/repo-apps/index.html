@@ -1,0 +1,3114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Repo Apps — GitHub Repository Explorer &amp; HTML App Previewer</title>
+<meta name="description" content="Open any public GitHub repository in your browser: browse files, read code, render Markdown, and preview standalone HTML apps — from a single standalone HTML file.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236d8dff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 3 7v10l9 5 9-5V7z'/%3E%3Cpath d='M12 22V12'/%3E%3Cpath d='M3 7l9 5 9-5'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   Repo Apps — design system (mobile-first)
+   ============================================================ */
+:root{
+  --bg:#0b0f17; --bg2:#111827; --bg3:#1a2333; --bg4:#232f43;
+  --line:#26324a; --line2:#334363;
+  --fg:#e6ebf4; --fg2:#a3b2c9; --fg3:#6b7a94;
+  --accent:#7c9aff; --accent-strong:#5b7cfa; --accent-soft:rgba(124,154,255,.14);
+  --accent2:#2dd4bf;
+  --ok:#34d399; --warn:#f5b93d; --danger:#f8717a;
+  --code-bg:#0d1421; --code-fg:#dbe4f3;
+  --sel:rgba(124,154,255,.28);
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --shadow-sm:0 2px 10px rgba(0,0,0,.35);
+  --r:14px; --r-sm:9px; --r-xs:7px;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --bar-h:54px;
+  /* syntax (shared by highlight.js and the built-in fallback) */
+  --s-com:#5d6f8b; --s-key:#c79bff; --s-str:#7fd77f; --s-num:#f2b26b; --s-fn:#6fb6ff;
+  --s-var:#f7e758; --s-tag:#ff7a9c; --s-attr:#f2b26b; --s-op:#9fb4d4; --s-type:#4fd6be;
+}
+[data-theme="light"]{
+  --bg:#f2f5fa; --bg2:#ffffff; --bg3:#e9eef7; --bg4:#dce4f2;
+  --line:#d4dbe8; --line2:#b9c4d8;
+  --fg:#141a26; --fg2:#4d5c74; --fg3:#7c8aa0;
+  --accent:#4767e6; --accent-strong:#3a58d2; --accent-soft:rgba(71,103,230,.12);
+  --accent2:#0d9488;
+  --ok:#0fa46c; --warn:#b7791f; --danger:#d64550;
+  --code-bg:#f8fafd; --code-fg:#243046;
+  --sel:rgba(71,103,230,.18);
+  --shadow:0 10px 30px rgba(30,41,66,.16);
+  --shadow-sm:0 2px 10px rgba(30,41,66,.10);
+  --s-com:#8a94a6; --s-key:#8b3fd6; --s-str:#1a9e55; --s-num:#b35c00; --s-fn:#1f6fd0;
+  --s-var:#96690a; --s-tag:#c62f54; --s-attr:#a15c07; --s-op:#5a6b85; --s-type:#0b8f83;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{background:var(--bg)}
+body{
+  font:15px/1.55 var(--sans); color:var(--fg); background:var(--bg);
+  min-height:100dvh; overflow-x:hidden; -webkit-text-size-adjust:100%;
+}
+body.no-scroll{overflow:hidden}
+::selection{background:var(--sel)}
+img{max-width:100%}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+input,select{font:inherit;color:inherit}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 .5em}
+.hidden{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.spacer{flex:1 1 auto}
+
+/* ---------- scrollbars ---------- */
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- icons & buttons ---------- */
+svg.ic{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+svg.ic.sm{width:16px;height:16px}
+.icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:42px;height:42px;border-radius:var(--r-sm);color:var(--fg2);
+}
+.icon-btn:hover{background:var(--bg3);color:var(--fg)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.on{color:var(--accent);background:var(--accent-soft)}
+.icon-btn:disabled{opacity:.35;pointer-events:none}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;
+  min-height:42px;padding:0 16px;border-radius:var(--r-sm);
+  background:var(--bg3);border:1px solid var(--line);color:var(--fg);
+  font-weight:600;font-size:14px;transition:background .15s,transform .05s;
+  white-space:nowrap;
+}
+.btn:hover{background:var(--bg4)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent-strong);border-color:var(--accent-strong);color:#fff}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn.sm{min-height:34px;padding:0 10px;font-size:13px;border-radius:var(--r-xs)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+  background:var(--bg3);border:1px solid var(--line);color:var(--fg2);
+  font-size:12.5px;font-weight:600;white-space:nowrap;
+}
+.chip a,.chip button{display:inline-flex;align-items:center;gap:5px;color:inherit}
+.chip.accent{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+kbd{
+  font:11.5px/1 var(--mono);background:var(--bg3);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:5px;padding:3px 6px;color:var(--fg2);
+}
+/* ---------- app bar ---------- */
+#appbar{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;gap:4px;min-height:var(--bar-h);
+  padding:calc(env(safe-area-inset-top)) 8px 0;
+  background:color-mix(in srgb,var(--bg2) 88%,transparent);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+@supports not (background:color-mix(in srgb,red 50%,transparent)){#appbar{background:var(--bg2)}}
+#appbar .brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.2px;min-width:0;padding:6px 4px 6px 6px;font-size:16px}
+#appbar .brand .logo{color:var(--accent);display:flex}
+#appbar .brand b{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#appbar .repo-title{display:flex;align-items:center;gap:8px;min-width:0}
+#appbar .repo-title .rt{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#appbar .repo-title .rt .owner{color:var(--fg2);font-weight:600}
+#appbar .actions{display:flex;align-items:center;gap:2px;margin-left:auto}
+/* ---------- banners ---------- */
+.banner{
+  display:flex;gap:10px;align-items:flex-start;padding:10px 14px;margin:0;
+  font-size:13.5px;line-height:1.45;border-bottom:1px solid var(--line);
+}
+.banner .ic{margin-top:1px}
+.banner.warn{background:color-mix(in srgb,var(--warn) 13%,var(--bg2));color:var(--fg)}
+.banner.err{background:color-mix(in srgb,var(--danger) 13%,var(--bg2));color:var(--fg)}
+.banner.info{background:var(--accent-soft);color:var(--fg)}
+.banner button.close{margin-left:auto;color:var(--fg2);padding:4px}
+/* ---------- layout ---------- */
+#app{display:flex;align-items:stretch;min-height:calc(100dvh - var(--bar-h))}
+#explorer{
+  position:fixed;inset:var(--bar-h) auto 0 0;z-index:55;width:min(86vw,340px);
+  display:flex;flex-direction:column;background:var(--bg2);
+  border-right:1px solid var(--line);transform:translateX(-104%);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1);
+  box-shadow:var(--shadow);
+}
+#explorer.open{transform:none}
+#backdrop{
+  position:fixed;inset:0;z-index:50;background:rgba(4,8,16,.55);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#backdrop.show{opacity:1;pointer-events:auto}
+.ex-head{padding:12px 12px 8px;border-bottom:1px solid var(--line)}
+.ex-foot{margin-top:auto;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);font-size:12.5px;color:var(--fg3)}
+.ex-list{overflow-y:auto;flex:1;padding:6px 8px calc(10px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+#views{flex:1;min-width:0;width:100%}
+.view{min-height:calc(100dvh - var(--bar-h));display:flex;flex-direction:column}
+@media (min-width:920px){
+  #app{gap:0}
+  #explorer{position:sticky;top:var(--bar-h);height:calc(100dvh - var(--bar-h));width:320px;flex:none;transform:none;box-shadow:none;transition:width .18s,margin .18s}
+  #explorer:not(.open){margin-left:-320px}
+  #backdrop{display:none}
+  .ex-close-btn{display:none}
+}
+/* ---------- explorer rows ---------- */
+.crumbbar{
+  display:flex;align-items:center;gap:2px;padding:9px 12px;overflow-x:auto;
+  border-bottom:1px solid var(--line);background:var(--bg2);position:sticky;top:0;z-index:5;
+  scrollbar-width:none;
+}
+.crumbbar::-webkit-scrollbar{display:none}
+#crumbs2{position:static}
+.crumb{display:inline-flex;align-items:center;gap:2px;color:var(--fg2);font-size:13px;font-weight:600;white-space:nowrap;padding:5px 8px;border-radius:var(--r-xs);max-width:60vw}
+.crumb:hover{background:var(--bg3);color:var(--fg);text-decoration:none}
+.crumb.cur{color:var(--fg)}
+.crumb .ic{width:14px;height:14px;color:var(--fg3)}
+.crumb-sep{color:var(--fg3);font-size:12px;padding:0 1px;flex:none}
+.row{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:9px 10px;border-radius:var(--r-sm);color:var(--fg);min-height:46px;
+  border:1px solid transparent;background:transparent;
+}
+.row:hover{background:var(--bg3)}
+.row .ic.ft{color:var(--fg3)}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:550}
+.row .sz{color:var(--fg3);font-size:12px;flex:none;font-variant-numeric:tabular-nums}
+.row .up{display:flex;align-items:center;gap:10px;color:var(--fg2);font-weight:600}
+.row.sel{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 38%,transparent)}
+.row.sel .nm{color:var(--fg)}
+.row .badge{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--fg3);border:1px solid var(--line);border-radius:5px;padding:1px 5px;flex:none}
+.dir-ic{color:var(--accent)}
+.ft-code{color:#6fb6ff}.ft-doc{color:var(--ok)}.ft-cfg{color:var(--s-num)}.ft-img{color:#ff7ac2}
+.ft-md{color:var(--accent2)}.ft-html{color:#ff9a5c}.ft-json{color:#f2d26b}.ft-bin{color:var(--fg3)}.ft-sh{color:#9ec06e}
+/* ---------- views common ---------- */
+.wrap{width:100%;max-width:1120px;margin:0 auto;padding:20px 16px calc(28px + env(safe-area-inset-bottom))}
+.wrap.narrow{max-width:780px}
+.hero{padding:34px 0 8px;text-align:center}
+.hero h1{font-size:clamp(26px,6.5vw,40px);font-weight:900;letter-spacing:-.5px;margin-bottom:10px}
+.hero h1 em{font-style:normal;background:linear-gradient(92deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--fg2);max-width:56ch;margin:0 auto 24px;font-size:15px}
+.openbar{display:flex;gap:10px;max-width:640px;margin:0 auto}
+.field{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.field input,.field select{
+  width:100%;min-height:48px;padding:10px 14px;border-radius:var(--r-sm);
+  background:var(--bg2);border:1px solid var(--line2);color:var(--fg);font-size:15px;
+}
+.field input:focus,.field select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.field input::placeholder{color:var(--fg3)}
+.err-text{color:var(--danger);font-size:13px;min-height:0;text-align:left;word-break:break-word}
+.samples{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.samples .chip{cursor:pointer}
+.samples .chip:hover{border-color:var(--accent);color:var(--accent)}
+.sec-title{display:flex;align-items:center;gap:8px;margin:26px 0 12px;font-size:13px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--fg2)}
+.sec-title .ic{width:15px;height:15px;color:var(--fg3)}
+/* ---------- repo cards ---------- */
+.grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:600px){.grid{grid-template-columns:1fr 1fr}}
+@media (min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+.card{
+  position:relative;display:flex;flex-direction:column;gap:8px;padding:14px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  transition:border-color .15s,transform .08s,box-shadow .15s;text-align:left;
+}
+.card:hover{border-color:var(--line2);box-shadow:var(--shadow-sm)}
+.card .top{display:flex;gap:11px;align-items:center;min-width:0}
+.card .ava{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:1px solid var(--line);object-fit:cover;flex:none}
+.card .ava.ph{display:flex;align-items:center;justify-content:center;color:var(--fg3)}
+.card .nm{font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .nm small{color:var(--fg3);font-weight:600;margin-right:4px}
+.card .desc{color:var(--fg2);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:0}
+.card .meta{display:flex;gap:10px;align-items:center;color:var(--fg3);font-size:12px;margin-top:auto;flex-wrap:wrap}
+.card .meta .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.card .when{margin-left:auto;text-align:right}
+.card .tools{position:absolute;top:8px;right:8px;display:flex;gap:2px;opacity:.85}
+.card .tools .icon-btn{width:32px;height:32px}
+.card.launch{align-items:center;justify-content:center;border-style:dashed;min-height:128px;color:var(--fg2);gap:10px}
+.card.launch:hover{border-color:var(--accent);color:var(--accent)}
+.empty{
+  display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+  padding:38px 20px;border:1px dashed var(--line2);border-radius:var(--r);color:var(--fg2);
+}
+.empty .ic{width:34px;height:34px;color:var(--fg3)}
+.empty b{color:var(--fg)}
+/* ---------- status pills ---------- */
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line2);border-top-color:var(--accent);animation:sp .7s linear infinite;flex:none;display:inline-block}
+.spin.big{width:30px;height:30px;border-width:3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.statusline{display:flex;align-items:center;gap:10px;color:var(--fg2);font-size:13.5px;padding:14px 4px}
+.skel{height:16px;border-radius:6px;background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+/* ---------- toasts ---------- */
+#toasts{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;width:max-content;max-width:calc(100vw - 24px)}
+.toast{
+  display:flex;gap:9px;align-items:center;padding:10px 14px;border-radius:var(--r-sm);
+  background:var(--bg3);border:1px solid var(--line2);box-shadow:var(--shadow);
+  font-size:13.5px;animation:tin .18s ease-out;max-width:100%;
+}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+.toast .ic{width:16px;height:16px}
+.toast.ok .ic{color:var(--ok)} .toast.err .ic{color:var(--danger)} .toast.warn .ic{color:var(--warn)} .toast.info .ic{color:var(--accent)}
+.toast .msg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---------- footer ---------- */
+#signoff{
+  padding:16px;text-align:center;color:var(--fg3);font-size:12.5px;
+  border-top:1px solid var(--line);display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center;
+}
+#signoff b{color:var(--fg2);font-weight:700}
+</style>
+<style>
+/* ============================================================
+   Repo Apps — file viewer, markdown, code, preview
+   ============================================================ */
+/* ---------- file pane scaffold ---------- */
+#view-repo{background:var(--bg)}
+.repo-head{border-bottom:1px solid var(--line);background:var(--bg2)}
+.repo-head .wrap{padding-top:14px;padding-bottom:14px}
+.repoinfo{display:flex;gap:12px;align-items:flex-start}
+.repoinfo .ava{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--bg3);object-fit:cover;flex:none}
+.repoinfo .t{min-width:0;flex:1}
+.repoinfo h2{font-size:16.5px;margin:0 0 3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.repoinfo h2 .owner{color:var(--fg2);font-weight:600}
+.repoinfo .desc{color:var(--fg2);font-size:13.5px;margin:0 0 8px}
+.repoinfo .chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.repoinfo .chips .ic{width:13px;height:13px}
+#branch-select{
+  min-height:30px;border-radius:999px;background:var(--bg3);border:1px solid var(--line);
+  color:var(--fg2);font-size:12.5px;font-weight:700;padding:3px 8px;max-width:40vw;
+}
+.filetabs{
+  display:flex;gap:2px;align-items:stretch;overflow-x:auto;border-bottom:1px solid var(--line);
+  background:var(--bg2);position:sticky;top:var(--bar-h);z-index:30;scrollbar-width:none;
+}
+.filetabs::-webkit-scrollbar{display:none}
+.ftab{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 6px 9px 13px;border-right:1px solid var(--line);
+  color:var(--fg2);font-size:13px;font-weight:600;white-space:nowrap;max-width:220px;background:transparent;
+}
+.ftab .nm{overflow:hidden;text-overflow:ellipsis}
+.ftab:hover{color:var(--fg);background:var(--bg3)}
+.ftab.cur{color:var(--fg);background:var(--bg);border-bottom:2px solid var(--accent);margin-bottom:-1px}
+.ftab .x{display:inline-flex;padding:3px;border-radius:5px;color:var(--fg3)}
+.ftab .x:hover{background:var(--bg4);color:var(--danger)}
+.ftab .x .ic{width:12px;height:12px}
+.ftab-add{padding:9px 12px;color:var(--fg3)}
+#filepane{display:flex;flex-direction:column;flex:1;min-height:0}
+.filebar{
+  display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);
+  background:var(--bg2);flex-wrap:wrap;
+}
+.filebar .path{
+  display:flex;align-items:center;gap:6px;min-width:0;flex:1;font-size:12.8px;color:var(--fg2);
+  font-family:var(--mono);
+}
+.filebar .path .p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw}
+.seg{display:inline-flex;background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px;gap:2px}
+.seg button{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-xs);
+  color:var(--fg2);font-size:12.5px;font-weight:700;min-height:30px;
+}
+.seg button .ic{width:14px;height:14px}
+.seg button.on{background:var(--bg2);color:var(--fg);box-shadow:var(--shadow-sm)}
+.filebody{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;position:relative}
+/* ---------- code viewer ---------- */
+.code-wrap{--lnw:44px;display:flex;flex:0 0 auto;min-width:100%;width:max-content}
+.filebody.codepane{background:var(--code-bg)}
+.code-wrap{background:var(--code-bg);color:var(--code-fg)}
+.ln{
+  flex:none;width:var(--lnw);min-width:var(--lnw);position:sticky;left:0;z-index:2;
+  text-align:right;padding:14px 10px 14px 6px;user-select:none;-webkit-user-select:none;
+  background:var(--code-bg);border-right:1px solid var(--line);
+}
+.ln i{display:block;font-style:normal;font:12px/21px var(--mono);color:var(--fg3);font-variant-numeric:tabular-nums}
+.code-pre{
+  margin:0;padding:14px 18px 14px 14px;font:13px/21px var(--mono);white-space:pre;
+  tab-size:4;-moz-tab-size:4;color:var(--code-fg);min-width:0;
+}
+.code-pre .tab-hint{color:var(--fg3)}
+.code-actions-inline{padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* built-in fallback + hljs tokens */
+.code-pre .t-com,.code-pre .hljs-comment,.code-pre .hljs-quote{color:var(--s-com);font-style:italic}
+.md-body pre .t-com,.md-body pre .hljs-comment,.md-body pre .hljs-quote{color:var(--s-com);font-style:italic}
+.code-pre .t-key,.code-pre .hljs-keyword,.code-pre .hljs-selector-tag,.code-pre .hljs-literal,.code-pre .hljs-meta{color:var(--s-key)}
+.md-body pre .t-key,.md-body pre .hljs-keyword,.md-body pre .hljs-selector-tag,.md-body pre .hljs-literal,.md-body pre .hljs-meta{color:var(--s-key)}
+.code-pre .t-str,.code-pre .hljs-string,.code-pre .hljs-regexp,.code-pre .hljs-addition{color:var(--s-str)}
+.md-body pre .t-str,.md-body pre .hljs-string,.md-body pre .hljs-regexp,.md-body pre .hljs-addition{color:var(--s-str)}
+.code-pre .t-num,.code-pre .hljs-number,.code-pre .hljs-symbol,.code-pre .hljs-bullet{color:var(--s-num)}
+.md-body pre .t-num,.md-body pre .hljs-number,.md-body pre .hljs-symbol,.md-body pre .hljs-bullet{color:var(--s-num)}
+.code-pre .t-fn,.code-pre .hljs-title,.code-pre .hljs-title.function_{color:var(--s-fn)}
+.md-body pre .t-fn,.md-body pre .hljs-title,.md-body pre .hljs-title.function_{color:var(--s-fn)}
+.code-pre .t-var,.code-pre .hljs-variable,.code-pre .hljs-template-variable,.code-pre .hljs-attr .t-var{color:var(--s-var)}
+.md-body pre .t-var,.md-body pre .hljs-variable,.md-body pre .hljs-template-variable,.md-body pre .hljs-attr .t-var{color:var(--s-var)}
+.code-pre .t-tag,.code-pre .hljs-tag,.code-pre .hljs-name,.code-pre .hljs-deletion{color:var(--s-tag)}
+.md-body pre .t-tag,.md-body pre .hljs-tag,.md-body pre .hljs-name,.md-body pre .hljs-deletion{color:var(--s-tag)}
+.code-pre .t-attr,.code-pre .hljs-attr,.code-pre .hljs-attribute,.code-pre .hljs-params{color:var(--s-attr)}
+.md-body pre .t-attr,.md-body pre .hljs-attr,.md-body pre .hljs-attribute,.md-body pre .hljs-params{color:var(--s-attr)}
+.code-pre .t-op,.code-pre .hljs-punctuation,.code-pre .hljs-operator{color:var(--s-op)}
+.md-body pre .t-op,.md-body pre .hljs-punctuation,.md-body pre .hljs-operator{color:var(--s-op)}
+.code-pre .t-type,.code-pre .hljs-type,.code-pre .hljs-class .hljs-title,.code-pre .hljs-built_in{color:var(--s-type)}
+.md-body pre .t-type,.md-body pre .hljs-type,.md-body pre .hljs-class .hljs-title,.md-body pre .hljs-built_in{color:var(--s-type)}
+.code-pre .hljs-section,.code-pre .hljs-strong{color:var(--s-fn);font-weight:700}
+.md-body pre .hljs-section,.md-body pre .hljs-strong{color:var(--s-fn);font-weight:700}
+.code-pre .hljs-emphasis{font-style:italic}
+.md-body pre .hljs-emphasis{font-style:italic}
+.code-pre mark,.res mark{background:color-mix(in srgb,var(--warn) 45%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+/* ---------- image & binary panes ---------- */
+.imgpane{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:26px;flex:1}
+.imgpane img{max-height:70dvh;border-radius:var(--r-sm);background:
+  conic-gradient(var(--bg3) 0 25%, var(--bg2) 0 50%, var(--bg3) 0 75%, var(--bg2) 0) 0 0/22px 22px;
+  border:1px solid var(--line);object-fit:contain}
+.notebox{
+  display:flex;gap:12px;align-items:flex-start;max-width:560px;margin:26px auto;padding:16px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);color:var(--fg2);font-size:13.5px;
+}
+.notebox .ic{color:var(--warn);flex:none;width:22px;height:22px}
+.notebox b{color:var(--fg)}
+/* ---------- markdown ---------- */
+.mdpane{background:var(--bg);flex:1}
+.md-body{max-width:860px;margin:0 auto;padding:22px 18px calc(30px + env(safe-area-inset-bottom))}
+.md-body>*:first-child{margin-top:0}
+.md-body h1,.md-body h2,.md-body h3,.md-body h4,.md-body h5,.md-body h6{margin:1.4em 0 .6em;font-weight:800;letter-spacing:-.2px}
+.md-body h1{font-size:1.8em;border-bottom:1px solid var(--line);padding-bottom:.3em}
+.md-body h2{font-size:1.4em;border-bottom:1px solid var(--line);padding-bottom:.25em}
+.md-body h3{font-size:1.15em}
+.md-body p{margin:.8em 0}
+.md-body ul,.md-body ol{padding-left:1.6em;margin:.7em 0}
+.md-body li{margin:.25em 0}
+.md-body li>p{margin:.3em 0}
+.md-body ul.task li{list-style:none;margin-left:-1.2em;display:flex;gap:8px;align-items:flex-start}
+.md-body ul.task li input[type=checkbox]{margin-top:5px}
+.md-body blockquote{margin:1em 0;padding:.4em 1.1em;border-left:4px solid var(--line2);color:var(--fg2);background:var(--bg2);border-radius:0 var(--r-sm) var(--r-sm) 0}
+.md-body code{font:.87em/1.5 var(--mono);background:var(--bg3);padding:.15em .45em;border-radius:6px;border:1px solid var(--line)}
+.md-body pre{background:var(--code-bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;overflow-x:auto;margin:1em 0}
+.md-body pre code{background:none;border:0;padding:0;font-size:.85em;display:block;white-space:pre;color:var(--code-fg)}
+.md-body table{border-collapse:collapse;margin:1em 0;display:block;overflow-x:auto;max-width:100%}
+.md-body th,.md-body td{border:1px solid var(--line);padding:7px 12px;text-align:left;white-space:nowrap}
+.md-body th{background:var(--bg3);font-weight:700}
+.md-body tr:nth-child(2n) td{background:color-mix(in srgb,var(--bg3) 45%,transparent)}
+.md-body img{border-radius:var(--r-sm);border:1px solid var(--line);max-height:70vh}
+.md-body img.md-broken{display:inline-flex;min-width:140px;min-height:44px;background:var(--bg3)}
+.imgfail{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg3);border:1px dashed var(--line2);border-radius:var(--r-sm);color:var(--fg3);font-size:12.5px}
+.md-body hr{border:0;border-top:1px solid var(--line2);margin:1.6em 0}
+.md-body a.anchor-offset{scroll-margin-top:70px}
+/* ---------- preview ---------- */
+.pane-preview{display:flex;flex-direction:column;flex:1;min-height:0;background:var(--bg3)}
+.prev-status{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12.8px;color:var(--fg2);
+  background:var(--bg2);border-bottom:1px solid var(--line);flex-wrap:wrap;
+}
+.prev-status .ic{width:15px;height:15px}
+.prev-status .ok{color:var(--ok)} .prev-status .bad{color:var(--danger)} .prev-status .wr{color:var(--warn)}
+.depchips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--line);max-height:110px;overflow:auto}
+.depchips .chip{font-family:var(--mono);font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.depchips .chip.miss{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.prev-framebox{flex:1;min-height:340px;position:relative;background:#fff;display:flex}
+#preview-frame{flex:1;width:100%;border:0;background:#fff;min-height:340px}
+.prev-overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--bg) 92%,transparent);color:var(--fg2);text-align:center;padding:24px;z-index:5;
+}
+.prev-overlay .ic{width:30px;height:30px;color:var(--accent)}
+.prev-overlay b{color:var(--fg);font-size:15px}
+.prev-overlay .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.prev-overlay small{color:var(--fg3);max-width:52ch;line-height:1.5}
+#view-repo.is-fullscreen{position:fixed;inset:0;z-index:120;background:var(--bg)}
+#view-repo.is-fullscreen .repo-head{display:none}
+/* ---------- search ---------- */
+.searchtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.res-list{display:flex;flex-direction:column;gap:2px}
+.res .dirpre{color:var(--fg3)}
+.res .nm{font-weight:600}
+.res .ext{margin-left:auto;color:var(--fg3);font-size:11.5px;font-family:var(--mono);flex:none}
+.res .ic{color:var(--fg3)}
+.res:hover .ic{color:var(--accent)}
+/* ---------- about ---------- */
+.about-sec{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:0 0 14px}
+.about-sec h3{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:8px}
+.about-sec h3 .ic{color:var(--accent);width:17px;height:17px}
+.about-sec p,.about-sec li{color:var(--fg2);font-size:13.8px}
+.about-sec ul{padding-left:1.2em;margin:.5em 0}
+.about-sec code{font:12.5px/1.5 var(--mono);background:var(--bg3);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--fg)}
+.about-sec table{width:100%;border-collapse:collapse;font-size:13px;margin:.6em 0}
+.about-sec td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--fg2);vertical-align:top}
+.about-sec td:first-child{white-space:nowrap;width:1%;color:var(--fg)}
+.sig{display:flex;gap:12px;align-items:center;padding:14px 16px;background:linear-gradient(135deg,var(--accent-soft),transparent);border:1px solid var(--line);border-radius:var(--r)}
+.sig .ava{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-strong);color:#fff;flex:none}
+.sig b{display:block;font-size:14px}
+.sig small{color:var(--fg3);font-size:12px;display:block;margin-top:2px;line-height:1.5}
+.libdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+/* landscape phones + short viewports */
+@media (max-height:560px) and (orientation:landscape){
+  .hero{padding-top:12px}
+  .prev-framebox{min-height:200px}
+}
+@media (min-width:920px){
+  .filebar .path{max-width:none}
+  .md-body{padding:30px 34px}
+}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.2-4.2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.6 4.6l1.4 1.4m12 12 1.4 1.4m0-14.8-1.4 1.4m-12 12-1.4 1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 13.4A8.4 8.4 0 1 1 10.6 4 6.8 6.8 0 0 0 20 13.4Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5m0-8h.01"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M18 13v5.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H11"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-13.9-5.3L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 13.9 5.3L21 15"/><path d="M21 20v-5h-5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-5 4 5 4m8-8 5 4-5 4m-3-11-4 14"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6c-1.5-1.6-3.8-2.5-7-2.5V19c3.2 0 5.5.9 7 2.5 1.5-1.6 3.8-2.5 7-2.5V3.5c-3.2 0-5.5.9-7 2.5Z"/><path d="M12 6v15.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2.5h7.5L19 8v13.5H6Z"/><path d="M13.5 2.5V8H19"/></symbol>
+  <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 2.5h7.5L19 8v13.5H6Z"/><path d="M13.5 2.5V8H19"/><path d="M9 12.5h6M9 16h6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2.5h8.8A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5.2-5.2 3 3L16 13l3.5 3.5"/></symbol>
+  <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3.5S5.5 3.5 5.5 6.7v2.5c0 1.5-.8 2.3-2.3 2.8 1.5.5 2.3 1.3 2.3 2.8v2.5c0 3.2 2.5 3.2 2.5 3.2"/><path d="M16 3.5s2.5 0 2.5 3.2v2.5c0 1.5.8 2.3 2.3 2.8-1.5.5-2.3 1.3-2.3 2.8v2.5c0 3.2-2.5 3.2-2.5 3.2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 6.5V12l3.5 2.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7m-8.5 0 .7 13h9.6l.7-13"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 8.5v7"/><path d="M18 8.5c0 4.5-4.5 4-9.5 5.8"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8L3.5 9.7l5.9-.9Z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M9 3.5H3.5V9m0 6v5.5H9m6 0h5.5V15m0-6V3.5H15"/></symbol>
+  <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M3.5 9H9V3.5M21 9h-5.5V3.5M21 15h-5.5v5.5M3.5 15H9v5.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 22 20H2Z"/><path d="M12 10v4.5m0 3h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5s7 2 7 6.5c0 6-3.5 9.5-7 12-3.5-2.5-7-6-7-12 0-4.5 7-6.5 7-6.5Z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="m6.5 9 3.5 3-3.5 3m6 0h5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5.5L12 13 2 7.5Z"/><path d="m2 12.5 10 5.5 10-5.5"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9.5 14h5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2 8.5 4.5v11L12 22 3.5 17.5v-11Z"/><path d="M3.5 6.5 12 11l8.5-4.5M12 11v11"/></symbol>
+</svg>
+<header id="appbar">
+  <button class="icon-btn hidden" id="btn-drawer" aria-label="Toggle file explorer" title="File explorer"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <button class="brand" id="btn-home" aria-label="Go to dashboard">
+    <span class="logo"><svg class="ic" width="22" height="22"><use href="#i-box"/></svg></span>
+    <span><b>Repo&nbsp;Apps</b></span>
+  </button>
+  <div class="repo-title hidden" id="appbar-repo" title="Current repository">
+    <button class="rt" id="btn-repo-home"></button>
+    <button class="icon-btn" id="btn-nav-back" aria-label="Back" title="Back (Alt+←)" style="width:34px;height:34px"><svg class="ic sm"><use href="#i-back"/></svg></button>
+    <button class="icon-btn" id="btn-nav-fwd" aria-label="Forward" title="Forward (Alt+→)" style="width:34px;height:34px"><svg class="ic sm"><use href="#i-fwd"/></svg></button>
+  </div>
+  <div class="actions">
+    <button class="icon-btn" id="btn-search" aria-label="Search files" title="Search files (S)"><svg class="ic"><use href="#i-search"/></svg></button>
+    <button class="icon-btn" id="btn-history" aria-label="Repository history" title="History (H)"><svg class="ic"><use href="#i-clock"/></svg></button>
+    <button class="icon-btn" id="btn-theme" aria-label="Toggle theme" title="Toggle theme (T)"><svg class="ic"><use href="#i-moon"/></svg></button>
+    <button class="icon-btn" id="btn-about" aria-label="About and help" title="About &amp; help (?)"><svg class="ic"><use href="#i-info"/></svg></button>
+  </div>
+</header>
+
+<div class="banner warn hidden" id="banner-rate">
+  <svg class="ic"><use href="#i-alert"/></svg>
+  <div><b>GitHub API rate limit.</b> <span id="rate-msg"></span></div>
+  <button class="close icon-btn" id="rate-close" aria-label="Dismiss"><svg class="ic sm"><use href="#i-x"/></svg></button>
+</div>
+<div class="banner err hidden" id="banner-offline">
+  <svg class="ic"><use href="#i-alert"/></svg>
+  <div>You appear to be <b>offline</b>. Cached content remains available; network requests are paused until the connection returns.</div>
+</div>
+
+<main id="app">
+  <aside id="explorer" aria-label="Repository file explorer">
+    <div class="ex-head">
+      <div class="crumbbar" id="crumbs" style="border:0;padding:4px 0;background:none"></div>
+    </div>
+    <div class="ex-list" id="ex-list"></div>
+    <div class="ex-foot" id="ex-foot"></div>
+  </aside>
+  <div id="backdrop"></div>
+
+  <section id="views">
+    <!-- ===== dashboard ===== -->
+    <div class="view" id="view-dashboard">
+      <div class="wrap">
+        <div class="hero">
+          <h1>Any GitHub repo, <em>running in your browser</em>.</h1>
+          <p>Browse files, read highlighted source, render Markdown, and <b>preview standalone HTML apps</b> with their CSS &amp; JavaScript — no clone, no install, no server.</p>
+          <form class="openbar" id="dash-form" autocomplete="off">
+            <div class="field">
+              <label class="sr-only" for="dash-input">GitHub repository URL</label>
+              <input id="dash-input" type="text" inputmode="url" spellcheck="false"
+                     placeholder="https://github.com/owner/repository/tree/main/folder">
+              <div class="err-text hidden" id="dash-error"></div>
+            </div>
+            <button class="btn primary" type="submit" id="dash-open">
+              <svg class="ic sm"><use href="#i-play"/></svg> Open repo
+            </button>
+          </form>
+          <div class="samples" id="samples"></div>
+        </div>
+        <div class="sec-title"><svg class="ic"><use href="#i-clock"/></svg> Recently visited</div>
+        <div id="recents-empty" class="empty hidden">
+          <svg class="ic"><use href="#i-box"/></svg>
+          <b>Welcome — nothing visited yet.</b>
+          <span>Paste a public GitHub repository URL above, or try one of the demo repositories.
+          Your recent repositories appear here and persist between sessions.</span>
+          <span style="font-size:12px;color:var(--fg3)">Tip: private repositories are not supported — Repo Apps never embeds a token and uses only GitHub's public endpoints.</span>
+        </div>
+        <div class="grid" id="recents-grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== repo explorer / viewer ===== -->
+    <div class="view hidden" id="view-repo">
+      <div class="repo-head" id="repo-head"></div>
+      <nav class="crumbbar" id="crumbs2" aria-label="Breadcrumb"></nav>
+      <div class="filetabs hidden" id="open-tabs"></div>
+      <div id="overview" class="wrap narrow"></div>
+      <div id="filepane" class="hidden" style="flex:1;min-height:0">
+        <div class="filebar">
+          <div class="path" id="fb-path" title="File path"></div>
+          <div class="seg" id="fb-mode"></div>
+          <button class="icon-btn" id="fb-copy" title="Copy source (C)"><svg class="ic sm"><use href="#i-copy"/></svg></button>
+          <button class="icon-btn" id="fb-download" title="Download file"><svg class="ic sm"><use href="#i-download"/></svg></button>
+          <button class="icon-btn" id="fb-github" title="View file on GitHub"><svg class="ic sm"><use href="#i-external"/></svg></button>
+          <button class="icon-btn" id="fb-refresh" title="Refresh (R)"><svg class="ic sm"><use href="#i-refresh"/></svg></button>
+          <button class="icon-btn" id="fb-full" title="Full screen"><svg class="ic sm"><use href="#i-expand"/></svg></button>
+        </div>
+        <div class="filebody codepane hidden" id="pane-code"><div class="code-wrap"><div class="ln" aria-hidden="true"></div><pre class="code-pre"><code></code></pre></div></div>
+        <div class="filebody mdpane hidden" id="pane-md"><article class="md-body" id="md-body"></article></div>
+        <div class="filebody hidden" id="pane-image"><div class="imgpane"><img id="img-el" alt=""><div id="img-meta" style="color:var(--fg3);font-size:12.5px"></div></div></div>
+        <div class="filebody hidden" id="pane-other"></div>
+        <div class="pane-preview hidden" id="pane-preview">
+          <div class="prev-status" id="prev-status"></div>
+          <div class="depchips hidden" id="prev-deps"></div>
+          <div class="prev-framebox" id="prev-framebox">
+            <iframe id="preview-frame" sandbox="allow-scripts allow-forms allow-modals allow-popups" title="HTML application preview"></iframe>
+            <div class="prev-overlay hidden" id="prev-overlay"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== history ===== -->
+    <div class="view hidden" id="view-history">
+      <div class="wrap">
+        <div style="display:flex;align-items:center;gap:10px;margin:18px 0 6px">
+          <h2 style="margin:0;font-size:19px">Repository history</h2>
+          <button class="btn sm danger" id="btn-clear-history"><svg class="ic sm"><use href="#i-trash"/></svg> Clear all</button>
+        </div>
+        <p style="color:var(--fg2);font-size:13px;margin:0 0 16px">Stored locally in your browser (localStorage). Nothing is sent anywhere.</p>
+        <div id="hist-empty" class="empty hidden"><svg class="ic"><use href="#i-clock"/></svg><b>No history yet.</b><span>Open a repository and it will appear here.</span></div>
+        <div class="grid" id="hist-grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== search ===== -->
+    <div class="view hidden" id="view-search">
+      <div class="wrap">
+        <div class="field" style="margin:18px 0 0">
+          <label class="sr-only" for="search-input">Search file names</label>
+          <input id="search-input" type="text" placeholder="Search file names &amp; extensions…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="searchtools">
+          <span class="chip" id="search-scope"></span>
+          <span id="ext-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+          <span class="spacer"></span>
+          <span style="color:var(--fg3);font-size:12.5px" id="search-status"></span>
+        </div>
+        <div class="res-list" id="search-results"></div>
+      </div>
+    </div>
+
+    <!-- ===== about ===== -->
+    <div class="view hidden" id="view-about"><div class="wrap narrow" id="about-body"></div></div>
+  </section>
+</main>
+
+<footer id="signoff"></footer>
+<div id="toasts" aria-live="polite" role="status"></div>
+
+<script>
+/* ============================================================================
+   REPO APPS — a standalone GitHub repository explorer & HTML-app previewer
+   Single file · no build · no server · works from file://
+   ----------------------------------------------------------------------------
+   Architecture map (searchable section banners):
+     [core]    utilities, state, preferences, storage, theme, toasts
+     [gh]      GitHub API layer: URL parsing, REST + raw + CDN access, caches
+     [router]  views, repository navigation stack, hash deep-links
+     [dash]    dashboard, samples, recent-repository cards
+     [hist]    history screen & storage CRUD
+     [expl]    explorer drawer, breadcrumbs, repo overview, file tabs
+     [code]    source viewer: highlighting, line numbers, chunking, actions
+     [md]      Markdown pipeline: marked/fallback render, sanitize, resolve
+     [prev]    Preview-as-App: dependency resolver, CDN/inline modes, sandbox
+     [srch]    filename search over the recursive git tree
+     [about]   in-app help / about, sign-off
+     [boot]    event wiring, keyboard shortcuts, initialization
+   ========================================================================== */
+"use strict";
+
+/* ============================== [core] ==================================== */
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => Array.prototype.slice.call(document.querySelectorAll(s));
+const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+const ic = (name, extra) => `<svg class="ic ${extra || ""}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+function debounce(fn, ms) { let t; return function () { const a = arguments; clearTimeout(t); t = setTimeout(() => fn.apply(null, a), ms); }; }
+function fmtBytes(n) {
+  if (n == null) return "";
+  if (n < 1024) return n + " B";
+  if (n < 1048576) return (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB";
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+  return (n / 1073741824).toFixed(2) + " GB";
+}
+function fmtNum(n) { return n >= 1000000 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
+function timeAgo(ts) {
+  if (!ts) return "";
+  const s = Math.max(1, Math.round((Date.now() - ts) / 1000));
+  const u = [[31536000, "yr"], [2592000, "mo"], [86400, "d"], [3600, "h"], [60, "min"]];
+  for (const [k, l] of u) if (s >= k) return Math.round(s / k) + l + " ago";
+  return "just now";
+}
+
+/* --- safe localStorage (handles private mode / disabled storage) ----------- */
+const LS_PREFIX = "repoapps:v1:";
+const memFallback = {};
+const Ls = {
+  ok: true,
+  get(key, dflt) {
+    try { const v = localStorage.getItem(LS_PREFIX + key); return v == null ? dflt : JSON.parse(v); }
+    catch (e) { this.ok = false; return (LS_PREFIX + key) in memFallback ? memFallback[LS_PREFIX + key] : dflt; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(val)); return true; }
+    catch (e) { this.ok = false; try { memFallback[LS_PREFIX + key] = val; } catch (_) {} return false; }
+  },
+  del(key) { try { localStorage.removeItem(LS_PREFIX + key); } catch (e) { this.ok = false; delete memFallback[LS_PREFIX + key]; } }
+};
+
+/* --- session caches (LRU maps, capped — never store huge payloads) --------- */
+class LRU {
+  constructor(max) { this.max = max; this.map = new Map(); }
+  get(k) { if (!this.map.has(k)) return undefined; const v = this.map.get(k); this.map.delete(k); this.map.set(k, v); return v; }
+  set(k, v) { if (this.map.has(k)) this.map.delete(k); this.map.set(k, v); if (this.map.size > this.max) this.map.delete(this.map.keys().next().value); return v; }
+  has(k) { return this.map.has(k); }
+  clear() { this.map.clear(); }
+}
+const Cache = {
+  dir:   new LRU(60),    // directory listings
+  file:  new LRU(120),   // file text (capped by size at store time)
+  meta:  new LRU(30),    // repository metadata
+  sha:   new Map(),      // ref -> commit sha
+  tree:  new Map(),      // search trees (max kept below)
+  dep:   new LRU(260),   // preview dependency existence checks
+  css:   new LRU(80),    // fetched CSS scan results
+  inFlight: new Map()    // key -> promise (dedupes concurrent identical fetches)
+};
+function treeCacheSet(key, val) { Cache.tree.set(key, val); if (Cache.tree.size > 8) Cache.tree.delete(Cache.tree.keys().next().value); }
+
+/* --- concurrency-limited fetch queue (polite to GitHub / CDNs) ------------- */
+const Queue = { running: 0, waiters: [], max: 8 };
+function limited(fn) {
+  return new Promise((res, rej) => {
+    const run = () => { Queue.running++; Promise.resolve().then(fn).then((v) => { Queue.running--; res(v); }, (e) => { Queue.running--; rej(e); }); while (Queue.waiters.length && Queue.running < Queue.max) Queue.waiters.shift()(); };
+    if (Queue.running < Queue.max) run(); else Queue.waiters.push(run);
+  });
+}
+
+/* --- preferences ----------------------------------------------------------- */
+const prefs = Object.assign(
+  { theme: null, mdMode: "rendered", explorerOpen: true, previewWarned: false, verboseDeps: false },
+  Ls.get("prefs", {})
+);
+function savePrefs() { Ls.set("prefs", prefs); }
+
+const THEME_ICONS = { dark: "i-sun", light: "i-moon" };
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  const use = $("#btn-theme use");
+  if (use) use.setAttribute("href", "#" + (t === "dark" ? "i-sun" : "i-moon"));
+}
+function currentTheme() { return document.documentElement.getAttribute("data-theme") || "dark"; }
+function toggleTheme() {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  applyTheme(next); prefs.theme = next; savePrefs();
+  toast("ok", next === "dark" ? "Dark theme" : "Light theme", 1400);
+}
+
+/* --- toasts ---------------------------------------------------------------- */
+const TOAST_ICONS = { ok: "i-check", err: "i-alert", warn: "i-alert", info: "i-info" };
+function toast(kind, msg, ms) {
+  const box = $("#toasts");
+  const t = el("div", "toast " + kind);
+  t.innerHTML = ic(TOAST_ICONS[kind] || "i-info") + `<span class="msg">${esc(msg)}</span>`;
+  box.appendChild(t);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity .25s"; setTimeout(() => t.remove(), 260); }, ms || 4200);
+  while (box.children.length > 4) box.firstChild.remove();
+}
+
+/* --- file classification ---------------------------------------------------- */
+const TEXT_EXT = new Set(("txt md markdown html htm css scss js mjs cjs jsx ts tsx json jsonc yml yaml xml svg xhtml " +
+  "java c h cpp hpp cc cxx cs go rs rb php py ipy swift kt kts scala pl pm lua r dart sh bash zsh fish bat cmd ps1 sql " +
+  "ini conf cfg toml env gitignore editorconfig dockerfile makefile mk cmake gradle properties csv tsv graphql vue svelte " +
+  "ejs hbs mustache astro tex bib rst asciidoc adoc gitattributes gitkeep license readme changelog").split(" "));
+const IMG_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "ico", "bmp"]);
+const DOC_EXT = new Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "zip", "gz", "tgz", "bz2", "7z", "rar", "exe", "dll", "so", "dylib", "woff", "woff2", "ttf", "otf", "eot", "mp3", "mp4", "wav", "ogg", "webm", "mov", "wasm", "jar", "class", "pyc", "o", "a", "pdb", "sqlite", "db"]);
+
+function extOf(path) {
+  const b = path.split("/").pop() || "";
+  const dot = b.lastIndexOf(".");
+  if (dot > 0) return b.slice(dot + 1).toLowerCase();
+  return /^(license|readme|makefile|dockerfile|changelog|gemfile|rakefile|procfile|cmake)$/i.test(b) ? b.toLowerCase() : "";
+}
+const LANG_BY_EXT = {
+  js: "javascript", mjs: "javascript", cjs: "javascript", jsx: "javascript",
+  ts: "typescript", tsx: "typescript", json: "json", jsonc: "json",
+  py: "python", ipy: "python", html: "xml", htm: "xml", xhtml: "xml", xml: "xml", svg: "xml",
+  vue: "xml", svelte: "xml", css: "css", scss: "scss", less: "less",
+  java: "java", c: "c", h: "c", cpp: "cpp", hpp: "cpp", cc: "cpp", cxx: "cpp", cs: "csharp",
+  go: "go", rs: "rust", rb: "ruby", php: "php", swift: "swift", kt: "kotlin", scala: "scala",
+  sh: "bash", bash: "bash", zsh: "bash", fish: "bash", bat: "dos", cmd: "dos", ps1: "powershell",
+  sql: "sql", yml: "yaml", yaml: "yaml", ini: "ini", conf: "ini", cfg: "ini", toml: "ini",
+  properties: "ini", gitignore: "ini", editorconfig: "ini", dockerfile: "dockerfile",
+  makefile: "makefile", mk: "makefile", cmake: "cmake", gradle: "groovy", graphql: "graphql",
+  md: "markdown", markdown: "markdown", txt: "plaintext", csv: "plaintext", tsv: "plaintext",
+  tex: "latex", rst: "python", pl: "perl", lua: "lua", dart: "dart", ejs: "xml", hbs: "xml",
+  mustache: "xml", astro: "xml", prisma: "sql", tf: "ini",
+  license: "plaintext", readme: "markdown", changelog: "markdown", gemfile: "ruby",
+  rakefile: "ruby", procfile: "bash", asciidoc: "plaintext", adoc: "plaintext"
+};
+function langFor(path) { const e = extOf(path); return LANG_BY_EXT[e] || (e === "" && /^(license|makefile|dockerfile|readme)/i.test(path.split("/").pop() || "") ? LANG_BY_EXT[extOf(path)] : null); }
+const LANG_ALIAS = { js: "javascript", mjs: "javascript", cjs: "javascript", ts: "typescript", py: "python", rb: "ruby", yml: "yaml", sh: "bash", zsh: "bash", ksh: "bash", html: "xml", htm: "xml", xhtml: "xml", golang: "go", "c++": "cpp", "c#": "csharp", dotnet: "csharp", "f#": "fsharp", md: "markdown", docker: "dockerfile", plaintext: "plaintext", text: "plaintext", shell: "bash", "shell-session": "bash" };
+
+function fileMeta(path, isDir) {
+  if (isDir) return { icon: "i-folder", cls: "dir-ic", label: "" };
+  const e = extOf(path);
+  if (e === "html" || e === "htm") return { icon: "i-code", cls: "ft-html", label: "html" };
+  if (e === "md" || e === "markdown" || e === "mdown" || e === "rst" || e === "adoc" || e === "asciidoc" || e === "txt") return { icon: "i-book", cls: "ft-md", label: e || "txt" };
+  if (e === "json" || e === "jsonc" || e === "yaml" || e === "yml" || e === "toml" || e === "ini") return { icon: "i-braces", cls: "ft-json", label: e };
+  if (IMG_EXT.has(e)) return { icon: "i-image", cls: "ft-img", label: e };
+  if (e === "sh" || e === "bash" || e === "zsh" || e === "fish" || e === "ps1" || e === "bat" || e === "cmd") return { icon: "i-terminal", cls: "ft-sh", label: e };
+  if (DOC_EXT.has(e)) return { icon: "i-file", cls: "ft-bin", label: e || "bin" };
+  if (["js", "mjs", "cjs", "jsx", "ts", "tsx", "py", "java", "c", "h", "cpp", "hpp", "go", "rs", "rb", "php", "swift", "kt", "css", "scss", "sql", "xml", "vue", "svelte", "dart", "lua", "perl", "pl"].includes(e)) return { icon: "i-code", cls: "ft-code", label: e };
+  if (e === "dockerfile" || e === "makefile" || e === "cmake" || e === "lock" || e === "conf" || e === "cfg") return { icon: "i-box", cls: "ft-cfg", label: e };
+  return { icon: "i-file", cls: "ft-doc", label: e || "" };
+}
+
+/* --- small DOM helpers ------------------------------------------------------ */
+function setHidden(node, hide) { node.classList.toggle("hidden", !!hide); }
+function htmlEmpty(node) { node.textContent = ""; return node; }
+function loadingRow(parent, msg) {
+  const d = el("div", "statusline");
+  d.innerHTML = `<span class="spin"></span><span>${esc(msg)}</span>`;
+  parent.appendChild(d); return d;
+}
+
+/* --- app state -------------------------------------------------------------- */
+const S = {
+  view: "dashboard",
+  owner: null, repo: null,           // active repository
+  ref: null, refSha: null, meta: null,
+  dir: "", file: null, fileMode: null,
+  tabs: [], gen: 0,                  // generation token guards async renders
+  nav: [], navPos: -1,
+  cur: null,                         // current serializable navigation entry
+  lastFileText: null, lastFilePath: null,
+  online: (typeof navigator.onLine === "boolean") ? navigator.onLine : true,
+  rate: { remaining: 999, reset: 0, hit: false }
+};
+/* ================================ [gh] ===================================== */
+const API = "https://api.github.com";
+const RAW = "https://raw.githubusercontent.com";
+const JSD = "https://cdn.jsdelivr.net/gh";
+
+class GhError extends Error {
+  constructor(msg, status, resetAt) { super(msg); this.status = status; this.resetAt = resetAt || 0; }
+}
+
+/* ---- repository URL parsing -------------------------------------------------
+   Accepts:
+     https://github.com/owner/repo                       (+ http, www., trailing /, .git)
+     https://github.com/owner/repo/tree/<ref>            (+ /tree/<ref>/some/dir)
+     https://github.com/owner/repo/blob/<ref>/file.ext
+     owner/repo                                          (shorthand)
+     branch names containing slashes (/tree/feat/x/dir)  are kept intact.
+*/
+function parseRepoInput(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return { error: "Enter a GitHub repository URL, e.g. https://github.com/owner/repository" };
+  s = s.replace(/\/+$/, "");
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/\s]+?)\/([^\/\s#?]+?)(?:\.git)?(?:\/(tree|blob)\/([^\/\s#?]+)\/?([^\s#?]*))?(?:[?#].*)?$/i);
+  let owner, repo, ref = null, sub = "";
+  if (m) {
+    owner = m[1]; repo = m[2];
+    const kind = m[3]; ref = m[4] ? decodeSafe(m[4]) : null; sub = m[5] ? decodeSafe(m[5]).replace(/^\/+|\/+$/g, "") : "";
+    if (kind === "blob" && !sub) { ref = null; }
+    if (kind === "blob") return { owner, repo, ref, path: sub, kind: "file" };
+    if (kind === "tree") return { owner, repo, ref, path: sub, kind: sub ? "dir" : "repo" };
+    return { owner, repo, ref: null, path: "", kind: "repo" };
+  }
+  const sh = s.match(/^([^\/\s]+?)\/([^\/\s]+?)(?:\.git)?$/);
+  if (sh) { owner = sh[1]; repo = sh[2]; }
+  else return { error: "That doesn’t look like a GitHub URL. Use https://github.com/owner/repository[/tree/branch/path]." };
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(owner || "") || !/^[A-Za-z0-9._-]{1,100}$/.test(repo || ""))
+    return { error: "Invalid owner or repository name — GitHub names may only contain letters, digits, “.”, “-” and “_”." };
+  return { owner, repo, ref: null, path: "", kind: "repo" };
+}
+function decodeSafe(x) { try { return decodeURIComponent(x); } catch (e) { return x; } }
+
+/* ---- repo-path arithmetic -------------------------------------------------- */
+function encPath(p) {
+  return String(p == null ? "" : p).split("/").filter((s) => s !== "" && s !== "." ).map(encodeURIComponent).join("/");
+}
+function dirName(p) { const i = p.lastIndexOf("/"); return i < 0 ? "" : p.slice(0, i); }
+function baseName(p) { const i = p.lastIndexOf("/"); return i < 0 ? p : p.slice(i + 1); }
+function joinPath(a, b) { return (a ? a + "/" : "") + b; }
+/* Resolve a reference (href/src) found in a file at dir `baseDir` to a repository
+   path, using the URL parser for proper . / .. / %20 handling. Returns:
+     {kind:"repo", path:"x/y", query:"", hash:""} | {kind:"abs", url:"https://…"} | {kind:"other", ref:"data:…"} */
+function resolveRefHref(baseDir, href) {
+  const h = String(href == null ? "" : href).trim();
+  if (h === "" || h.startsWith("#")) return { kind: "anchor", ref: h };
+  if (/^(data|blob|about|javascript|mailto|tel|sms|voice|whatsapp):/i.test(h)) return { kind: "other", ref: h };
+  let abs;
+  try {
+    const vbase = "https://repo.invalid/" + encPath(baseDir) + "/";
+    abs = new URL(h, vbase);
+    if (abs.origin !== "https://repo.invalid") return { kind: "abs", url: h };
+  } catch (e) { return { kind: "other", ref: h }; }
+  let p = decodeURI(abs.pathname).replace(/^\/+/, "");
+  // re-normalize any stray ../ that survived (URL already does this, but be safe)
+  p = normalizeRepoPath(p);
+  return { kind: "repo", path: p, query: abs.search, hash: abs.hash };
+}
+function normalizeRepoPath(p) {
+  const out = [];
+  for (const seg of String(p).split("/")) {
+    if (seg === "" || seg === ".") continue;
+    if (seg === "..") { out.pop(); continue; }
+    out.push(seg);
+  }
+  return out.join("/");
+}
+function absRefToRepoPath(urlStr) {
+  try { const u = new URL(urlStr, "https://repo.invalid/"); return { path: decodeURI(u.pathname).replace(/^\/+/, ""), query: u.search, hash: u.hash }; }
+  catch (e) { return null; }
+}
+
+/* ---- endpoint builders ------------------------------------------------------ */
+function rawUrl(owner, repo, ref, path) { return `${RAW}/${owner}/${repo}/${encPath(ref)}/${encPath(path)}`; }
+function jsdUrl(owner, repo, ref, path) { return `${JSD}/${owner}/${repo}@${encodeURIComponent(ref)}/${encPath(path)}`; }
+function jsdDir(owner, repo, ref, dir) { return `${JSD}/${owner}/${repo}@${encodeURIComponent(ref)}/${encPath(dir)}/`; }
+function rawDir(owner, repo, ref, dir) { return `${RAW}/${owner}/${repo}/${encPath(ref)}/${encPath(dir)}/`; }
+function ghBlobUrl(owner, repo, ref, path) { return `https://github.com/${owner}/${repo}/blob/${encPath(ref)}/${encPath(path)}`; }
+function repoApi(sub) { return `${API}/repos/${S.owner}/${S.repo}${sub}`; }
+
+/* ---- apiFetch: rate-aware JSON requests with session cache ------------------ */
+function updateRate(res) {
+  const rem = res.headers.get("X-RateLimit-Remaining");
+  const rst = res.headers.get("X-RateLimit-Reset");
+  if (rem != null) S.rate.remaining = Number(rem);
+  if (rst != null) S.rate.reset = Number(rst) * 1000;
+  if (S.rate.remaining <= 3 && !S.rate.hit && !S.rate.noticed) showRateBanner(rateMessage(S.rate));
+  if (S.rate.remaining === 0) S.rate.hit = true;
+}
+function rateMessage(r) {
+  const when = r.reset ? new Date(r.reset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "soon";
+  return `GitHub allows ~60 requests per hour per IP for unauthenticated use. Your limit resets around ${when}. Cached pages still work — avoid hammering “Refresh”.`;
+}
+function showRateBanner(msg) {
+  $("#rate-msg").textContent = msg;
+  setHidden($("#banner-rate"), false);
+}
+async function apiFetch(pathname, cacheKey) {
+  const url = pathname.startsWith("http") ? pathname : `${API}${pathname}`;
+  if (!S.online) throw new GhError("You appear to be offline — requests are paused.", 0);
+  let res;
+  try { res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } }); }
+  catch (e) { S.online = false; setOffline(true); throw new GhError("Network request failed — are you offline?", 0); }
+  updateRate(res);
+  if (!res.ok) throw await apiError(res, url);
+  if (res.status === 204) return null;
+  return await res.json();
+}
+async function apiError(res, url) {
+  let msg = ""; try { const j = await res.json(); msg = j && j.message ? j.message : ""; } catch (e) {}
+  if (res.status === 404) return new GhError("Not found. The repository may be private, renamed, or the path doesn’t exist on this ref. Repo Apps supports public repositories only.", 404);
+  if (res.status === 451) return new GhError("This content was removed for legal reasons (HTTP 451).", 451);
+  if (res.status === 403 || res.status === 429) {
+    S.rate.hit = true; showRateBanner(rateMessage(S.rate) + (msg ? ` (${msg})` : ""));
+    return new GhError("GitHub API rate limit reached — " + rateMessage(S.rate), res.status, S.rate.reset);
+  }
+  if (res.status >= 500) return new GhError(`GitHub returned server error ${res.status} — try again shortly.`, res.status);
+  return new GhError(`GitHub API error ${res.status}${msg ? ": " + msg : ""}.`, res.status);
+}
+
+/* ---- repository metadata ----------------------------------------------------- */
+async function getRepoMeta(owner, repo) {
+  const key = `meta:${owner}/${repo}`;
+  const hit = Cache.meta.get(key);
+  if (hit) return hit;
+  const j = await apiFetch(`${API}/repos/${owner}/${repo}`);
+  const m = {
+    name: j.name, full: j.full_name, desc: j.description || "",
+    defBranch: j.default_branch, html: j.html_url,
+    avatar: (j.owner && j.owner.avatar_url) || "",
+    stars: j.stargazers_count, forks: j.forks_count,
+    lang: j.language || "", license: (j.license && j.license.spdx_id) || "",
+    sizeKB: j.size, updated: j.pushed_at || j.updated_at, issues: j.open_issues_count,
+    archived: !!j.archived
+  };
+  Cache.meta.set(key, m);
+  return m;
+}
+
+/* ---- resolve ref -> commit sha (for immutable, CDN-cache-friendly previews) -- */
+async function resolveSha(ref) {
+  if (/^[0-9a-f]{40}$/i.test(ref)) return ref;
+  const key = `${S.owner}/${S.repo}@${ref}`;
+  if (Cache.sha.has(key)) return Cache.sha.get(key);
+  try {
+    const j = await apiFetch(repoApi(`/commits/${encodeURIComponent(ref)}`));
+    const sha = j && j.sha ? j.sha : null;
+    if (sha) Cache.sha.set(key, sha);
+    return sha;
+  } catch (e) { return null; }
+}
+
+/* ---- directory listings (contents API, cached per session) ------------------- */
+async function listDir(ref, path) {
+  const key = `dir:${S.owner}/${S.repo}@${ref}/${path}`;
+  const hit = Cache.dir.get(key);
+  if (hit) return hit;
+  const infl = Cache.inFlight.get(key);
+  if (infl) return infl;
+  const p = (async () => {
+    const apiPath = repoApi(`/contents${path ? "/" + encPath(path) : ""}?ref=${encodeURIComponent(ref)}`);
+    const arr = await apiFetch(apiPath);
+    if (!Array.isArray(arr)) throw new GhError(`“${path || "/"}” is a file, not a directory.`, 400);
+    const out = arr.map((i) => ({
+      name: i.name, path: i.path, type: i.type, size: i.size || 0,
+      target: i.type === "symlink" ? (i.target || decodeSafe(i.content ? atobSafe(i.content) : "")) : null,
+      submodule: i.type === "submodule" ? (i.url || "").replace(/^https:\/\/api\.github\.com\/repos\//, "https://github.com/").replace(/\/$/, "") : null
+    }));
+    out.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) : (a.type === "dir" ? -1 : 1));
+    Cache.dir.set(key, out);
+    return out;
+  })().finally(() => Cache.inFlight.delete(key));
+  Cache.inFlight.set(key, p);
+  return p;
+}
+function atobSafe(b64) { try { return atob(b64); } catch (e) { return ""; } }
+
+/* ---- file contents: raw endpoint first (no API rate limit cost) -------------- */
+async function getFileText(ref, path, opts) {
+  opts = opts || {};
+  const key = `file:${S.owner}/${S.repo}@${ref}/${path}`;
+  if (!opts.fresh) {
+    const hit = Cache.file.get(key);
+    if (hit) return hit;
+    const infl = Cache.inFlight.get(key);
+    if (infl) return infl;
+  }
+  if (!S.online) throw new GhError("You appear to be offline — this file isn’t cached.", 0);
+  const url = rawUrl(S.owner, S.repo, ref, path);
+  const p = (async () => {
+    let res;
+    try { res = await fetch(url, { cache: opts.fresh ? "reload" : "default" }); }
+    catch (e) { S.online = false; setOffline(true); throw new GhError("Network request failed — are you offline?", 0); }
+    if (!res.ok) {
+      if (res.status === 404) throw new GhError(`File not found: ${path} (on “${ref}”). It may live on a different branch.`, 404);
+      if (res.status === 451) throw new GhError("This file was removed for legal reasons (HTTP 451).", 451);
+      throw new GhError(`Fetching file failed (HTTP ${res.status}).`, res.status);
+    }
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    // binary sniff: NUL byte in first 8 KiB
+    let binary = false;
+    const probe = Math.min(bytes.length, 8192);
+    for (let i = 0; i < probe; i++) if (bytes[i] === 0) { binary = true; break; }
+    let text = "";
+    if (!binary && bytes.length <= 2 * 1024 * 1024) text = new TextDecoder("utf-8").decode(bytes);
+    const out = { text, size: bytes.length, binary, tooBig: !binary && bytes.length > 2 * 1024 * 1024 };
+    if (!binary && text && text.length <= 400 * 1024) Cache.file.set(key, out);
+    return out;
+  })().finally(() => Cache.inFlight.delete(key));
+  if (!opts.fresh) Cache.inFlight.set(key, p);
+  return p;
+}
+
+/* ---- existence check used by the preview dependency resolver ----------------- */
+async function checkExists(ref, path) {
+  const key = `dep:${S.owner}/${S.repo}@${ref}/${path}`;
+  const hit = Cache.dep.get(key);
+  if (hit != null) return hit;
+  const infl = Cache.inFlight.get(key);
+  if (infl) return infl;
+  const p = limited(async () => {
+    if (!S.online) return "offline";
+    try {
+      const res = await fetch(rawUrl(S.owner, S.repo, ref, path), { method: "HEAD" });
+      return res.ok ? "ok" : (res.status === 404 ? "404" : "err" + res.status);
+    } catch (e) { return "offline"; }
+  }).finally(() => Cache.inFlight.delete(key));
+  Cache.inFlight.set(key, p);
+  return p;
+}
+
+/* ---- recursive tree for fast filename search --------------------------------- */
+async function getTree(ref) {
+  const key = `tree:${S.owner}/${S.repo}@${ref}`;
+  const hit = Cache.tree.get(key);
+  if (hit) return hit;
+  const infl = Cache.inFlight.get(key);
+  if (infl) return infl;
+  const p = (async () => {
+    const j = await apiFetch(repoApi(`/git/trees/${encodeURIComponent(ref)}?recursive=1`));
+    const files = [];
+    for (const t of j.tree || []) if (t.type === "blob") files.push({ path: t.path, size: t.size || 0 });
+    const out = { files, truncated: !!j.truncated };
+    treeCacheSet(key, out);
+    return out;
+  })().finally(() => Cache.inFlight.delete(key));
+  Cache.inFlight.set(key, p);
+  return p;
+}
+
+/* ---- branches ----------------------------------------------------------------- */
+async function listBranches() {
+  const key = `branches:${S.owner}/${S.repo}`;
+  const hit = Cache.meta.get(key);
+  if (hit) return hit;
+  const arr = await apiFetch(repoApi(`/branches?per_page=100`));
+  const names = (arr || []).map((b) => b.name);
+  Cache.meta.set(key, names);
+  return names;
+}
+
+/* ---- jsDelivr availability probe (used to pick preview mode) ------------------ */
+let jsdProbe = null;
+function jsdelivrOk() {
+  if (jsdProbe != null) return Promise.resolve(jsdProbe);
+  jsdProbe = new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; jsdProbe = v; resolve(v); };
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} finish(false); }, 5000);
+      fetch("https://cdn.jsdelivr.net/gh/lodash/lodash@main/LICENSE", { method: "HEAD", signal: ctrl.signal, cache: "no-store" })
+        .then((r) => { clearTimeout(timer); finish(r.ok); })
+        .catch(() => { clearTimeout(timer); finish(false); });
+    } catch (e) { finish(false); }
+  });
+  return jsdProbe;
+}
+
+function setOffline(on) {
+  S.online = !on;
+  setHidden($("#banner-offline"), !on);
+}
+/* ============================== [router] ==================================== */
+/* Navigation entries are compact, serializable, and mirrored to location.hash so
+   that (a) the browser back/forward buttons work inside the repository too, and
+   (b) reloading the file restores where you left off.  */
+function entryToHash(e) { return "#" + encodeURIComponent(JSON.stringify(e)); }
+function hashToEntry(h) {
+  if (!h || h === "#" || h.length < 2) return null;
+  try {
+    const e = JSON.parse(decodeURIComponent(h.slice(1)));
+    if (e && typeof e === "object" && (e.v === "d" || e.v === "h" || e.v === "a" || e.v === "s" || e.v === "r")) return e;
+  } catch (err) {}
+  return null;
+}
+let suppressHash = false;
+function setHash(e) {
+  suppressHash = true;
+  location.hash = entryToHash(e);
+  setTimeout(() => { suppressHash = false; }, 0);
+}
+
+function curEntry() {
+  switch (S.view) {
+    case "dashboard": return { v: "d" };
+    case "history":   return { v: "h" };
+    case "about":     return { v: "a" };
+    case "search":    return { v: "s" };
+    default: {
+      if (!S.owner) return { v: "d" };
+      const e = { v: "r", o: S.owner, r: S.repo, f: S.ref };
+      if (S.file) { e.p = S.file; e.m = S.fileMode; }
+      else if (S.dir) e.d = S.dir;
+      return e;
+    }
+  }
+}
+function sameEntry(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+function navigate(e, push) {
+  if (push !== false) {
+    if (S.cur && sameEntry(e, S.cur)) return;
+    S.nav = S.nav.slice(0, S.navPos + 1);
+    S.nav.push(e);
+    if (S.nav.length > 50) { S.nav.shift(); }
+    S.navPos = S.nav.length - 1;
+  } else {
+    S.nav[S.navPos] = e;
+  }
+  S.cur = e;
+  setHash(e);
+  applyEntry(e);
+}
+function goBack() { if (S.navPos > 0) { S.navPos--; const e = S.nav[S.navPos]; S.cur = e; setHash(e); applyEntry(e); } }
+function goForward() { if (S.navPos < S.nav.length - 1) { S.navPos++; const e = S.nav[S.navPos]; S.cur = e; setHash(e); applyEntry(e); } }
+
+async function applyEntry(e) {
+  const gen = ++S.gen;
+  updateNavButtons();
+  if (e.v !== "r" || !(e.p && (e.m === "preview"))) { if (P.active) killPreview(); }
+  if (e.v === "d") { setView("dashboard"); return; }
+  if (e.v === "h") { setView("history"); renderHistory(); return; }
+  if (e.v === "a") { setView("about"); renderAbout(); return; }
+  if (e.v === "s") { setView("search"); ensureSearchData(); return; }
+  if (e.v === "r") {
+    if (!e.o) { setView("dashboard"); return; }
+    await enterRepo(e, gen);
+  }
+}
+
+function setView(name) {
+  S.view = name;
+  const views = ["dashboard", "repo", "history", "search", "about"];
+  for (const v of views) setHidden($("#view-" + v), v !== name);
+  const isRepo = name === "repo";
+  setHidden($("#btn-drawer"), !isRepo);
+  setHidden($("#explorer"), !isRepo);
+  setHidden($("#appbar-repo"), !isRepo);
+  $("#btn-home").style.display = isRepo ? "none" : "";
+  document.body.classList.toggle("no-scroll", false);
+}
+function updateNavButtons() {
+  $("#btn-nav-back").disabled = S.navPos <= 0;
+  $("#btn-nav-fwd").disabled = S.navPos >= S.nav.length - 1;
+}
+
+/* --- repository lifecycle: load metadata, honor ?ref + subpath ---------------- */
+async function enterRepo(e, gen) {
+  const switched = (S.owner !== e.o || S.repo !== e.r);
+  if (switched) {
+    S.owner = e.o; S.repo = e.r; S.ref = null; S.refSha = null; S.meta = null;
+    S.tabs = []; S.file = null; S.fileMode = null; S.dir = "";
+    S.lastFileText = null; S.lastFilePath = null;
+    searchTree = null; searchTreeErr = null;
+    renderTabs();
+    setView("repo");
+    $("#btn-repo-home").innerHTML = `<span class="owner">${esc(e.o)} /</span>${esc(e.r)}`;
+    const head = $("#repo-head");
+    head.innerHTML = "";
+    loadingRow(head, `Loading ${e.o}/${e.r}…`);
+    renderCrumbbars(); htmlEmpty($("#ex-list"));
+  } else setView("repo");
+
+  const wantRef = e.f || null;
+  try {
+    if (!S.meta) {
+      const m = await getRepoMeta(e.o, e.r);
+      if (gen !== S.gen) return;
+      S.meta = m;
+      S.ref = m.defBranch;
+      History.touch(S.owner, S.repo, m);
+      renderRepoHead(); renderExFoot();
+    }
+    if (wantRef && wantRef !== S.ref) {
+      // validate user-supplied ref cheaply by resolving it to a sha later when needed;
+      // branch names that don't exist will surface as "not found" on first listing.
+      S.ref = wantRef;
+    }
+    renderRepoHead();
+    if (e.p) { openFileInner(e.p, e.m || autoMode(e.p), gen || S.gen); }
+    else {
+      const dir = e.d || "";
+      await renderDir(dir, gen || S.gen, !e.d && !e.p);
+    }
+  } catch (err) {
+    if (gen !== S.gen) return;
+    repoLoadError(err, e);
+  }
+}
+function repoLoadError(err, e) {
+  const box = $("#repo-head");
+  htmlEmpty(box);
+  const nb = el("div", "notebox");
+  nb.style.margin = "26px auto";
+  nb.innerHTML = `<span>${ic("alert")}</span><div><b>Couldn’t open ${esc(e.o + "/" + e.r)}</b><br>${esc(err.message || String(err))}
+    <div style="margin-top:10px"><button class="btn sm" onclick="openRepoInput()">Try another repository</button></div></div>`;
+  box.appendChild(nb);
+  toast("err", err.message ? err.message.slice(0, 140) : "Repository failed to load");
+}
+
+/* openRepoInput is used from generated HTML — expose the tiny bits that need it */
+window.openRepoInput = function () {
+  navigate({ v: "d" });
+  setTimeout(() => { const i = $("#dash-input"); i.focus(); i.select(); }, 60);
+};
+
+/* --- top-level open flow ------------------------------------------------------ */
+async function openRepoByInput(text) {
+  const p = parseRepoInput(text);
+  if (p.error) return { error: p.error };
+  navigate({ v: "r", o: p.owner, r: p.repo, f: p.ref || null, d: (p.kind === "dir" ? p.path : ""), p: (p.kind === "file" ? p.path : ""), m: (p.kind === "file" ? autoMode(p.path) : undefined) });
+  return { ok: true };
+}
+
+/* =============================== [hist] ====================================== */
+const History = {
+  key: "history",
+  load() {
+    const arr = Ls.get(this.key, []);
+    return Array.isArray(arr) ? arr.filter((x) => x && typeof x.owner === "string" && typeof x.repo === "string") : [];
+  },
+  save(arr) { Ls.set(this.key, arr.slice(0, 24)); },
+  touch(owner, repo, meta) {
+    const arr = this.load();
+    const url = `https://github.com/${owner}/${repo}`;
+    let item = arr.find((x) => x.owner === owner && x.repo === repo);
+    if (!item) { item = { owner, repo }; arr.unshift(item); }
+    item.url = url;
+    item.visitedAt = Date.now();
+    if (meta) {
+      item.branch = meta.defBranch || item.branch || "";
+      item.desc = meta.desc || "";
+      item.avatar = meta.avatar || "";
+      item.stars = meta.stars || 0;
+      item.lang = meta.lang || "";
+    }
+    arr.sort((a, b) => (b.visitedAt || 0) - (a.visitedAt || 0));
+    this.save(arr);
+    renderRecents();
+  },
+  remove(owner, repo) { this.save(this.load().filter((x) => !(x.owner === owner && x.repo === repo))); renderRecents(); renderHistory(); },
+  clear() { Ls.del(this.key); renderRecents(); renderHistory(); toast("ok", "History cleared", 2000); }
+};
+
+function cardHTML(x, removable) {
+  const initials = esc((x.owner || "?").slice(0, 2).toUpperCase());
+  const ava = x.avatar
+    ? `<img class="ava" src="${esc(x.avatar)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ava ph',textContent:'${initials}'}))">`
+    : `<span class="ava ph">${initials}</span>`;
+  const langDot = x.lang ? `<span class="chip" style="gap:6px"><span class="dot" style="background:${langColor(x.lang)}"></span>${esc(x.lang)}</span>` : "";
+  return `
+    <button class="card hist-card" data-owner="${esc(x.owner)}" data-repo="${esc(x.repo)}">
+      <div class="top">${ava}
+        <div style="min-width:0">
+          <div class="nm"><small>${esc(x.owner)} /</small>${esc(x.repo)}</div>
+          <div style="color:var(--fg3);font-size:12px;margin-top:1px">${esc(x.branch ? "default: " + x.branch : "")}</div>
+        </div>
+      </div>
+      <div class="desc">${esc(x.desc || "")}</div>
+      <div class="meta">
+        ${x.stars ? `<span class="chip">${ic("star", "sm")}${fmtNum(x.stars)}</span>` : ""}
+        ${langDot}
+        <span class="when">${esc(timeAgo(x.visitedAt))}</span>
+      </div>
+      ${removable ? `<span class="tools"><button class="icon-btn rm" title="Remove from history" data-owner="${esc(x.owner)}" data-repo="${esc(x.repo)}">${ic("x", "sm")}</button></span>` : ""}
+    </button>`;
+}
+const LANG_COLORS = { JavaScript: "#f1e05a", TypeScript: "#3178c6", Python: "#3572A5", Java: "#b07219", Go: "#00ADD8", Rust: "#dea584", C: "#555abb", "C++": "#f34b7d", "C#": "#178600", Ruby: "#701516", PHP: "#4F5D95", CSS: "#563d7c", HTML: "#e34c26", Shell: "#89e051", Swift: "#F05138", Kotlin: "#A97BFF", Dart: "#00B4AB", Lua: "#000089", Scala: "#c22d40", Vue: "#41b883", Svelte: "#ff3e00" };
+function langColor(l) { return LANG_COLORS[l] || "var(--accent2)"; }
+
+function bindCards(container, removable) {
+  container.addEventListener("click", (ev) => {
+    const rm = ev.target.closest(".rm");
+    if (rm && removable) {
+      ev.stopPropagation();
+      History.remove(rm.dataset.owner, rm.dataset.repo);
+      toast("ok", `Removed ${rm.dataset.owner}/${rm.dataset.repo}`, 2000);
+      return;
+    }
+    const card = ev.target.closest(".hist-card");
+    if (card) navigate({ v: "r", o: card.dataset.owner, r: card.dataset.repo });
+  });
+}
+
+function renderRecents() {
+  const arr = History.load();
+  const grid = $("#recents-grid");
+  const empty = $("#recents-empty");
+  if (!arr.length) { setHidden(empty, false); htmlEmpty(grid); return; }
+  setHidden(empty, true);
+  grid.innerHTML = arr.slice(0, 6).map((x) => cardHTML(x, true)).join("");
+}
+function renderHistory() {
+  const arr = History.load();
+  const grid = $("#hist-grid");
+  setHidden($("#hist-empty"), arr.length > 0);
+  grid.innerHTML = arr.map((x) => cardHTML(x, true)).join("");
+  let warn = $("#hist-warn");
+  if (!Ls.ok && !warn) {
+    warn = el("div", "banner warn"); warn.id = "hist-warn";
+    warn.innerHTML = `${ic("alert")}<span><b>Local storage is unavailable</b> (private browsing or disabled). History is kept in memory only for this session.</span>`;
+    grid.parentNode.insertBefore(warn, grid);
+  } else if (warn) warn.classList.toggle("hidden", Ls.ok);
+}
+/* =============================== [expl] ====================================== */
+const BATCH = 220;   // rows rendered per chunk in long listings
+
+function isOpenOnMobile() { return $("#explorer").classList.contains("open"); }
+function drawerOpen(open) {
+  $("#explorer").classList.toggle("open", open);
+  $("#backdrop").classList.toggle("show", open && window.innerWidth < 920);
+  $("#btn-drawer").classList.toggle("on", open);
+  if (window.innerWidth >= 920) { prefs.explorerOpen = open; savePrefs(); }
+}
+
+function autoMode(path) {
+  const e = extOf(path);
+  if (e === "md" || e === "markdown") return prefs.mdMode === "raw" ? "raw" : "md";
+  if (IMG_EXT.has(e)) return "image";
+  return "code";
+}
+function modesFor(path) {
+  const e = extOf(path);
+  if (e === "html" || e === "htm") return ["code", "preview"];
+  if (e === "md" || e === "markdown") return ["md", "raw"];
+  if (IMG_EXT.has(e)) return ["image", "code"];
+  if (e === "svg") return ["code", "image"];
+  return ["code"];
+}
+const MODE_LABEL = { code: ["code", "Source"], preview: ["play", "Preview as App"], md: ["book", "Rendered"], raw: ["code", "Raw Markdown"], image: ["image", "Render"] };
+
+function renderCrumbbars() {
+  const mk = (target) => {
+    const bar = $(target);
+    htmlEmpty(bar);
+    if (!S.owner) return;
+    const home = el("button", "crumb");
+    home.innerHTML = ic("home") + `<span>${esc(S.repo)}</span>`;
+    home.onclick = () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref });
+    bar.appendChild(home);
+    const active = S.file ? dirName(S.file) : S.dir;
+    const segs = active ? active.split("/") : [];
+    let acc = "";
+    segs.forEach((sg, i) => {
+      acc = acc ? acc + "/" + sg : sg;
+      const sep = el("span", "crumb-sep"); sep.innerHTML = ic("chevron", "sm"); bar.appendChild(sep);
+      const b = el("button", "crumb" + (i === segs.length - 1 ? " cur" : ""));
+      b.innerHTML = ic("folder") + `<span>${esc(sg)}</span>`;
+      const a = acc; b.onclick = () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: a });
+      bar.appendChild(b);
+    });
+    bar.scrollLeft = bar.scrollWidth;
+  };
+  mk("#crumbs"); mk("#crumbs2");
+}
+
+function rowButton(entry, onClick) {
+  const m = fileMeta(entry.path || entry.name, entry.type === "dir");
+  const r = el("button", "row");
+  r.innerHTML = `${ic(m.icon, m.cls)}<span class="nm">${esc(entry.name)}</span>` +
+    (entry.type === "dir" ? ic("chevron", "sm") :
+      entry.submodule ? `<span class="badge">sub</span>` :
+      entry.type === "symlink" ? `<span class="badge">link</span>` :
+      `<span class="sz">${fmtBytes(entry.size)}</span>`);
+  r.title = entry.path || entry.name;
+  r.onclick = onClick;
+  return r;
+}
+
+async function renderDir(dir, gen, isRootState) {
+  S.dir = dir; S.file = null; S.fileMode = null;
+  renderCrumbbars(); renderTabs();
+  setHidden($("#filepane"), true);
+  const main = $("#overview");
+  setHidden(main, false);
+  htmlEmpty($("#ex-list"));
+  if (dir === "" && isRootState !== false) { renderOverview(); }
+  else { renderDirMain(dir, gen); }
+  // explorer sidebar
+  const list = $("#ex-list");
+  list.innerHTML = "";
+  loadingRow(list, "Reading directory…");
+  try {
+    const entries = await listDir(S.ref, dir);
+    if (gen !== S.gen) return;
+    htmlEmpty(list);
+    if (dir) {
+      const up = el("button", "row");
+      up.innerHTML = `<span class="up">${ic("up")}<span class="nm">..</span></span>`;
+      const parent = dirName(dir);
+      up.onclick = () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: parent });
+      list.appendChild(up);
+    }
+    if (!entries.length) {
+      const e = el("div", "statusline"); e.textContent = "This directory is empty — Git itself doesn’t store empty folders, so it may be a convention only.";
+      list.appendChild(e);
+    }
+    appendRowsChunked(list, entries, dir);
+    if (dir === "" && $("#overview").dataset.needsRoot === "1") { renderOverview(entries); }
+    renderExFoot(entries);
+  } catch (err) {
+    if (gen !== S.gen) return;
+    htmlEmpty(list);
+    const nb = el("div", "notebox");
+    nb.innerHTML = `<span>${ic("alert")}</span><div><b>Directory unavailable</b><br>${esc(err.message || String(err))}</div>`;
+    list.appendChild(nb);
+    if (dir !== "") { htmlEmpty(main); main.appendChild(nb.cloneNode(true)); }
+  }
+}
+function appendRowsChunked(list, entries, dir) {
+  let i = 0;
+  const chunk = () => {
+    const end = Math.min(i + BATCH, entries.length);
+    for (; i < end; i++) {
+      const en = entries[i];
+      const row = rowButton(en, () => {
+        if (en.type === "dir") { navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: en.path }); if (window.innerWidth < 920) drawerOpen(false); }
+        else if (en.submodule) { window.open(en.submodule, "_blank", "noopener"); }
+        else if (en.type === "symlink" && en.target) { navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: normalizeRepoPath(joinPath(dir, en.target)), m: "code" }); if (window.innerWidth < 920) drawerOpen(false); }
+        else { navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: en.path, m: autoMode(en.path) }); if (window.innerWidth < 920) drawerOpen(false); }
+      });
+      if (S.file === en.path) row.classList.add("sel");
+      list.appendChild(row);
+    }
+    if (i < entries.length) {
+      const more = el("button", "row");
+      more.innerHTML = `<span class="up">${ic("chevron")}<span class="nm">Show ${Math.min(BATCH, entries.length - i)} more… (${entries.length - i} remaining)</span></span>`;
+      more.onclick = () => { more.remove(); chunk(); };
+      list.appendChild(more);
+    }
+  };
+  chunk();
+}
+function renderDirMain(dir, gen) {
+  const main = $("#overview");
+  htmlEmpty(main);
+  main.dataset.needsRoot = dir === "" ? "1" : "";
+  const box = el("div", "wrap");
+  const title = el("div", "sec-title");
+  title.innerHTML = ic("folder") + `<span>Contents of /${esc(dir)}</span>`;
+  box.appendChild(title);
+  const list = el("div", "");
+  box.appendChild(list);
+  list.innerHTML = `<div class="statusline"><span class="spin"></span><span>Reading directory…</span></div>`;
+  main.appendChild(box);
+  listDir(S.ref, dir).then((entries) => {
+    if (gen !== S.gen) return;
+    htmlEmpty(list);
+    if (!entries.length) { const d = el("div", "empty"); d.innerHTML = `<b>Empty directory</b><span>Git does not store empty folders — “${esc(dir)}” contains no tracked files.</span>`; list.appendChild(d); return; }
+    appendRowsChunked(list, entries, dir);
+  }).catch((err) => {
+    if (gen !== S.gen) return;
+    htmlEmpty(list);
+    const nb = el("div", "notebox");
+    nb.innerHTML = `<span>${ic("alert")}</span><div><b>Directory unavailable</b><br>${esc(err.message || String(err))}</div>`;
+    list.appendChild(nb);
+  });
+}
+
+function renderExFoot(entries) {
+  const foot = $("#ex-foot");
+  const n = entries ? entries.length : "…";
+  foot.innerHTML = `${n} items · <b>${esc(S.ref || "")}</b>${S.refSha ? ` @ ${esc(S.refSha.slice(0, 7))}` : ""}<br>` +
+    `<span style="color:var(--fg3)">API calls left: ${S.rate.remaining > 100 ? "∞" : S.rate.remaining} · files fetched this session: ${Cache.file.map.size}</span>`;
+}
+
+function renderRepoHead() {
+  const head = $("#repo-head");
+  if (!S.meta) return;
+  const m = S.meta;
+  head.innerHTML = `<div class="wrap"><div class="repoinfo">
+    <img class="ava" src="${esc(m.avatar)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <div class="t">
+      <h2><span class="owner">${esc(S.owner)} /</span> ${esc(S.repo)}
+        <span class="chip" style="font-weight:600">${ic("branch", "sm")}
+          <select id="branch-select" aria-label="Switch branch" title="Switch branch"><option>${esc(S.ref || m.defBranch)}</option></select></span>
+        <span class="chip" title="Open on GitHub" style="cursor:pointer" id="chip-gh">${ic("github", "sm")}GitHub</span>
+      </h2>
+      <p class="desc">${esc(m.desc || "No description provided.")}</p>
+      <div class="chips">
+        ${m.stars != null ? `<span class="chip">${ic("star", "sm")}${fmtNum(m.stars)}</span>` : ""}
+        ${m.lang ? `<span class="chip"><span class="dot" style="width:9px;height:9px;border-radius:50%;background:${langColor(m.lang)}"></span>${esc(m.lang)}</span>` : ""}
+        ${m.license ? `<span class="chip">${esc(m.license)}</span>` : ""}
+        ${m.sizeKB ? `<span class="chip">${fmtBytes(m.sizeKB * 1024)}</span>` : ""}
+        ${m.updated ? `<span class="chip">pushed ${esc(timeAgo(new Date(m.updated).getTime()))}</span>` : ""}
+        ${m.archived ? `<span class="chip" style="color:var(--warn)">${ic("alert", "sm")}archived</span>` : ""}
+      </div>
+    </div>
+  </div></div>`;
+  $("#chip-gh").onclick = () => window.open(m.html, "_blank", "noopener");
+  const sel = $("#branch-select");
+  sel.onfocus = sel.onpointerdown = () => { if (sel.dataset.loaded) return; sel.dataset.loaded = "1"; loadBranches(sel); };
+  sel.onchange = () => {
+    const b = sel.value;
+    if (!b || b === S.ref) return;
+    S.refSha = null;
+    navigate({ v: "r", o: S.owner, r: S.repo, f: b });
+    toast("info", `Switched to “${b}” — explorer now shows that ref`, 2600);
+  };
+}
+async function loadBranches(sel) {
+  try {
+    const names = await listBranches();
+    const cur = S.ref;
+    sel.innerHTML = "";
+    const all = Array.from(new Set([cur].concat(names)));
+    for (const n of all) { const o = el("option"); o.value = n; o.textContent = n; if (n === cur) o.selected = true; sel.appendChild(o); }
+    if (names.length >= 100) sel.insertAdjacentHTML("beforeend", `<option disabled>…first 100 branches only</option>`);
+  } catch (err) { sel.dataset.loaded = ""; toast("warn", "Couldn’t list branches: " + (err.message || "").slice(0, 90)); }
+}
+
+/* --- repository overview screen (dir === "" & no file) ------------------------ */
+async function renderOverview(rootEntries) {
+  const main = $("#overview");
+  htmlEmpty(main);
+  main.dataset.needsRoot = rootEntries ? "" : "1";
+  const m = S.meta;
+  const box = el("div", "wrap");
+  const t = el("div", "sec-title"); t.innerHTML = ic("box") + `<span>Repository overview</span>`;
+  box.appendChild(t);
+  const p = el("p", "", `Welcome to ${S.owner}/${S.repo}. Everything below is fetched on demand — no files have been downloaded yet.`);
+  p.style.cssText = "color:var(--fg2);font-size:14px;margin:0 0 14px";
+  box.appendChild(p);
+  const actions = el("div", ""); actions.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+  box.appendChild(actions);
+  main.appendChild(box);
+
+  let entries = rootEntries;
+  if (!entries) { try { entries = await listDir(S.ref, ""); } catch (err) { actions.innerHTML = `<div style="color:var(--fg3);font-size:13px">Root listing unavailable: ${esc(err.message || "")}</div>`; return; } }
+  if (main.dataset.needsRoot === "1") { main.dataset.needsRoot = ""; }
+  const names = new Map(entries.map((e) => [e.name.toLowerCase(), e]));
+  const pick = (re) => entries.find((e) => re.test(e.name));
+  const readme = pick(/^readme(\.md|\.markdown)?$/i);
+  const idx = names.get("index.html") || pick(/^index\.html?$/i);
+  const pkg = names.get("package.json");
+  const lic = pick(/^(license|copying|licen[cs]e)(\.md)?$/i);
+  const addChip = (label, icon, fn) => { const b = el("button", "btn"); b.innerHTML = ic(icon) + label; b.onclick = fn; actions.appendChild(b); };
+  if (readme) addChip("Open " + readme.name, "book", () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: readme.path, m: "md" }));
+  if (idx) addChip("Preview index.html", "play", () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: idx.path, m: "preview" }));
+  if (pkg) addChip("Open package.json", "braces", () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: pkg.path, m: "code" }));
+  if (lic) addChip("Open " + lic.name, "file", () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: lic.path, m: "code" }));
+  const dirs = entries.filter((e) => e.type === "dir").length;
+  const files = entries.length - dirs;
+  const stats = el("p", "", `${files} files · ${dirs} directories at the root · default branch “${m.defBranch}”. Use the explorer (left / menu) to browse, or ${""}Search (S) to find any file.`);
+  stats.style.cssText = "color:var(--fg3);font-size:12.5px;margin-top:12px";
+  box.appendChild(stats);
+}
+
+/* --- file tabs ---------------------------------------------------------------- */
+function ensureTab(path, mode) {
+  const i = S.tabs.findIndex((t) => t.path === path);
+  if (i >= 0) S.tabs[i].mode = mode;
+  else S.tabs.push({ path, mode });
+  if (S.tabs.length > 12) {
+    const drop = S.tabs.findIndex((t) => t.path !== path);
+    if (drop >= 0) S.tabs.splice(drop, 1);
+  }
+}
+function renderTabs() {
+  const bar = $("#open-tabs");
+  setHidden(bar, S.tabs.length === 0);
+  htmlEmpty(bar);
+  for (const t of S.tabs) {
+    const m = fileMeta(t.path, false);
+    const b = el("button", "ftab" + (t.path === S.file ? " cur" : ""));
+    b.innerHTML = `${ic(m.icon, m.cls + " sm")}<span class="nm">${esc(baseName(t.path))}</span><span class="x">${ic("x")}</span>`;
+    b.title = t.path;
+    b.onclick = (ev) => {
+      if (ev.target.closest(".x")) {
+        S.tabs = S.tabs.filter((x) => x.path !== t.path);
+        if (S.file === t.path) {
+          const prev = S.tabs[S.tabs.length - 1];
+          if (prev) navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: prev.path, m: prev.mode });
+          else navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: S.dir });
+        } else renderTabs();
+        return;
+      }
+      navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: t.path, m: t.mode || autoMode(t.path) });
+    };
+    bar.appendChild(b);
+  }
+}
+
+/* --- open a file ---------------------------------------------------------------- */
+function openFileInner(path, mode, gen) {
+  mode = mode || autoMode(path);
+  S.file = path; S.fileMode = mode;
+  ensureTab(path, mode);
+  renderTabs(); renderCrumbbars();
+  $$("#ex-list .row, #overview .row").forEach((r) => r.classList.toggle("sel", r.title === path));
+  viewerRender(gen || S.gen);
+}
+
+async function viewerRender(gen) {
+  const path = S.file; if (!path) return;
+  const mode = S.fileMode;
+  if (P.active && mode !== "preview") killPreview();
+  setHidden($("#overview"), true);
+  setHidden($("#filepane"), false);
+  buildFileBar(path, mode);
+  const ext = extOf(path);
+  const isBinaryOnly = DOC_EXT.has(ext) && ext !== "svg";
+  if (!isBinaryOnly) {
+    if ((mode === "image")) { showImagePane(path); return; }
+  }
+  if (mode === "preview") { buildPreview(path, gen); return; }
+  if (mode === "image") { showImagePane(path); return; }
+  // text modes
+  const panes = ["#pane-code", "#pane-md", "#pane-image", "#pane-other", "#pane-preview"];
+  panes.forEach((p) => setHidden($(p), true));
+  if (mode === "md") { setHidden($("#pane-md"), false); }
+  else { setHidden($("#pane-code"), false); renderCodeLoading(); }
+  if (isBinaryOnly) { showBinaryNote(path); return; }
+  try {
+    const f = await getFileText(S.ref, path);
+    if (gen !== S.gen) return;
+    S.lastFileText = f; S.lastFilePath = path;
+    if (f.binary || f.tooBig) { if (mode !== "md") { showBinaryNote(path, f); return; } }
+    if (mode === "md") renderMarkdownView(f.text, path, gen);
+    else renderCodeView(f.text, path, gen);
+  } catch (err) {
+    if (gen !== S.gen) return;
+    showViewerError(err, path);
+  }
+}
+function showViewerError(err, path) {
+  setHidden($("#pane-md"), true); setHidden($("#pane-image"), true); setHidden($("#pane-other"), true); setHidden($("#pane-preview"), true);
+  const pane = $("#pane-code");
+  pane.classList.remove("codepane");
+  setHidden(pane, false);
+  htmlEmpty(pane);
+  const nb = el("div", "notebox");
+  nb.innerHTML = `<span>${ic("alert")}</span><div><b>Couldn’t open ${esc(baseName(path))}</b><br>${esc(err.message || String(err))}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="retry-file">${ic("refresh", "sm")}Retry</button>
+    <button class="btn sm ghost" id="gh-file">${ic("external", "sm")}Open on GitHub</button></div></div>`;
+  pane.appendChild(nb);
+  $("#retry-file").onclick = () => viewerRender(S.gen);
+  $("#gh-file").onclick = () => window.open(ghBlobUrl(S.owner, S.repo, S.ref, path), "_blank", "noopener");
+}
+function renderCodeLoading() {
+  const pane = $("#pane-code");
+  pane.classList.add("codepane");
+  htmlEmpty(pane);
+  const w = el("div", "code-wrap");
+  w.innerHTML = `<div class="ln"></div><pre class="code-pre"><code class="tab-hint">Loading file…</code></pre>`;
+  pane.appendChild(w);
+}
+/* =============================== [code] ====================================== */
+function buildFileBar(path, mode) {
+  const fb = $("#fb-path");
+  const d = dirName(path);
+  fb.innerHTML = (d ? `<span class="p">${esc(d)}/</span>` : "") + `<b style="color:var(--fg)">${esc(baseName(path))}</b>` +
+    `<span class="chip" style="margin-left:6px">${esc((fileMeta(path, false).label || "file").toUpperCase())}</span>`;
+  fb.title = S.owner + "/" + S.repo + "@" + S.ref + " : /" + path;
+
+  const seg = htmlEmpty($("#fb-mode"));
+  for (const m of modesFor(path)) {
+    const [icon, label] = MODE_LABEL[m];
+    const b = el("button", m === mode ? "on" : "");
+    b.innerHTML = ic(icon, "sm") + label;
+    b.onclick = () => {
+      if (S.fileMode === m) return;
+      if (m === "md" || m === "raw") { prefs.mdMode = m === "md" ? "rendered" : "raw"; savePrefs(); }
+      S.fileMode = m; ensureTab(path, m); renderTabs();
+      buildFileBar(path, m); viewerRender(S.gen);
+    };
+    seg.appendChild(b);
+  }
+  if (mode === "preview") setHidden(seg, false);
+  const canCopy = mode !== "image" && !(DOC_EXT.has(extOf(path)));
+  $("#fb-copy").classList.toggle("hidden", !canCopy);
+  $("#fb-download").classList.toggle("hidden", false);
+  $("#fb-full").classList.toggle("hidden", mode === "other");
+  $("#fb-github").onclick = () => window.open(ghBlobUrl(S.owner, S.repo, S.ref, path), "_blank", "noopener");
+  $("#fb-copy").onclick = copyCurrentFile;
+  $("#fb-download").onclick = () => downloadFile(path);
+  $("#fb-refresh").onclick = () => {
+    Cache.file.map.delete(`file:${S.owner}/${S.repo}@${S.ref}/${path}`);
+    if (S.fileMode === "preview") { buildPreview(path, S.gen, true); }
+    else {
+      const prev = S.lastFilePath === path ? S.lastFileText : null;
+      getFileText(S.ref, path, { fresh: true }).then((f) => {
+        S.lastFileText = f; S.lastFilePath = path;
+        if (S.fileMode === "md") renderMarkdownView(f.text, path, S.gen); else if (S.fileMode === "image") showImagePane(path); else renderCodeView(f.text, path, S.gen, true);
+        toast("ok", "Reloaded from GitHub", 1800);
+      }).catch((e) => showViewerError(e, path));
+    }
+  };
+}
+
+async function copyCurrentFile() {
+  try {
+    const path = S.file;
+    let text = (S.lastFilePath === path && S.lastFileText && S.lastFileText.text) ? S.lastFileText.text : null;
+    if (text == null) { const f = await getFileText(S.ref, path); if (f.binary) throw new Error("Binary file — nothing to copy."); text = f.text; }
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+    else throw new Error("no async clipboard");
+    toast("ok", "Copied to clipboard", 1700);
+  } catch (e) {
+    // fallback: execCommand (works in insecure contexts like file:// when async API unavailable)
+    try {
+      const f = S.lastFilePath === S.file ? S.lastFileText : null;
+      const text = f ? f.text : "";
+      if (!text) throw new Error("empty");
+      const ta = el("textarea"); ta.value = text; ta.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove();
+      toast(ok ? "ok" : "err", ok ? "Copied to clipboard" : "Copy failed");
+    } catch (_) { toast("err", "Copy failed: " + (e.message || e)); }
+  }
+}
+
+async function downloadFile(path) {
+  try {
+    let blob;
+    if (S.lastFilePath === path && S.lastFileText && S.lastFileText.text != null && !S.lastFileText.binary) {
+      blob = new Blob([S.lastFileText.text], { type: "text/plain;charset=utf-8" });
+    } else {
+      const res = await fetch(rawUrl(S.owner, S.repo, S.ref, path));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      blob = await res.blob();
+    }
+    const url = URL.createObjectURL(blob);
+    const a = el("a"); a.href = url; a.download = baseName(path);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    toast("ok", "Downloading " + baseName(path), 2000);
+  } catch (e) { toast("err", "Download failed: " + (e.message || e)); }
+}
+
+/* ---------- code rendering: line numbers, sticky gutter, chunked ---------- */
+const HL_SOFT_LIMIT = 25000;     // lines beyond this: plain text
+const HL_SIZE_LIMIT = 400000;    // chars beyond this: plain text
+const CHUNK_LINES = 5000;
+let codeShownLines = 0;
+
+function renderCodeView(text, path, gen, fresh) {
+  const pane = $("#pane-code");
+  pane.classList.add("codepane");
+  setHidden($("#pane-md"), true); setHidden($("#pane-image"), true); setHidden($("#pane-other"), true); setHidden($("#pane-preview"), true);
+  setHidden(pane, false);
+  htmlEmpty(pane);
+  const lines = text.split("\n");
+  if (text.endsWith("\n")) lines.pop();
+  const total = lines.length;
+  const lang = langFor(path) || "plaintext";
+  const wantHighlight = total <= HL_SOFT_LIMIT && text.length <= HL_SIZE_LIMIT;
+  codeShownLines = 0;
+
+  const wrap = el("div", "code-wrap");
+  const ln = el("div", "ln");
+  const pre = el("pre", "code-pre");
+  const code = el("code");
+  pre.appendChild(code); wrap.appendChild(ln); wrap.appendChild(pre); pane.appendChild(wrap);
+  const footer = el("div", "code-actions-inline");
+  pane.appendChild(footer);
+  footer.style.visibility = "hidden";
+  const moreRow = el("span");
+  moreRow.style.cssText = "display:inline-flex;gap:10px;align-items:center";
+  footer.appendChild(moreRow);
+
+  const drawChunk = () => {
+    const start = codeShownLines;
+    const end = Math.min(start + CHUNK_LINES, total);
+    const nums = [];
+    for (let i = start; i < end; i++) nums.push(i + 1);
+    ln.insertAdjacentHTML("beforeend", nums.map((n) => `<i>${n}</i>`).join(""));
+    const slice = lines.slice(start, end).join("\n");
+    if (wantHighlight) {
+      const htmlStr = highlightSafe(slice, lang);
+      code.insertAdjacentHTML("beforeend", htmlStr + (end < total || !text.endsWith("\n") ? "\n" : ""));
+    } else {
+      code.insertAdjacentHTML("beforeend", esc(slice) + (end < total || !text.endsWith("\n") ? "\n" : ""));
+    }
+    codeShownLines = end;
+    htmlEmpty(moreRow);
+    if (codeShownLines < total) {
+      const b = el("button", "btn sm");
+      b.innerHTML = ic("chevron", "sm") + `Show next ${Math.min(CHUNK_LINES, total - codeShownLines).toLocaleString()} lines`;
+      b.onclick = () => { drawChunk(); };
+      moreRow.appendChild(b);
+      const n = el("span");
+      n.style.cssText = "color:var(--fg3);font-size:12px";
+      n.textContent = `showing ${codeShownLines.toLocaleString()} of ${total.toLocaleString()} lines`;
+      moreRow.appendChild(n);
+    }
+    footer.style.visibility = (moreRow.children.length || footer.querySelector(".chip")) ? "visible" : "hidden";
+  };
+  if (!wantHighlight && total > 0) {
+    const b = el("span", "chip"); b.style.cssText = "color:var(--fg3);border-style:dashed";
+    b.textContent = total > HL_SOFT_LIMIT ? `Large file (${total.toLocaleString()} lines) — highlighting paused for performance` : `Large file (${fmtBytes(text.length)}) — highlighting paused for performance`;
+    footer.insertBefore(b, moreRow);
+  }
+  if (text.length < 1) {
+    const meta = el("span", "chip");
+    meta.style.cssText = "color:var(--fg3);border-style:dashed";
+    meta.textContent = "Empty file";
+    footer.insertBefore(meta, moreRow);
+  }
+  // highlight asynchronously so long files never block paint
+  requestAnimationFrame(() => { if (gen === S.gen) drawChunk(); });
+  if (text.length === 0) { codeShownLines = total; }
+}
+function highlightSafe(slice, lang) {
+  try {
+    if (window.hljs && window.hljs.getLanguage(lang) && lang !== "plaintext") {
+      return window.hljs.highlight(slice, { language: lang, ignoreIllegals: true }).value;
+    }
+  } catch (e) {}
+  return fallbackHL(slice, lang);
+}
+
+/* ---------- dependency-free fallback highlighter ------------------------------
+   Structured tokenizer (comments / strings / numbers / keywords / tags) that
+   emits the same .hljs-* classes so both paths share the theme. Never evaluates
+   code; purely text → escaped spans. */
+const FAM = {
+  js: "javascript|typescript|jsx|tsx".split("|"),
+  py: ["python"], sh: ["bash"], c: ["c", "cpp", "java", "csharp", "go", "rust", "swift", "kotlin", "scala", "dart", "objc"],
+  css: ["css", "scss", "less"], markup: ["xml", "markdown"], sql: ["sql", "ini"], data: ["json", "yaml"]
+};
+function familyOf(lang) { for (const k in FAM) if (FAM[k].includes(lang)) return k; return "sh"; }
+const KEYWORDS = {
+  js: "async await break case catch class const continue debugger default delete do else export extends finally for function get if import in instanceof let new of return set static super switch this throw try typeof var void while with yield true false null undefined".split(" "),
+  py: "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while yield with True False None self cls".split(" "),
+  sh: "if then else elif fi for while until do done case esac function select time break continue return export local readonly source alias echo printf set shift trap exit eval exec".split(" "),
+  c: "auto break case char const continue default do double else enum extern float for goto if inline int long register return short signed sizeof static struct switch typedef union unsigned void volatile while new delete class public private protected namespace using template try catch throw final override virtual this nullptr import package extends implements synchronized throws native abstract boolean byte var func type map chan go defer string nil fn match impl mut pub crate use mod self Self where true false null".split(" "),
+  css: "important media supports import keyframes font-face charset page and not only".split(" "),
+  sql: "select from where insert into values update delete create table alter drop add column primary key foreign references index view grant revoke join left right inner outer on group by order having limit offset union all distinct as begin end commit rollback set null not and or in like between exists case when then else count sum avg min max".split(" "),
+  data: "true false null".split(" "),
+  markup: "".split(" ")
+};
+function fallbackHL(text, lang) {
+  const fam = familyOf(lang);
+  if (fam === "markup") return fallbackHLMarkup(text);
+  const kw = KEYWORDS[fam] || [];
+  const parts = [];
+  if (fam === "py" || fam === "sh" || (fam === "data" && lang === "yaml")) parts.push(["comment", "#[^\\n]*"]);
+  if (fam !== "css" && fam !== "data") parts.push(["comment", "/\\*[\\s\\S]*?\\*/"], ["comment", "//[^\\n]*"]);
+  if (fam === "py") parts.push(["string", "\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''"]);
+  parts.push(["string", "\"(?:[^\"\\\\\\n]|\\\\.)*\""], ["string", "'(?:[^'\\\\\\n]|\\\\.)*'"]);
+  if (fam === "js") parts.push(["string", "`(?:[^`\\\\]|\\\\.)*`"]);
+  parts.push(["number", "\\b\\d[\\w.]*\\b"], ["title", "\\b[A-Za-z_$][\\w$]*(?=\\s*\\()"], ["id", "\\b[A-Za-z_$][\\w$]*\\b"], ["punct", "[-+*/%=<>!&|^~?:;,.(){}\\[\\]]+"]);
+  let re;
+  try { re = new RegExp(parts.map((x) => "(" + x[1] + ")").join("|"), "g"); } catch (e) { return esc(text); }
+  const names = parts.map((x) => x[0]);
+  const kwSet = new Set(kw);
+  const CLS = { comment: "hljs-comment", string: "hljs-string", number: "hljs-number", title: "hljs-title", punct: "hljs-punctuation" };
+  let out = "", last = 0, mm;
+  while ((mm = re.exec(text))) {
+    out += esc(text.slice(last, mm.index));
+    last = re.lastIndex;
+    let gi = 0;
+    for (let i = 1; i < mm.length; i++) if (mm[i] !== undefined) { gi = i; break; }
+    const name = names[gi - 1];
+    const tok = mm[gi];
+    if (name === "id") out += kwSet.has(tok) ? `<span class="hljs-keyword">${esc(tok)}</span>` : esc(tok);
+    else if (name) out += `<span class="${CLS[name]}">${esc(tok)}</span>`;
+    else out += esc(mm[0]);
+  }
+  out += esc(text.slice(last));
+  return out;
+}
+function fallbackHLMarkup(text) {
+  const re = /<!\-\-[\s\S]*?\-\->|<\/?[A-Za-z][^<>]*\/?>|[A-Za-z_:][\w:.-]*(?==)|"(?:[^"]*)"|'(?:[^']*)'|&[a-z#0-9]+;/gi;
+  let out = "", last = 0, mm;
+  while ((mm = re.exec(text))) {
+    out += esc(text.slice(last, mm.index)); last = re.lastIndex;
+    const s = mm[0];
+    if (s.startsWith("<!" + "--")) out += `<span class="hljs-comment">${esc(s)}</span>`;
+    else if (s.startsWith("<")) out += `<span class="hljs-tag">${esc(s)}</span>`;
+    else if (/^["']/.test(s)) out += `<span class="hljs-string">${esc(s)}</span>`;
+    else if (s.startsWith("&")) out += `<span class="hljs-symbol">${esc(s)}</span>`;
+    else out += `<span class="hljs-attr">${esc(s)}</span>`;
+  }
+  out += esc(text.slice(last));
+  return out;
+}
+
+/* ---------- image & binary panes ---------------------------------------------- */
+function showImagePane(path) {
+  ["#pane-code", "#pane-md", "#pane-other", "#pane-preview"].forEach((p) => setHidden($(p), true));
+  const pane = $("#pane-image"); setHidden(pane, false);
+  const img = $("#img-el");
+  img.style.visibility = "hidden";
+  img.onerror = () => {
+    img.style.visibility = "hidden";
+    $("#img-meta").innerHTML = `<div class="notebox">${ic("alert")}<div><b>Image couldn’t load</b><br>Check your connection, the file path, or <button class="btn sm ghost" id="gh-img2">open it on GitHub</button>.</div></div>`;
+    $("#gh-img2").onclick = () => window.open(ghBlobUrl(S.owner, S.repo, S.ref, path), "_blank", "noopener");
+  };
+  img.onload = () => { img.style.visibility = "visible"; $("#img-meta").textContent = `${baseName(path)} · ${img.naturalWidth}×${img.naturalHeight} · fetched from raw.githubusercontent.com`; };
+  img.src = rawUrl(S.owner, S.repo, S.ref, path);
+  $("#img-meta").textContent = "Loading image…";
+  img.alt = baseName(path);
+}
+function showBinaryNote(path, f) {
+  ["#pane-code", "#pane-md", "#pane-image", "#pane-preview"].forEach((p) => setHidden($(p), true));
+  const pane = $("#pane-other"); setHidden(pane, false); htmlEmpty(pane);
+  const why = f && f.tooBig ? `This file is larger than the 2 MB in-browser viewing limit (${fmtBytes(f.size)}).` :
+    f && f.binary ? "This looks like a binary file (images, fonts, archives…) — Repo Apps won’t render it as text." :
+    `“${esc(extOf(path) || "bin")}” files aren’t viewable as source here.`;
+  const nb = el("div", "notebox");
+  nb.innerHTML = `${ic("file")}<div><b>${esc(baseName(path))}</b><br>${why}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm" id="dl-bin">${ic("download", "sm")}Download</button>
+      <button class="btn sm ghost" id="gh-bin">${ic("external", "sm")}Open on GitHub</button></div>
+    ${IMG_EXT.has(extOf(path)) ? `<div style="margin-top:8px"><button class="btn sm ghost" id="view-img">${ic("image", "sm")}Try as image</button></div>` : ""}
+  </div>`;
+  pane.appendChild(nb);
+  $("#dl-bin").onclick = () => downloadFile(path);
+  $("#gh-bin").onclick = () => window.open(ghBlobUrl(S.owner, S.repo, S.ref, path), "_blank", "noopener");
+  const vi = $("#view-img"); if (vi) vi.onclick = () => { S.fileMode = "image"; viewerRender(S.gen); };
+}
+
+function toggleFullscreen() {
+  const v = $("#view-repo");
+  if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen().catch(() => {}); return; }
+  v.classList.add("is-fullscreen");
+  const p = v.requestFullscreen ? v.requestFullscreen() : null;
+  if (p) p.catch(() => {});
+}
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) $("#view-repo").classList.remove("is-fullscreen"); });
+/* ================================ [md] ======================================= */
+/* Optional CDN libraries — every one is a progressive enhancement.
+   Each library tries mirror 1, then mirror 2; failure is graceful (null). */
+const LIBS = {
+  marked: {
+    urls: [
+      "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js",
+      "https://unpkg.com/marked@12.0.2/marked.min.js"
+    ],
+    test: () => window.marked
+  },
+  purify: {
+    urls: [
+      "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"
+    ],
+    test: () => window.DOMPurify
+  },
+  hljs: {
+    urls: [
+      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
+      "https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"
+    ],
+    test: () => window.hljs
+  }
+};
+const libState = { marked: null, purify: null, hljs: null };   // null pending | true ok | false failed
+function loadLibFrom(name, idx) {
+  const lib = LIBS[name];
+  idx = idx || 0;
+  if (lib.test()) { libState[name] = true; return Promise.resolve(true); }
+  if (idx === 0 && libState[name] === false) return Promise.resolve(false);
+  if (idx >= lib.urls.length) { libState[name] = false; return Promise.resolve(false); }
+  return new Promise((resolve) => {
+    let settled = false;
+    const s = document.createElement("script");
+    s.src = lib.urls[idx];
+    s.async = true;
+    const done = (ok) => {
+      if (settled) return; settled = true;
+      s.onload = s.onerror = null;
+      if (ok && lib.test()) { libState[name] = true; resolve(true); }
+      else if (ok && !lib.test()) { libState[name] = false; resolve(false); }
+      else loadLibFrom(name, idx + 1).then(resolve);        // try next mirror
+    };
+    s.onload = () => done(true);
+    s.onerror = () => { s.remove(); done(false); }           ;
+    document.head.appendChild(s);
+    setTimeout(() => { s.remove(); settled = true; loadLibFrom(name, idx + 1).then((v) => { if (!v) libState[name] = false; resolve(v); }); }, 9000);
+  });
+}
+function ensureLib(name) { return loadLibFrom(name); }
+function loadLibs() {
+  Object.keys(LIBS).forEach((n) => ensureLib(n));
+}
+
+/* --- markdown view ------------------------------------------------------------ */
+async function renderMarkdownView(text, path, gen) {
+  ["#pane-code", "#pane-image", "#pane-other", "#pane-preview"].forEach((p) => setHidden($(p), true));
+  const pane = $("#pane-md"); setHidden(pane, false);
+  const cont = $("#md-body");
+  htmlEmpty(cont);
+  cont.innerHTML = `<div class="statusline"><span class="spin"></span><span>Rendering Markdown…</span></div>`;
+  await ensureLib("marked").catch(() => false);
+  if (gen !== S.gen || S.file !== path) return;
+  let htmlStr;
+  try { htmlStr = (libState.marked === true && window.marked) ? markedParse(text) : fallbackMarkdown(text); }
+  catch (e) { htmlStr = fallbackMarkdown(text); }
+  let safe;
+  try { safe = await sanitizeMarkdown(htmlStr); }
+  catch (e) { safe = fallbackSanitize(htmlStr); }
+  if (gen !== S.gen || S.file !== path) return;
+  cont.innerHTML = safe;
+  postProcessMarkdown(cont, path, gen);
+}
+function markedParse(text) {
+  const mk = window.marked;
+  try { if (mk.use) mk.use({ gfm: true, breaks: false }); } catch (e) {}
+  try { return mk.parse(text, { async: false }); } catch (e) { return mk(text); }
+}
+async function sanitizeMarkdown(htmlStr) {
+  await ensureLib("purify").catch(() => false);
+  if (libState.purify === true && window.DOMPurify) {
+    return window.DOMPurify.sanitize(htmlStr, { ADD_ATTR: ["target", "srcset", "loading", "decoding"] });
+  }
+  return fallbackSanitize(htmlStr);
+}
+
+/* --- built-in Markdown fallback (used when marked's CDN is unreachable) -------
+   Covers: fenced code, headings, hr, blockquotes (nested), GFM tables, ordered
+   & unordered lists with task items, indented code, paragraphs, inline code,
+   bold/italic/strikethrough, links & images (relative URLs kept for resolver). */
+function fallbackMarkdown(src) {
+  const lines = String(src == null ? "" : src).replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let i = 0;
+  const inline = (s) => {
+    let t = esc(s);
+    const codes = [];
+    t = t.replace(/`([^`\n]+)`/g, (m, c) => { codes.push(c); return "\u0001" + (codes.length - 1) + "\u0001"; });
+    t = t.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;([^)&quot;]*)&quot;)?\)/g,
+      (m, a, u, ti) => `<img src="${u}" alt="${a}"${ti ? ` title="${ti}"` : ""}>`);
+    t = t.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;([^)&quot;]*)&quot;)?\)/g,
+      (m, x, u, ti) => `<a href="${u}"${ti ? ` title="${ti}"` : ""}>${x}</a>`);
+    t = t.replace(/(^|[^"=\w])(https?:\/\/[^\s<>"\u0001]+)/g, '$1<a href="$2">$2</a>');
+    t = t.replace(/\*\*\*([^*\n]+)\*\*\*/g, "<strong><em>$1</em></strong>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/(^|[\s(])__([^_\n]+)__/g, "$1<strong>$2</strong>");
+    t = t.replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    t = t.replace(/(^|[\s(])_([^_\n]+)_(?![\w])/g, "$1<em>$2</em>");
+    t = t.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+    t = t.replace(/\u0001(\d+)\u0001/g, (m, n) => `<code>${codes[+n]}</code>`);
+    return t;
+  };
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (!ln.trim()) { i++; continue; }
+    const fence = ln.match(/^(\s*)(```+|~~~+)\s*([-\w+#.]*)/);
+    if (fence) {
+      const closeRe = new RegExp("^\\s*" + fence[2]);
+      const buf = []; i++;
+      while (i < lines.length && !closeRe.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      out.push(`<pre><code class="language-${esc(fence[3] || "plaintext")}">${esc(buf.join("\n"))}</code></pre>`);
+      continue;
+    }
+    const h = ln.match(/^(#{1,6})\s+(.+?)\s*(?:#+\s*)?$/);
+    if (h) { const lv = h[1].length; out.push(`<h${lv}>${inline(h[2])}</h${lv}>`); i++; continue; }
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(ln)) { out.push("<hr>"); i++; continue; }
+    if (/^\s*>/.test(ln)) {
+      const buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
+      out.push(`<blockquote>${fallbackMarkdown(buf.join("\n"))}</blockquote>`);
+      continue;
+    }
+    if (/\|/.test(ln) && i + 1 < lines.length && /^[\s|:-]+$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
+      const rows = [];
+      while (i < lines.length && /\|/.test(lines[i])) rows.push(lines[i++]);
+      const cells = (r) => r.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
+      const head = cells(rows[0]);
+      let t = "<table><thead><tr>" + head.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>";
+      for (let r = 2; r < rows.length; r++) t += "<tr>" + cells(rows[r]).map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>";
+      out.push(t + "</tbody></table>");
+      continue;
+    }
+    const li = ln.match(/^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/);
+    if (li) {
+      const items = []; let ordered = !!li[3];
+      while (i < lines.length) {
+        const m2 = lines[i].match(/^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/);
+        if (!m2) break;
+        if (!!m2[3] !== ordered) break;
+        let content = m2[4]; i++;
+        while (i < lines.length && lines[i].trim() && !/^(\s*)(?:[-*+]|\d+[.)])\s+/.test(lines[i]) && !/^(#{1,6}\s|\s*>|\s*```)/.test(lines[i]) && /^\s{2,}\S/.test(lines[i])) content += " " + lines[i++].trim();
+        const task = content.match(/^\[([ xX])\]\s+(.*)$/);
+        if (task) items.push(`<li class="task"><input disabled type="checkbox"${task[1] !== " " ? " checked" : ""}>${inline(task[2])}</li>`);
+        else items.push(`<li>${inline(content)}</li>`);
+      }
+      out.push((ordered ? "<ol>" : "<ul>") + items.join("") + (ordered ? "</ol>" : "</ul>"));
+      continue;
+    }
+    if (/^ {4}\S/.test(ln)) {
+      const buf = [];
+      while (i < lines.length && (/^ {4}/.test(lines[i]) || !lines[i].trim())) { if (!lines[i].trim() && !(i + 1 < lines.length && /^ {4}/.test(lines[i + 1]))) break; buf.push(lines[i++].replace(/^ {4}/, "")); }
+      out.push(`<pre><code>${esc(buf.join("\n"))}</code></pre>`);
+      continue;
+    }
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|\s*>|\s*```|( *)([-*+]) |(\d+[.)]) | {4}\S)/.test(lines[i]) && !/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(lines[i]) && !(/\|/.test(lines[i]) && i + 1 < lines.length && /^[\s|:-]+$/.test(lines[i + 1]))) para.push(lines[i++]);
+    out.push(`<p>${inline(para.join(" "))}</p>`);
+  }
+  return out.join("\n");
+}
+
+/* --- sanitizer used when DOMPurify is unavailable (allowlist scrub) ----------- */
+const KILL_TAGS = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "FORM", "BASE", "LINK", "META", "SVG", "MATH", "FRAME", "FRAMESET", "XMP", "NOSCRIPT", "TEMPLATE", "SLOT", "ANIMATE", "ANIMATION", "AUDIO", "VIDEO"]);
+const URL_ATTRS = ["href", "src", "poster", "data", "background", "srcset"];
+function safeUrlValue(v) {
+  const s = String(v).trim().toLowerCase();
+  const scheme = s.match(/^([a-z][a-z0-9+.\-]*):/);
+  if (!scheme) return true;                                // relative or fragment
+  if (/^(https?|mailto|tel):/.test(s)) return true;
+  if (s.startsWith("data:image/") && !/svg/.test(s.slice(0, 30))) return true;
+  return false;
+}
+function fallbackSanitize(htmlStr) {
+  const t = document.createElement("template");
+  t.innerHTML = htmlStr;
+  const walk = (node) => {
+    for (const child of Array.prototype.slice.call(node.children)) {
+      if (KILL_TAGS.has(child.tagName)) { child.remove(); continue; }
+      if (child.tagName === "INPUT") {
+        const typ = (child.getAttribute("type") || "").toLowerCase();
+        if (typ !== "checkbox" && typ !== "radio") { child.remove(); continue; }
+        child.setAttribute("disabled", "");
+      }
+      for (const a of Array.prototype.slice.call(child.attributes)) {
+        const n = a.name.toLowerCase();
+        if (n.startsWith("on") || n === "style" || n === "formaction" || n === "srcdoc") child.removeAttribute(a.name);
+        else if (URL_ATTRS.includes(n) && !safeUrlValue(a.value)) child.removeAttribute(a.name);
+      }
+      if (child.tagName === "A" && child.getAttribute("target")) child.setAttribute("rel", "noopener noreferrer");
+      walk(child);
+    }
+  };
+  walk(t.content);
+  return t.innerHTML;
+}
+
+/* --- post-processing: resolve repo-relative media, wire links, highlight ------- */
+function postProcessMarkdown(cont, path, gen) {
+  const dir = dirName(path);
+  // images
+  cont.querySelectorAll("img").forEach((img) => {
+    const attr = img.getAttribute("src");
+    if (attr) {
+      const r = resolveRefHref(dir, attr);
+      if (r.kind === "repo") {
+        img.src = rawUrl(S.owner, S.repo, S.ref, normalizeRepoPath(r.path)) + (r.query || "");
+      } else if (r.kind === "anchor" || r.kind === "other" && /^data:image\//i.test(r.ref)) {
+        /* data-uri and fragments fine */
+      }
+    }
+    img.loading = "lazy"; img.decoding = "async";
+    img.addEventListener("error", () => {
+      const s = el("span", "imgfail");
+      s.innerHTML = `${ic("image", "sm")}<span>image not found: <b>${esc(attr || "")}</b><br><small>${esc(img.alt || "")}</small></span>`;
+      img.replaceWith(s);
+    }, { once: true });
+  });
+  // links
+  cont.querySelectorAll("a").forEach((a) => {
+    const attr = a.getAttribute("href");
+    if (!attr) return;
+    const r = resolveRefHref(dir, attr);
+    if (r.kind === "abs") { a.target = "_blank"; a.rel = "noopener noreferrer"; return; }
+    if (r.kind === "other") return;                       // mailto: etc.
+    a.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      if (r.kind === "anchor") {
+        const id = decodeURIComponent(r.ref.slice(1));
+        const target = cont.querySelector(`[id="${CSS.escape(id)}"]`) || document.getElementById(id);
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        else toast("info", "Anchor “#" + id + "” is part of a full page — not available in preview", 2600);
+        return;
+      }
+      const p = normalizeRepoPath(r.path);
+      if (!p) { navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref }); return; }
+      const e = extOf(p);
+      if (e && TEXT_EXT.has(e)) navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p, m: autoMode(p) });
+      else navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: p });
+    });
+  });
+  // task lists
+  cont.querySelectorAll("li.task, li > input[type=checkbox]").forEach((li) => {
+    const item = li.tagName === "LI" ? li : li.closest("li");
+    if (!item) return;
+    item.classList.add("task");
+    const inp = item.querySelector("input"); if (inp) inp.disabled = true;
+    const ul = item.closest("ul"); if (ul) ul.classList.add("task");
+  });
+  // code blocks
+  highlightCodeBlocks(cont, gen);
+}
+async function highlightCodeBlocks(cont, gen) {
+  await ensureLib("hljs").catch(() => false);
+  if (gen !== S.gen) return;
+  cont.querySelectorAll("pre code").forEach((code) => {
+    const m = (code.className || "").match(/language-([\w+#.\-]+)/);
+    let lang = m ? m[1].toLowerCase() : null;
+    if (lang && LANG_ALIAS[lang]) lang = LANG_ALIAS[lang];
+    try {
+      if (lang && window.hljs && window.hljs.getLanguage(lang)) { window.hljs.highlightElement(code); return; }
+    } catch (e) {}
+    if (lang && !window.hljs) {
+      code.innerHTML = fallbackHL(code.textContent, lang);
+    }
+  });
+}
+/* =============================== [prev] ====================================== */
+/* The defining feature: preview a standalone HTML app from a repo, with its
+   local CSS / JS / images resolved, inside a sandboxed iframe.
+   Pipeline:
+     1. Fetch the HTML document (raw endpoint) and parse it with DOMParser —
+        parsing is inert; repository code NEVER executes in this page.
+     2. Discover local references (link/script/img/source/track/use/object…).
+     3. Resolve + validate every local reference against the repository
+        (HEAD checks via the raw endpoint; results cached for the session).
+        Stylesheets are additionally scanned for url(…) and @import tokens,
+        recursively, with circular-import protection.
+     4. Rebuild the document: either
+          - “CDN mode” (default): relative refs point at jsDelivr's GitHub CDN,
+            which serves correct MIME types, so scripts/styles/modules work;
+            a <base> tag also makes runtime fetch('data.json') resolve.
+          - “inline mode” (CDN unreachable): local CSS is fetched, flattened
+            (@imports inlined) and injected as <style>; classic scripts are
+            injected as inline <script> in the original order. ES-module
+            graphs are reported as unsupported (raw only serves text/plain).
+     5. A tiny trusted bootstrap script runs inside the sandbox: it reports
+        load/resource errors back to the app, intercepts in-preview links
+        (multi-page preview stays inside Repo Apps), and provides an
+        in-memory localStorage shim (sandboxed frames can't use real storage).
+*/
+const P = {
+  session: null,       // {path, mode, deps:[], notes:[], ext:0, jsErr, rootPrefix, status}
+  active: false,
+  watchdog: 0
+};
+
+function stopPreviewUI() {
+  ["#pane-code", "#pane-md", "#pane-image", "#pane-other"].forEach((p) => setHidden($(p), true));
+  setHidden($("#pane-preview"), false);
+}
+function killPreview() {
+  P.active = false;
+  ["#pane-code", "#pane-md", "#pane-image", "#pane-other"].forEach((p) => setHidden($(p), true));
+  setHidden($("#pane-preview"), true);
+  try { $("#preview-frame").srcdoc = ""; } catch (e) {}
+  setHidden($("#prev-deps"), true);
+  hideOverlay();
+}
+function showOverlay(html) {
+  const ov = $("#prev-overlay");
+  ov.innerHTML = html;
+  setHidden(ov, false);
+}
+function hideOverlay() { setHidden($("#prev-overlay"), true); }
+
+function previewStatusHtml(iconCls, icon, txt, extra) {
+  return `<span class="${iconCls}">${ic(icon)}</span><span>${txt}</span>` + (extra ? `<span class="spacer"></span>${extra}` : "");
+}
+function renderPrevStatus() {
+  const st = $("#prev-status");
+  const s = P.session;
+  if (!s) return;
+  const ok = s.deps.filter((d) => d.state === "ok").length;
+  const miss = s.deps.filter((d) => d.state !== "ok" && d.state !== "unchecked");
+  let html = "";
+  if (s.status === "running") {
+    html = previewStatusHtml("ok", "play",
+      `Previewing <b style="color:var(--fg)">${esc(baseName(s.path))}</b> · ${s.mode === "cdn" ? "CDN mode" : "inline mode"} · ` +
+      `${ok} local deps · ${s.ext} external · ${miss.length ? `<b style="color:var(--danger)">${miss.length} missing</b>` : "0 missing"}` +
+      (s.jsErr ? ` · <b style="color:var(--warn)">${s.jsErr} script error${s.jsErr > 1 ? "s" : ""}</b>` : ""));
+  } else if (s.status === "building") {
+    html = `<span class="spin"></span><span>${esc(s.message || "Preparing preview…")}</span>`;
+  } else if (s.status === "error") {
+    html = previewStatusHtml("bad", "alert", esc(s.message || "Preview failed"));
+  }
+  html += `<span class="spacer"></span><button class="btn sm ghost" id="prev-details">Dependencies ${ic("chevron", "sm")}</button>` +
+          `<button class="btn sm ghost" id="prev-src">${ic("code", "sm")}View source</button>`;
+  st.innerHTML = html;
+  $("#prev-details").onclick = () => {
+    const box = $("#prev-deps");
+    if (!box.classList.contains("hidden")) { setHidden(box, true); return; }
+    renderDepChips();
+    setHidden(box, false);
+  };
+  $("#prev-src").onclick = () => { S.fileMode = "code"; viewerRender(S.gen); };
+  // missing deps always visible
+  const box = $("#prev-deps");
+  if (miss.length || s.jsErr) { renderDepChips(); setHidden(box, false); } else setHidden(box, true);
+}
+function renderDepChips() {
+  const box = $("#prev-deps");
+  htmlEmpty(box);
+  const s = P.session; if (!s) return;
+  const shown = s.deps.filter((d) => d.state !== "ok");
+  const order = shown.length ? shown : s.deps.slice(0, 40);
+  for (const d of order) {
+    const c = el("span", "chip" + (d.state !== "ok" && d.state !== "unchecked" ? " miss" : ""));
+    const label = d.p.length > 44 ? "…" + d.p.slice(-41) : d.p;
+    c.innerHTML = `${ic(d.state === "ok" ? "check" : d.state === "unchecked" ? "file" : "x", "sm")}<span>${esc(label)}</span>`;
+    c.title = d.p + (d.from && d.from !== s.path ? `\nreferenced from: ${d.from}` : "") + (d.state === "unchecked" ? "\n(not validated — too many deps)" : "");
+    box.appendChild(c);
+  }
+  if (s.deps.length > order.length) box.appendChild(el("span", "chip", `+${s.deps.length - order.length} more ok`));
+  for (const n of s.notes) { const c = el("span", "chip miss"); c.innerHTML = `${ic("alert", "sm")}${esc(n)}`; box.appendChild(c); }
+}
+
+/* --- reference discovery ------------------------------------------------------ */
+const REF_SPECS = [
+  ["link[href]", "href", "link"],
+  ["script[src]", "src", "script"],
+  ["img[src]", "src", "img"],
+  ["input[type=image][src]", "src", "img"],
+  ["img[srcset]", "srcset", "srcset", 1],
+  ["source[src]", "src", "source"],
+  ["source[srcset]", "srcset", "srcset", 1],
+  ["audio[src]", "src", "media"],
+  ["video[src]", "src", "media"],
+  ["video[poster]", "poster", "media"],
+  ["track[src]", "src", "media"],
+  ["embed[src]", "src", "media"],
+  ["object[data]", "data", "media"],
+  ["use[href]", "href", "use"],
+  ["use[xlink\\:href]", "xlink:href", "use"]
+];
+function collectRefs(doc, dir) {
+  const list = [];
+  for (const [sel, attr, kind, multi] of REF_SPECS) {
+    let nodes;
+    try { nodes = doc.querySelectorAll(sel); } catch (e) { continue; }
+    nodes.forEach((node) => {
+      const rawv = node.getAttribute(attr);
+      if (rawv == null || rawv === "") return;
+      if (attr === "xlink:href" && node.getAttribute("href") != null) return;
+      const items = multi
+        ? rawv.split(",").map((c) => c.trim()).map((c) => { const parts = c.split(/\s+/); return { url: parts[0], rest: parts.slice(1).join(" ") }; })
+        : [{ url: rawv, rest: null }];
+      for (const it of items) {
+        const r = resolveRefHref(dir, it.url);
+        if (r.kind !== "repo") { if (r.kind === "abs" && !/^(#|data:)/.test(it.url)) list.push({ node, attr, kind, res: r, url: it.url, external: true }); continue; }
+        const p = normalizeRepoPath(r.path);
+        if (!p) continue;
+        list.push({ node, attr, kind, multi: !!multi, entry: it, res: r, p, url: it.url, external: false });
+      }
+    });
+  }
+  return list;
+}
+
+/* --- stylesheet scan: url(), @import, circular protection --------------------- */
+function stripCssComments(css) { return css.replace(/\/\*[\s\S]*?\*\//g, ""); }
+function cssRefTokens(css) {
+  const toks = [];
+  const seen = new Set();
+  let m;
+  const reUrl = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))\s*\)/gi;
+  while ((m = reUrl.exec(css))) { const v = (m[1] || m[2] || m[3] || "").trim(); if (v && !seen.has("u" + v)) { seen.add("u" + v); toks.push({ kind: "url", v }); } }
+  const reImp = /@import\s+(?:url\(\s*)?["']([^"']+)["']/gi;
+  while ((m = reImp.exec(css))) { const v = m[1].trim(); if (v && !seen.has("i" + v)) { seen.add("i" + v); toks.push({ kind: "import", v }); } }
+  return toks;
+}
+async function scanCssTree(session, cssPath, seen, depth, via) {
+  if (depth > 12) { session.notes.push(`@import nesting too deep below ${cssPath}`); return; }
+  if (seen.has(cssPath)) {
+    session.notes.push(`circular @import skipped: ${cssPath}`);
+    return;
+  }
+  seen.add(cssPath);
+  let f;
+  try { f = await getFileText(S.ref, cssPath, {}); }
+  catch (e) { session.notes.push(`couldn’t read ${cssPath}: ${e.message || e}`); return; }
+  if (f.binary || f.size > 1024 * 1024) { session.notes.push(`${cssPath} skipped for asset scan (>1 MB or binary)`); return; }
+  const cssDir = dirName(cssPath);
+  const toks = cssRefTokens(stripCssCommentsForScan(f.text));
+  for (const t of toks) {
+    const r = resolveRefHref(cssDir, t.v);
+    if (r.kind !== "repo") continue;
+    const p = normalizeRepoPath(r.path);
+    if (!p) continue;
+    const known = session.deps.find((d) => d.p === p);
+    if (!known) {
+      const st = await checkExists(S.ref, p);
+      session.deps.push({ p, state: st === "ok" ? "ok" : st, kind: "css-asset", from: cssPath });
+      if (st === "ok" && p.toLowerCase().endsWith(".css") && t.kind === "import") {
+        await scanCssTree(session, p, seen, depth + 1, cssPath);
+      }
+    } else if (t.kind === "import" && known.state === "ok" && p.toLowerCase().endsWith(".css")) {
+      await scanCssTree(session, p, seen, depth + 1, cssPath);
+    }
+  }
+}
+function stripCssCommentsForScan(css) { return stripCssComments(css); }
+
+/* --- document reconstruction --------------------------------------------------- */
+function escapeInlineScript(text) { return text.replace(/<\/(script)/gi, "<\\/$1"); }
+function rewriteCssUrlsAbs(cssText, cssDir) {
+  let out = cssText.replace(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))\s*\)/gi, (m, q1, q2, raw) => {
+    const v = (q1 != null ? q1 : q2 != null ? q2 : raw || "").trim();
+    const r = resolveRefHref(cssDir, v);
+    if (r.kind !== "repo") return m;
+    const p = normalizeRepoPath(r.path);
+    const abs = rawUrl(S.owner, S.repo, S.ref, p) + (r.query || "");
+    if (q1 != null) return `url("${abs}")`;
+    if (q2 != null) return `url('${abs}')`;
+    return `url(${JSON.stringify(abs)})`;
+  });
+  out = out.replace(/@import\s+(?:url\(\s*)?["']([^"']+)["']\s*(\)?[^;]*);/gi, (m, v) => {
+    const r = resolveRefHref(cssDir, v);
+    if (r.kind === "repo") return `/* @import inlined: ${v} */`;
+    return m;
+  });
+  return out;
+}
+async function flattenCss(session, cssPath, seen, depth) {
+  // returns rewritten CSS text for inline mode, with @imports recursively inlined
+  if (seen.has(cssPath)) { return `/* circular @import skipped: ${cssPath} */`; }
+  seen.add(cssPath);
+  let f;
+  try { f = await getFileText(S.ref, cssPath, {}); }
+  catch (e) { return `/* ${cssPath} unreadable: ${esc(String(e.message || e))} */`; }
+  let css = f.text;
+  const dir = dirName(cssPath);
+  const reImp = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?[^;]*;/gi;
+  const jobs = [];
+  css = css.replace(reImp, (m, v) => {
+    const r = resolveRefHref(dir, v);
+    if (r.kind === "repo") {
+      const p = normalizeRepoPath(r.path);
+      jobs.push(flattenCss(session, p, seen, depth + 1).then((txt) => `\n/* ↳ import ${p} */\n${txt}`));
+      return `/* inlined ↓ */`;
+    }
+    return m;  // external import — leave as-is
+  });
+  css = rewriteCssUrlsAbs(css, dir);
+  const extras = await Promise.all(jobs);
+  return css.replace(/\/\* inlined ↓ \*\//g, () => extras.shift() || "") + "\n";
+}
+
+function makeBaseEl(doc, href, first) {
+  const b = doc.createElement("base");
+  b.href = href;
+  const head = doc.querySelector("head") || doc.documentElement;
+  head.insertBefore(b, head.firstChild);
+  return b;
+}
+function bootstrapSource(cfg) {
+  // Trusted code injected INTO the sandboxed frame — runs isolated, reports back.
+  const js = [
+    "(function(){'use strict';var CFG=" + JSON.stringify(cfg) + ";",
+    "function post(t,d){try{parent.postMessage(Object.assign({app:'repoapps',t:t},d||{}),'*')}catch(e){}}",
+    "(function(){var s;function mk(){var m={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null},setItem:function(k,v){m[String(k)]=String(v)},removeItem:function(k){delete m[k]},clear:function(){m={}},key:function(i){return Object.keys(m)[i]||null},get length(){return Object.keys(m).length}}}",
+    "function needs(){try{window.localStorage.getItem('t');return false}catch(e){return true}}",
+    "try{if(needs()){s=mk();Object.defineProperty(window,'localStorage',{configurable:true,get:function(){return s}});Object.defineProperty(window,'sessionStorage',{configurable:true,get:function(){return mk()}});}}catch(e){}})();",
+    "document.addEventListener('click',function(ev){try{var a=ev.target&&ev.target.closest?ev.target.closest('a[href]'):null;if(!a)return;var h=a.getAttribute('href');if(h==null||h==='')return;",
+    "if(h.charAt(0)==='#'){ev.preventDefault();try{var id=decodeURIComponent(h.slice(1));var t=document.getElementById(id)||document.querySelector('[name='+JSON.stringify(id)+']');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}catch(_){}return}",
+    "var abs=a.href;if(CFG.root&&abs.indexOf(CFG.root)===0){ev.preventDefault();post('nav',{url:abs});return}",
+    "if(a.target==='_blank')return;ev.preventDefault();try{window.open(abs,'_blank','noopener')}catch(_){}}catch(e){}});",
+    "window.addEventListener('error',function(e){try{var t=e.target;if(t!==window&&(t.src||t.href)){post('res',{url:String(t.currentSrc||t.src||t.href),tag:String(t.tagName||'')});}else if(t===window||!t){post('jserr',{m:String(e.message||'error'),f:String(e.filename||'')});}}catch(_){}},true);",
+    "window.addEventListener('unhandledrejection',function(e){try{var r=e.reason;post('jserr',{m:String(r&&r.message?r.message:r||'')})}catch(_){}},true);",
+    "function rd(){post('ready',{title:document.title||''})}",
+    "if(document.readyState==='complete')rd();else window.addEventListener('load',rd,false);",
+    "post('booted',{})})();"
+  ].join("");
+  return js;
+}
+
+/* --- main build --------------------------------------------------------------- */
+async function buildPreview(path, gen, fresh) {
+  if (gen !== S.gen && !fresh) return;
+  stopPreviewUI();
+  const fr = $("#preview-frame");
+  if (!prefs.previewWarned) { showPreviewGate(path, gen); return; }
+  P.active = true;
+  P.session = { path, mode: "…", status: "building", message: "Fetching HTML document…", deps: [], notes: [], ext: 0, jsErr: 0 };
+  renderPrevStatus();
+  showOverlay(`<span class="spin big"></span><b>Preparing preview…</b><small>Fetching the document and resolving repository dependencies</small>`);
+  try {
+    const f = await getFileText(S.ref, path, { fresh: fresh });
+    if (gen !== S.gen || S.file !== path) { return; }
+    if (f.binary || !f.text) throw new Error("This file doesn’t contain readable HTML.");
+    S.lastFileText = f; S.lastFilePath = path;
+    const doc = new DOMParser().parseFromString(f.text, "text/html");
+    if (!doc.documentElement) throw new Error("Failed to parse the HTML document.");
+    const dir = dirName(path);
+    const s = P.session;
+
+    // ref for CDN (prefer immutable commit sha)
+    if (!S.refSha) { S.refSha = await resolveSha(S.ref); }
+    if (gen !== S.gen) return;
+    const cdnRef = S.refSha || S.ref;
+    const jsdOk = await jsdelivrOk();
+    const mode = (jsdOk && (S.refSha || String(S.ref).indexOf("/") < 0)) ? "cdn" : "inline";
+    s.mode = mode;
+    if (mode === "cdn") {
+      s.rootPrefix = `${JSD}/${S.owner}/${S.repo}@${encodeURIComponent(cdnRef)}/`;
+    } else {
+      s.rootPrefix = `${RAW}/${S.owner}/${S.repo}/${encPath(S.ref)}/`;
+    }
+    s.message = "Discovering dependencies…";
+    renderPrevStatus();
+
+    const refs = collectRefs(doc, dir);
+    const uniq = new Map();
+    for (const r of refs) { if (!r.external && !uniq.has(r.p)) uniq.set(r.p, r); s.ext += r.external ? 1 : 0; }
+    s.message = `Validating ${uniq.size} local dependencies…`;
+    renderPrevStatus();
+
+    // validate (cap 80 to stay polite & fast)
+    const VALIDATE_CAP = 80;
+    let vCount = 0;
+    for (const [p, r] of uniq) {
+      if (vCount >= VALIDATE_CAP) { s.deps.push({ p, state: "unchecked", kind: r.kind, from: path }); continue; }
+      vCount++;
+      const st = await checkExists(S.ref, p);
+      if (gen !== S.gen || S.file !== path) return;
+      s.deps.push({ p, state: st === "ok" ? "ok" : (st === "offline" ? "unchecked" : st), kind: r.kind, from: path });
+    }
+    if (uniq.size > VALIDATE_CAP) s.notes.push(`${uniq.size - VALIDATE_CAP} references not pre-validated (over ${VALIDATE_CAP} limit)`);
+
+    // deep-scan stylesheets (url() + @import with cycle detection)
+    const cssJobs = [];
+    for (const [p, r] of uniq) {
+      const isCss = (r.kind === "link" && /stylesheet/i.test(r.node.getAttribute("rel") || "")) || p.toLowerCase().endsWith(".css");
+      const dep0 = s.deps.find((d) => d.p === p);
+      if (isCss && (!dep0 || dep0.state === "ok")) cssJobs.push(p);
+    }
+    let ci = 0;
+    for (const p of cssJobs) {
+      if (gen !== S.gen) return;
+      if (ci++ < 6) await scanCssTree(s, p, new Set(), 0, path);
+    }
+    // inline <style> blocks — scan tokens against the HTML dir
+    doc.querySelectorAll("style").forEach((st) => {
+      const toks = cssRefTokens(stripCssComments(st.textContent || ""));
+      for (const t of toks) {
+        const r = resolveRefHref(dir, t.v);
+        if (r.kind !== "repo") continue;
+        const p = normalizeRepoPath(r.path);
+        if (p && !s.deps.find((d) => d.p === p)) s.deps.push({ p, state: "unchecked", kind: "css-asset", from: path + " (inline <style>)" });
+      }
+    });
+    if (cssJobs.length > 6) s.notes.push(`${cssJobs.length - 6} stylesheets not deep-scanned (limit) — they still load normally`);
+
+    // ---- rewrite document ----
+    const jsdBaseDir = `${JSD}/${S.owner}/${S.repo}@${encodeURIComponent(cdnRef)}/${encPath(dir)}/`;
+    const rawBaseDir = rawDir(S.owner, S.repo, S.ref, dir);
+    // replace author's <base> if present
+    const existingBases = doc.querySelectorAll("base");
+    existingBases.forEach((b) => { s.notes.push("original <base> tag replaced"); b.remove(); });
+    makeBaseEl(doc, mode === "cdn" ? jsdBaseDir : rawBaseDir);
+
+    if (mode === "cdn") {
+      for (const r of refs) {
+        if (r.external) continue;
+        const abs = `${JSD}/${S.owner}/${S.repo}@${encodeURIComponent(cdnRef)}/${encPath(r.p)}${(r.res.query || "")}`;
+        if (r.multi) {
+          const parts = r.node.getAttribute(r.attr).split(",").map((c) => c.trim()).map((c) => {
+            const seg = c.split(/\s+/);
+            const rr = resolveRefHref(dir, seg[0]);
+            if (rr.kind === "repo") { const p = normalizeRepoPath(rr.path); seg[0] = `${JSD}/${S.owner}/${S.repo}@${encodeURIComponent(cdnRef)}/${encPath(p)}`; }
+            return seg.join(" ");
+          });
+          r.node.setAttribute(r.attr, parts.join(", "));
+        } else {
+          r.node.setAttribute(r.attr, abs);
+        }
+      }
+    } else {
+      // INLINE MODE — fetch + inline local CSS/JS
+      const inlineJobs = [];
+      for (const r of refs) {
+        if (r.external || r.kind !== "link" && r.kind !== "script") continue;
+        const known = s.deps.find((d) => d.p === r.p);
+        if (known && known.state !== "ok") continue;            // let it fail visibly
+        if (r.kind === "link") {
+          const rel = r.node.getAttribute("rel") || "";
+          if (!/stylesheet/i.test(rel)) continue;
+          inlineJobs.push(async () => {
+            const css = await flattenCss(s, r.p, new Set(), 0);
+            const st = doc.createElement("style");
+            st.setAttribute("data-repo-css", r.p);
+            st.textContent = css.includes("</style") ? "" : css;
+            if (!css.length || css.includes("</style")) { s.notes.push(`${r.p}: CSS could not be inlined safely`); st.textContent = css.includes("</style") ? "/* unsafe css content */" : css; }
+            r.node.replaceWith(st);
+          });
+        } else if (r.kind === "script") {
+          const isModule = /module/i.test(r.node.getAttribute("type") || "");
+          inlineJobs.push(async () => {
+            let f2;
+            try { f2 = await getFileText(S.ref, r.p, {}); } catch (e) { s.notes.push(`${r.p}: ${e.message || e}`); return; }
+            if (f2.binary) { s.notes.push(`${r.p}: binary script skipped`); return; }
+            if (isModule && /(?:^|\n)\s*(?:import|export)[\s*{]/.test(f2.text)) {
+              s.notes.push(`${r.p}: ES-module graph needs jsDelivr (unavailable)`);
+              return;  // leave tag pointing at raw → will error visibly & be reported
+            }
+            const sc = doc.createElement("script");
+            sc.setAttribute("data-repo-src", r.p);
+            if (isModule) sc.type = "module";
+            sc.textContent = escapeInlineScript(f2.text);
+            r.node.replaceWith(sc);
+          });
+        }
+      }
+      await Promise.all(inlineJobs.map((j) => limited(() => j())));
+      if (gen !== S.gen || S.file !== path) return;
+      // images/media: absolute RAW urls (MIME-safe), relative ones already work via <base>
+      for (const r of refs) {
+        if (r.external || r.kind === "link" || r.kind === "script") continue;
+        const abs = rawUrl(S.owner, S.repo, S.ref, r.p) + (r.res.query || "");
+        if (r.multi) {
+          const parts = r.node.getAttribute(r.attr).split(",").map((c) => {
+            const seg = c.trim().split(/\s+/);
+            const rr = resolveRefHref(dir, seg[0]);
+            if (rr.kind === "repo") seg[0] = rawUrl(S.owner, S.repo, S.ref, normalizeRepoPath(rr.path));
+            return seg.join(" ");
+          });
+          r.node.setAttribute(r.attr, parts.join(", "));
+        } else r.node.setAttribute(r.attr, abs);
+      }
+    }
+
+    // bootstrap inside the sandbox
+    const boot = doc.createElement("script");
+    boot.setAttribute("data-repoapps", "bootstrap");
+    boot.textContent = bootstrapSource({ root: s.rootPrefix, p: path });
+    {
+      const head = doc.querySelector("head") || doc.documentElement;
+      head.insertBefore(boot, head.firstChild.nextSibling);   // right after <base>
+    }
+
+    const missing = s.deps.filter((d) => d.state !== "ok" && d.state !== "unchecked");
+    if (missing.length) s.notes.push(`${missing.length} missing reference${missing.length > 1 ? "s" : ""}`);
+    s.status = "building";
+    s.message = "Rendering sandboxed frame…";
+    renderPrevStatus();
+
+    // guard: never claim the parent document's context
+    const srcdoc = "<!doctype html>\n" + doc.documentElement.outerHTML;
+    clearTimeout(P.watchdog);
+    P.watchdog = setTimeout(() => {
+      if (P.active && P.session && P.session.status !== "running") {
+        P.session.message = "Still loading — preview page is waiting on slow resources";
+        renderPrevStatus();
+      }
+    }, 15000);
+    fr.srcdoc = srcdoc;
+    P.session.status = "running";
+    renderPrevStatus();
+    hideOverlay();
+  } catch (err) {
+    if (gen !== S.gen || S.file !== path) return;
+    P.session.status = "error";
+    P.session.message = err.message || String(err);
+    renderPrevStatus();
+    showOverlay(`${ic("alert")}<b>Preview failed</b><small>${esc(err.message || String(err))}</small>
+      <div class="btns"><button class="btn sm" id="prev-retry">${ic("refresh", "sm")}Retry</button>
+      <button class="btn sm ghost" id="prev-viewsrc">${ic("code", "sm")}View source</button></div>`);
+    $("#prev-retry").onclick = () => buildPreview(path, S.gen, true);
+    $("#prev-viewsrc").onclick = () => { S.fileMode = "code"; viewerRender(S.gen); };
+  }
+}
+
+function showPreviewGate(path, gen) {
+  P.active = true;
+  showOverlay(`
+    ${ic("shield")}
+    <b>Run this repository’s HTML app?</b>
+    <small>Repo Apps executes <b>untrusted third-party code</b>. The preview runs in a sandboxed iframe: it cannot read this page, your files, or your storage — but it CAN make network requests and run anything its authors wrote. Only preview projects you trust. Apps that need a backend server, cookies, same-origin storage or a real URL will behave differently here.</small>
+    <div class="btns">
+      <button class="btn primary" id="gate-run">${ic("play", "sm")}Run preview</button>
+      <button class="btn ghost" id="gate-src">${ic("code", "sm")}View source instead</button>
+    </div>`);
+  $("#gate-run").onclick = () => { prefs.previewWarned = true; savePrefs(); buildPreview(path, S.gen || gen); };
+  $("#gate-src").onclick = () => { hideOverlay(); killPreview(); S.fileMode = "code"; viewerRender(S.gen); };
+}
+
+/* --- messages from the sandbox ------------------------------------------------- */
+function wirePreviewMessages() {
+  window.addEventListener("message", (ev) => {
+    const d = ev.data;
+    if (!d || d.app !== "repoapps" || !P.session) return;
+    const fr = $("#preview-frame");
+    if (ev.source !== fr.contentWindow) return;
+    const s = P.session;
+    if (d.t === "nav") {
+      const u = String(d.url || "");
+      if (u.indexOf(s.rootPrefix) !== 0) return;
+      let p = u.slice(s.rootPrefix.length).split(/[?#]/)[0];
+      try { p = decodeURIComponent(p); } catch (e) {}
+      p = normalizeRepoPath(p);
+      if (!p) return;
+      const e = extOf(p);
+      if (e === "html" || e === "htm") { navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p, m: "preview" }); }
+      else if (e === "md" || e === "markdown") navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p, m: "md" });
+      else if (IMG_EXT.has(e)) navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p, m: "image" });
+      else if (!e || e === "") navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, d: p });
+      else navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p, m: "code" });
+      return;
+    }
+    if (d.t === "res") {
+      let p = "";
+      const u = String(d.url || "");
+      if (u.indexOf(s.rootPrefix) === 0) p = u.slice(s.rootPrefix.length).split(/[?#]/)[0];
+      else { try { p = absRefToRepoPath(u).path; } catch (e) { p = u.slice(0, 60); } }
+      try { p = decodeURIComponent(p || u); } catch (e) {}
+      p = normalizeRepoPath(p);
+      if (!s.deps.find((x) => x.p === p && x.state !== "ok")) {
+        s.deps.push({ p, state: "runtime-fail", kind: d.tag ? String(d.tag).toLowerCase() : "asset", from: s.path });
+        renderPrevStatus();
+        const box = $("#prev-deps"); if (box.classList.contains("hidden")) { renderDepChips(); setHidden(box, false); }
+      }
+      return;
+    }
+    if (d.t === "jserr") {
+      s.jsErr = (s.jsErr || 0) + 1;
+      renderPrevStatus();
+      return;
+    }
+    if (d.t === "ready" || d.t === "booted") {
+      if (d.title !== undefined) P.session.docTitle = d.title;
+      clearTimeout(P.watchdog);
+      hideOverlay();
+      return;
+    }
+  });
+  $("#preview-frame").addEventListener("load", () => { hideOverlay(); });
+}
+/* =============================== [srch] ====================================== */
+/* Filename search over the repository's recursive git tree — ONE API call for
+   the whole file list, cached per repo/ref. No file contents are downloaded. */
+let searchTree = null;             // {files:[{path,size}], truncated}
+let searchTreeErr = null;
+async function ensureSearchData() {
+  if (!S.owner) {
+    htmlEmpty($("#search-results"));
+    $("#search-results").appendChild(el("div", "empty", "Open a repository first, then search its filenames."));
+    setHidden($("#search-scope"), true);
+    return;
+  }
+  setHidden($("#search-scope"), false);
+  $("#search-scope").innerHTML = `${ic("github", "sm")}<span>${esc(S.owner)}/${esc(S.repo)}<b>@${esc(S.ref || "")}</b></span>`;
+  $("#search-input").focus();
+  if (searchTree) { runSearch(); return; }
+  if (searchTreeErr) { setStatusErr(searchTreeErr); return; }
+  $("#search-status").textContent = "Loading file index…";
+  try {
+    const t = await getTree(S.ref);
+    searchTree = t;
+    $("#search-status").textContent = `${t.files.length.toLocaleString()} files indexed`;
+    runSearch();
+  } catch (e) {
+    searchTreeErr = e.message || String(e);
+    setStatusErr(searchTreeErr);
+  }
+}
+function setStatusErr(msg) {
+  $("#search-status").textContent = "index unavailable";
+  htmlEmpty($("#search-results"));
+  const nb = el("div", "notebox");
+  nb.innerHTML = `${ic("alert")}<div><b>Couldn’t build the file index</b><br>${esc(msg)}<div style="margin-top:10px"><button class="btn sm" id="srch-retry">${ic("refresh", "sm")}Retry</button></div></div>`;
+  $("#search-results").appendChild(nb);
+  $("#srch-retry").onclick = () => { searchTreeErr = null; ensureSearchData(); };
+}
+let lastSearchQ = "";
+const runSearchDebounced = debounce(runSearch, 160);
+function runSearch() {
+  if (!searchTree) return;
+  const q = $("#search-input").value.trim().toLowerCase();
+  const res = $("#search-results");
+  htmlEmpty(res);
+  renderExtChips(q);
+  if (!q) { $("#search-status").textContent = `${searchTree.files.length.toLocaleString()} files · type to filter`; return; }
+  const tokens = q.split(/\s+/).filter((t) => t && !t.startsWith("."));
+  const exts = (q.match(/\.[a-z0-9+#-]+/gi) || []).map((x) => x.toLowerCase());
+  const scored = [];
+  for (const fi of searchTree.files) {
+    const lower = fi.path.toLowerCase();
+    const name = lower.slice(lower.lastIndexOf("/") + 1);
+    const base = name.replace(/\.[^.]+$/, "");
+    let s = 0;
+    if (tokens.length && !tokens.every((t) => lower.includes(t))) continue;
+    if (exts.length && !exts.some((x) => name.endsWith(x))) continue;
+    s = 0;
+    if (name.startsWith(tokens[0] || "\u0000")) s = 4;
+    else if (name.includes(base)) s = 3;
+    else if (name.includes(tokens[0] || "\u0000")) s = 2;
+    else s = 1;
+    if (base === (tokens[0] || "")) s = 5;
+    if (!tokens.length && exts.length && name.endsWith(exts[0])) s = 2;
+    scored.push([s, fi]);
+    if (scored.length > 6000) break;
+  }
+  scored.sort((a, b) => b[0] - a[0] || a[1].path.length - b[1].path.length);
+  const top = scored.slice(0, 300);
+  if (!top.length) { $("#search-status").textContent = "no matches"; const d = el("div", "empty"); d.innerHTML = `<b>No files match “${esc(q)}”.</b><span>Try a shorter term, or an extension like <code>.css</code> — ${searchTree.files.length.toLocaleString()} files indexed.</span>`; res.appendChild(d); return; }
+  $("#search-status").textContent = `${top.length} of ${scored.length.toLocaleString()} matches`;
+  if (searchTree.truncated) { const t = el("div", "banner warn"); t.innerHTML = `${ic("alert")}<span>Repo’s file index is truncated (very large repository) — results may be incomplete.</span>`; res.appendChild(t); }
+  for (const [, fi] of top) {
+    const d = dirName(fi.path);
+    const nm = baseName(fi.path);
+    const m = fileMeta(fi.path, false);
+    const row = el("button", "row res");
+    row.innerHTML = `${ic(m.icon, m.cls + " sm")}<span class="nm">${d ? `<span class="dirpre">${markText(d + "/", tokens)}</span>` : ""}${markText(nm, tokens)}</span><span class="ext">${esc(extOf(fi.path) || "")}</span>`;
+    row.onclick = () => { drawerOpen(false); navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref, p: fi.path, m: autoMode(fi.path) }); };
+    res.appendChild(row);
+  }
+}
+function markText(s, tokens) {
+  const lower = s.toLowerCase();
+  let idx = -1, hitTok = "";
+  for (const t of tokens) { const i = lower.indexOf(t); if (i >= 0 && (idx < 0 || i < idx)) { idx = i; hitTok = t; } }
+  if (idx < 0) return esc(s);
+  return esc(s.slice(0, idx)) + "<mark>" + esc(s.slice(idx, idx + hitTok.length)) + "</mark>" + esc(s.slice(idx + hitTok.length));
+}
+function renderExtChips(q) {
+  const box = $("#ext-chips");
+  if (!searchTree) { htmlEmpty(box); return; }
+  const counts = new Map();
+  for (const fi of searchTree.files.slice(0, 20000)) {
+    const e = extOf(fi.path);
+    if (e) counts.set(e, (counts.get(e) || 0) + 1);
+  }
+  const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  htmlEmpty(box);
+  for (const [e, n] of top) {
+    const c = el("button", "chip");
+    c.textContent = `.${e} (${fmtNum(n)})`;
+    c.style.cursor = "pointer";
+    c.onclick = () => { const inp = $("#search-input"); inp.value = (inp.value.replace(/\.\S*$/, "").trim() + " ." + e).trim(); runSearch(); };
+    box.appendChild(c);
+  }
+}
+
+/* =============================== [about] ===================================== */
+const SIGNOFF = {
+  date: "2026-10-31",
+  timeUTC: "17:35 UTC",
+  model: "Qwen 3.8 Flash",
+  agent: "OpenCode subagent · reasoning effort: xhigh",
+  stack: "vanilla JS · single-file web app (index.html)"
+};
+function renderAbout() {
+  const L = (name) => libState[name] === true ? `<span class="libdot" style="background:var(--ok)"></span>${name} — loaded from CDN` :
+    libState[name] === false ? `<span class="libdot" style="background:var(--danger)"></span>${name} — CDN unavailable → built-in fallback active` :
+    `<span class="libdot" style="background:var(--fg3)"></span>${name} — loading…`;
+  $("#about-body").innerHTML = `
+    <div class="sec-title">${ic("info")}<span>About Repo Apps</span></div>
+    <div class="sig">
+      <span class="ava">${ic("box")}</span>
+      <div><b>Repo Apps</b><small>
+        Produced by <b>${esc(SIGNOFF.model)}</b> (${esc(SIGNOFF.agent)})<br>
+        Generated ${esc(SIGNOFF.date)} ${esc(SIGNOFF.timeUTC)} · ${esc(SIGNOFF.stack)}
+      </small></div>
+    </div>
+    <p style="color:var(--fg2);font-size:13.5px;margin-top:14px">A standalone browser tool that turns any <b>public GitHub repository URL</b> into an interactive explorer: browse directories, read syntax-highlighted source, render Markdown, and <b>preview standalone HTML apps</b> with their real CSS &amp; JavaScript — without cloning, installing, or running a server.</p>
+
+    <div class="about-sec"><h3>${ic("play")}Loading a repository</h3>
+      <p>Paste any of these forms into the dashboard field:</p>
+      <ul>
+        <li><code>https://github.com/owner/repo</code></li>
+        <li><code>https://github.com/owner/repo/tree/branch/path/to/dir</code></li>
+        <li><code>https://github.com/owner/repo/blob/branch/path/file.ext</code> — opens the file directly</li>
+        <li><code>owner/repo</code> shorthand also works.</li>
+      </ul>
+      <p>The <b>default branch</b> is read from the GitHub API (no assumption of <code>main</code>/<code>master</code>), and any branch name — even ones containing <code>/</code> — is honored. Use the <b>branch chip</b> in the repository header to switch branches. Visited repositories are stored locally and shown as cards for one-tap reopening; remove them individually or clear all in the History screen.</p>
+    </div>
+
+    <div class="about-sec"><h3>${ic("code")}Viewing source vs. running a preview</h3>
+      <p><b>Source mode</b> is inert: file contents are fetched as text, escaped, and highlighted — nothing from the repository executes here. Line numbers, horizontal scrolling, copy, and download are provided.</p>
+      <p><b>Markdown files</b> open in a rendered view by default (GitHub-Flavored: tables, task lists, strikethrough, fenced code). Use the <b>Rendered / Raw Markdown</b> switch any time; your choice is remembered for later Markdown files. Relative links and images are resolved against the repository path, broken images show their missing path instead of a blank box, and rendered HTML is sanitized (script injection is stripped) even though the source can never run in this page.</p>
+    </div>
+
+    <div class="about-sec"><h3>${ic("layers")}Preview as App — how dependency resolution works</h3>
+      <ol style="color:var(--fg2);font-size:13.5px;padding-left:1.3em">
+        <li>The HTML document is fetched from GitHub’s raw-content endpoint and parsed with <code>DOMParser</code> (inert — parsed code cannot run here).</li>
+        <li>Every local reference is discovered: <code>&lt;link&gt;</code>, <code>&lt;script&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;source&gt;</code>, <code>srcset</code>, <code>&lt;track&gt;</code>, <code>&lt;use&gt;</code>, <code>&lt;object&gt;</code>… — relative, nested (<code>sub/dir/</code>) and parent paths (<code>../shared/x.js</code>) are resolved against the file’s real location in the repository, spaces and %encoding included.</li>
+        <li>Each resolved path is validated with a cached request, so you see exactly <b>which</b> dependency is missing. Stylesheets are additionally scanned for <code>url(…)</code> assets and <code>@import</code> rules — recursively, with circular-import protection.</li>
+        <li><b>CDN mode (default):</b> references are rebuilt against <code>cdn.jsdelivr.net/gh/owner/repo@commit/…</code> — GitHub content served with correct MIME types, so scripts, styles, ES-module graphs, fonts and runtime <code>fetch("data.json")</code> work. The commit SHA keeps the preview immutable and cache-friendly. Original document order (especially of scripts) is preserved.</li>
+        <li><b>Inline mode (automatic fallback when jsDelivr is unreachable):</b> local CSS is fetched, its <code>url()</code> references rewritten and <code>@import</code>s flattened into <code>&lt;style&gt;</code> blocks, and classic scripts are injected inline in original order. External CDN references are left untouched in both modes.</li>
+      </ol>
+    </div>
+
+    <div class="about-sec"><h3>${ic("shield")}Security model — read this before running previews</h3>
+      <p>Repository content is <b>untrusted input</b> and is treated that way:</p>
+      <ul>
+        <li>Previews run in an iframe with <code>sandbox="allow-scripts allow-forms allow-modals allow-popups"</code> — crucially <b>without</b> <code>allow-same-origin</code>. Previewed pages get an opaque origin: they cannot read this page’s DOM, JavaScript context, or <b>localStorage</b>, and cannot navigate or replace the parent window.</li>
+        <li>Repository JavaScript never executes inside the main application: files are displayed as escaped text, and parsing (<code>DOMParser</code>) is inert. <code>eval</code>/<code>new Function</code> are not used anywhere in this app.</li>
+        <li>Markdown output is sanitized (DOMPurify when available, allowlist scrubber otherwise).</li>
+      </ul>
+      <p><b>What sandboxing does <u>not</u> do:</b> it does not make arbitrary repository code “safe”. Sandboxed pages still run fully arbitrary JS on your machine — they can make network requests (e.g. exfiltrating anything <i>inside the preview itself</i>), show deceptive content, or use <code>alert()</code>/popups. Only preview projects you trust. A warning is shown the first time you run a preview in a session.</p>
+      <p><b>Unavoidable browser limitations of previews:</b></p>
+      <ul>
+        <li>Server-backed apps (API endpoints, Node/PHP, databases) cannot run — only static/standalone HTML apps work. This app never pretends otherwise.</li>
+        <li><code>localStorage</code>/cookies are unavailable inside the sandbox; Repo Apps injects a small <b>in-memory shim</b> so many apps keep working, but persistence is per-preview and isolated.</li>
+        <li>The frame’s URL is opaque (<code>about:srcdoc</code>); apps that read <code>window.location</code>, push history entries, or require same-origin top-level navigation may misbehave.</li>
+        <li>Third-party CDN scripts/styles and network APIs inside the preview are subject to their own CORS/CSP/X-Frame rules; some (Google Fonts, unpkg…) work, others may be blocked.</li>
+        <li>ES-module previews need jsDelivr (raw.githubusercontent serves <code>text/plain</code>, which browsers refuse to execute as modules); inline mode reports module graphs instead of faking them.</li>
+      </ul>
+    </div>
+
+    <div class="about-sec"><h3>${ic("github")}GitHub API, rate limits & caching</h3>
+      <ul>
+        <li>Metadata, directory listings and the search index come from GitHub’s public REST API (no authentication, and <b>no token is ever embedded</b> — private repositories are therefore unsupported).</li>
+        <li>File contents are fetched from the raw-content endpoint, which is <b>not</b> rate-limited like the API — the app avoids spending API requests where possible.</li>
+        <li>Content is fetched <b>on demand</b> only; directory listings, file text, branch metadata, dependency checks and the search tree are cached for the session (LRU-bounded, memory kept small — large binaries are never stored).</li>
+        <li>Anonymous API access is limited (~60 requests/hour per IP). When you run out, a banner explains it and shows the reset time; cached content remains browsable. The footer shows your remaining API budget.</li>
+        <li>404s, 451s, 403/429 rate limits, offline network failures and malformed responses all produce plain-language messages instead of crashes; “Refresh” re-fetches a single file, never a whole repository.</li>
+      </ul>
+    </div>
+
+    <div class="about-sec"><h3>${ic("keyboard")}Keyboard shortcuts</h3>
+      <table>
+        <tr><td><kbd>S</kbd> or <kbd>/</kbd></td><td>Search filenames in the open repository</td></tr>
+        <tr><td><kbd>H</kbd></td><td>Repository history</td></tr>
+        <tr><td><kbd>T</kbd></td><td>Toggle light / dark theme (persistent)</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Copy current file source</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Refresh current file / preview</td></tr>
+        <tr><td><kbd>P</kbd></td><td>Toggle Preview-as-App (HTML files)</td></tr>
+        <tr><td><kbd>F</kbd></td><td>Full-screen viewer / preview</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close drawer / exit full screen</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd></td><td>Back / forward inside the repository (browser buttons work too)</td></tr>
+        <tr><td><kbd>I</kbd></td><td>Dashboard (import a repo)</td></tr>
+        <tr><td><kbd>?</kbd></td><td>This About page</td></tr>
+      </table>
+    </div>
+
+    <div class="about-sec"><h3>${ic("box")}Optional CDN libraries</h3>
+      <p style="font-family:var(--mono);font-size:12.5px;line-height:2">
+        ${L("marked")}<br>${L("purify")}<br>${L("hljs")}
+      </p>
+      <p style="font-size:13px">Repo Apps ships with built-in fallbacks for all three: if a CDN is blocked, Markdown still renders (internal parser), output is still sanitized (allowlist scrubber), and code is still highlighted (structural tokenizer). The jsDelivr GitHub CDN is likewise probed once and previews automatically switch to inline reconstruction when it is unavailable.</p>
+    </div>
+
+    <div class="about-sec"><h3>${ic("clock")}Your data</h3>
+      <p>History and preferences live only in your browser (localStorage). Nothing is uploaded. Stored per repository: owner, name, URL, last-visited time, default branch, description, avatar URL, stars, language — never source code. Remove one repository from the History screen, clear everything there, or reset everything below.</p>
+      <p><button class="btn sm" id="about-clearall">${ic("trash", "sm")}Clear history &amp; preferences</button></p>
+    </div>`;
+  $("#about-clearall").onclick = () => {
+    History.clear();
+    Ls.del("prefs");
+    toast("ok", "Cleared. Reloading…", 1200);
+    setTimeout(() => location.reload(), 900);
+  };
+}
+
+/* ================================ [boot] ===================================== */
+function wireEvents() {
+  // dashboard form
+  $("#dash-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const v = $("#dash-input").value;
+    const res = await openRepoByInput(v);
+    const errBox = $("#dash-error");
+    if (res.error) { errBox.textContent = res.error; setHidden(errBox, false); return; }
+    setHidden(errBox, true);
+    $("#dash-input").value = "";
+  });
+  const samples = [
+    ["mdn/beginner-html-site", "basic HTML project"],
+    ["markedjs/marked", "documentation"],
+    ["lodash/lodash", "large JS repo"]
+  ];
+  $("#samples").innerHTML = samples.map(([r, l]) => `<button class="chip" data-repo="${r}">${ic("github", "sm")}${esc(r)} — ${esc(l)}</button>`).join("");
+  $("#samples").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-repo]"); if (!b) return;
+    $("#dash-input").value = "https://github.com/" + b.dataset.repo;
+    $("#dash-form").requestSubmit();
+  });
+  bindCards($("#recents-grid"), true);
+  bindCards($("#hist-grid"), true);
+  $("#btn-clear-history").onclick = function () {
+    if (this.dataset.armed) { History.clear(); this.dataset.armed = ""; this.innerHTML = ic("trash", "sm") + " Clear all"; }
+    else { this.dataset.armed = "1"; this.innerHTML = ic("alert", "sm") + "Tap again to confirm"; setTimeout(() => { this.dataset.armed = ""; this.innerHTML = ic("trash", "sm") + " Clear all"; }, 3000); }
+  };
+  // app bar
+  $("#btn-home").onclick = () => navigate({ v: "d" });
+  $("#btn-repo-home").onclick = () => navigate({ v: "r", o: S.owner, r: S.repo, f: S.ref });
+  $("#btn-drawer").onclick = () => drawerOpen(!isOpenOnMobile());
+  $("#backdrop").onclick = () => drawerOpen(false);
+  $("#btn-nav-back").onclick = goBack;
+  $("#btn-nav-fwd").onclick = goForward;
+  $("#btn-search").onclick = () => { if (!S.owner) { toast("info", "Open a repository first"); return; } navigate({ v: "s" }); };
+  $("#btn-history").onclick = () => navigate({ v: "h" });
+  $("#btn-theme").onclick = toggleTheme;
+  $("#btn-about").onclick = () => navigate({ v: "a" });
+  $("#rate-close").onclick = () => { setHidden($("#banner-rate"), true); S.rate.noticed = true; };
+  // search
+  $("#search-input").addEventListener("input", () => { if (searchTree) runSearchDebounced(); });
+  // fullscreen
+  $("#fb-full").onclick = toggleFullscreen;
+  // hash routing (browser back/forward within the app)
+  window.addEventListener("hashchange", () => {
+    if (suppressHash) return;
+    const e = hashToEntry(location.hash);
+    if (!e) { navigate({ v: "d" }, false); return; }
+    if (S.cur && sameEntry(e, S.cur)) return;
+    const back = S.nav[S.navPos - 1];
+    const fwd = S.nav[S.navPos + 1];
+    if (back && sameEntry(e, back)) { goBack(); return; }
+    if (fwd && sameEntry(e, fwd)) { goForward(); return; }
+    navigate(e);
+  });
+  // online/offline
+  window.addEventListener("online", () => { setOffline(false); toast("ok", "Back online", 1800); });
+  window.addEventListener("offline", () => { setOffline(true); toast("warn", "Offline — cached content only", 3000); });
+  // keyboard shortcuts
+  document.addEventListener("keydown", (ev) => {
+    const tgt = ev.target;
+    const typing = tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.tagName === "SELECT" || tgt.isContentEditable);
+    if (ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.key === "ArrowLeft") { ev.preventDefault(); goBack(); return; }
+    if (ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.key === "ArrowRight") { ev.preventDefault(); goForward(); return; }
+    if (ev.key === "Escape") {
+      if (document.fullscreenElement || $("#view-repo").classList.contains("is-fullscreen")) { $("#view-repo").classList.remove("is-fullscreen"); document.exitFullscreen && document.exitFullscreen().catch(() => {}); }
+      else if (isOpenOnMobile()) drawerOpen(false);
+      return;
+    }
+    if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const k = ev.key.toLowerCase();
+    if (k === "?" ) { navigate({ v: "a" }); }
+    else if (k === "s" || k === "/") { ev.preventDefault(); if (S.owner) navigate({ v: "s" }); else openRepoInput(); }
+    else if (k === "h") { navigate({ v: "h" }); }
+    else if (k === "t") { toggleTheme(); }
+    else if (k === "i") { navigate({ v: "d" }); }
+    else if (k === "c" && S.view === "repo" && S.file) { copyCurrentFile(); }
+    else if (k === "r" && S.view === "repo" && S.file) { $("#fb-refresh").click(); }
+    else if (k === "p" && S.view === "repo" && S.file && (extOf(S.file) === "html" || extOf(S.file) === "htm")) {
+      S.fileMode = S.fileMode === "preview" ? "code" : "preview";
+      buildFileBar(S.file, S.fileMode); viewerRender(S.gen);
+    }
+    else if (k === "f" && S.view === "repo") { toggleFullscreen(); }
+  });
+}
+
+function renderSignoff() {
+  $("#signoff").innerHTML = `Repo Apps · single-file GitHub explorer &amp; HTML-app previewer · generated <b>${esc(SIGNOFF.date)} ${esc(SIGNOFF.timeUTC)}</b> by <b>${esc(SIGNOFF.model)}</b> <span style="color:var(--fg3)">(${esc(SIGNOFF.agent)})</span>`;
+}
+
+function boot() {
+  applyTheme(prefs.theme || (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+  renderSignoff();
+  renderRecents();
+  loadLibs();
+  wirePreviewMessages();
+  wireEvents();
+  drawerOpen(window.innerWidth >= 920 ? prefs.explorerOpen !== false : false);
+  window.addEventListener("resize", debounce(() => {
+    if (window.innerWidth >= 920) { $("#backdrop").classList.remove("show"); }
+    else if (isOpenOnMobile()) { /* drawer stays as-is */ }
+  }, 200));
+  const start = hashToEntry(location.hash);
+  if (start && start.v) { S.nav = [start]; S.navPos = 0; S.cur = start; applyEntry(start); }
+  else { const d = { v: "d" }; S.nav = [d]; S.navPos = 0; S.cur = d; applyEntry(d); }
+  if (!Ls.ok) setTimeout(() => toast("warn", "Browser storage unavailable (private mode?) — history kept in memory only", 6000), 1200);
+  window.addEventListener("beforeunload", () => { if (P.active) { const f = $("#preview-frame"); try { f.srcdoc = ""; } catch (e) {} } });
+}
+document.addEventListener("DOMContentLoaded", boot);
+
+</script>
+</body>
+</html>

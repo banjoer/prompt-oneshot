@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Repo Apps — GitHub Repository Explorer</title>
+<meta name="description" content="Turn any public GitHub repository URL into an interactive explorer with source viewing, Markdown rendering, and HTML app previews.">
+<style>
+:root{
+  --bg:#0f141b; --bg2:#151c26; --bg3:#1c2534; --border:#263145; --border2:#33415a;
+  --text:#e8eef7; --muted:#93a1b8; --muted2:#6b7a93;
+  --accent:#4f8cff; --accent2:#7aa5ff; --accent-ink:#0a1428;
+  --green:#3ecf8e; --amber:#ffb454; --red:#ff6b6b; --purple:#b388ff;
+  --code-bg:#0b1017; --radius:12px; --radius-s:8px;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --font:ui-sans-system,-apple-system,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+}
+[data-theme="light"]{
+  --bg:#f4f6fb; --bg2:#ffffff; --bg3:#eef2f9; --border:#dbe3f0; --border2:#c3cfe3;
+  --text:#16202f; --muted:#54637c; --muted2:#8593ad;
+  --accent:#2563eb; --accent2:#1d4ed8; --accent-ink:#fff;
+  --code-bg:#0f172a; --shadow:0 10px 30px rgba(30,50,90,.12);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+a{color:var(--accent2)}
+button{font:inherit}
+.mono{font-family:var(--mono)}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;padding:10px 12px;background:color-mix(in srgb, var(--bg) 88%, transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+[data-theme="light"] .topbar{background:rgba(255,255,255,.9)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;user-select:none}
+.logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,var(--accent),#9b6bff);color:#fff;flex:none}
+.brand b{font-size:15px;letter-spacing:.2px;display:block;line-height:1}
+.brand small{color:var(--muted);font-size:11px;display:block}
+.urlbar{flex:1;display:flex;gap:8px;min-width:0}
+.urlbar input{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px;outline:none}
+.urlbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent)}
+.btn{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;min-height:42px;touch-action:manipulation}
+.btn:hover{border-color:var(--border2);filter:brightness(1.06)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{background:transparent}
+.btn.small{min-height:34px;padding:7px 10px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.iconbtn{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;font-size:17px;flex:none}
+.layout{display:grid;grid-template-columns:320px 1fr;min-height:calc(100dvh - 55px)}
+.sidebar{border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;min-height:0;position:sticky;top:55px;height:calc(100dvh - 55px)}
+.side-head{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.repo-mini{display:flex;gap:10px;align-items:center;min-width:0}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;flex:none;font-weight:800}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.repo-mini b{font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repo-mini span{font-size:11.5px;color:var(--muted);display:block}
+.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
+.crumbs button{background:transparent;border:0;color:var(--accent2);cursor:pointer;padding:4px 2px;font-weight:600}
+.crumbs .sep{color:var(--muted2)}
+.crumbs .cur{color:var(--text);font-weight:700;background:var(--bg3);border:1px solid var(--border);padding:3px 8px;border-radius:20px}
+.side-tools{display:flex;gap:6px}
+.side-tools input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;min-width:0}
+.filelist{overflow:auto;flex:1;padding:8px;-webkit-overflow-scrolling:touch}
+.frow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:var(--text);border-radius:9px;padding:10px;cursor:pointer;font-size:13.5px}
+.frow:hover{background:var(--bg3)}
+.frow.active{background:color-mix(in srgb, var(--accent) 16%, transparent);border-color:color-mix(in srgb, var(--accent) 40%, transparent)}
+.frow .ic{width:26px;height:26px;display:grid;place-items:center;border-radius:7px;background:var(--bg3);border:1px solid var(--border);flex:none;font-size:14px}
+.frow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .meta{color:var(--muted);font-size:11px;flex:none}
+.frow.dir .ic{background:color-mix(in srgb, var(--amber) 18%, transparent)}
+.main{min-width:0;display:flex;flex-direction:column;min-height:0}
+.toolbar{position:sticky;top:55px;z-index:20;display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
+.toolbar .path{font-family:var(--mono);font-size:12px;color:var(--muted);flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--muted);padding:8px 12px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12.5px}
+.seg button.on{background:var(--accent);color:#fff}
+.content{flex:1;min-height:40vh;display:flex;flex-direction:column;min-width:0}
+.view{flex:1;display:flex;flex-direction:column;min-width:0}
+.codewrap{background:var(--code-bg);color:#e6edf7;overflow:auto;flex:1;min-height:300px}
+[data-theme="light"] .codewrap{background:#0f172a}
+.codeline{display:flex;min-width:max-content}
+.codeline:hover{background:rgba(255,255,255,.04)}
+.ln{width:58px;flex:none;text-align:right;padding:6px 12px 6px 8px;color:#6b7a93;font-family:var(--mono);font-size:12.5px;user-select:none;border-right:1px solid rgba(255,255,255,.08);position:sticky;left:0;background:inherit}
+.lc{padding:6px 16px;font-family:var(--mono);font-size:12.8px;line-height:1.55;white-space:pre}
+.mdwrap{padding:18px;max-width:860px;width:100%;margin:0 auto;line-height:1.65}
+.mdwrap h1,.mdwrap h2,.mdwrap h3{line-height:1.25;margin:1.2em 0 .5em}
+.mdwrap pre{background:var(--code-bg);color:#e6edf7;padding:14px;border-radius:10px;overflow:auto}
+.mdwrap code{font-family:var(--mono);font-size:.88em;background:color-mix(in srgb, var(--accent) 12%, transparent);padding:2px 6px;border-radius:6px}
+.mdwrap pre code{background:transparent;padding:0}
+.mdwrap table{border-collapse:collapse;width:100%;overflow:auto;display:block}
+.mdwrap th,.mdwrap td{border:1px solid var(--border);padding:8px 10px}
+.mdwrap blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:8px 14px;background:var(--bg2);border-radius:0 8px 8px 0}
+.mdwrap img{max-width:100%;border-radius:8px}
+.previewbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;font-size:12.5px}
+.previewframe{flex:1;min-height:60vh;background:#fff;border:0;width:100%;height:calc(100dvh - 220px)}
+.notice{border:1px solid var(--border);background:var(--bg2);border-radius:10px;padding:12px;font-size:13px;color:var(--muted)}
+.notice.warn{border-color:color-mix(in srgb, var(--amber) 50%, transparent);color:var(--text)}
+.notice.err{border-color:color-mix(in srgb, var(--red) 55%, transparent)}
+.state{padding:34px 18px;text-align:center;color:var(--muted);max-width:640px;margin:0 auto}
+.state h2{color:var(--text)}
+.spinner{width:26px;height:26px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Dashboard */
+.dash{max-width:1080px;margin:0 auto;padding:22px 16px 60px;width:100%}
+.hero{border:1px solid var(--border);background:linear-gradient(180deg,color-mix(in srgb, var(--accent) 14%, var(--bg2)),var(--bg2));border-radius:18px;padding:26px 20px;box-shadow:var(--shadow)}
+.hero h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px);letter-spacing:-.5px}
+.hero p{color:var(--muted);margin:0 0 16px;line-height:1.6}
+.bigform{display:flex;gap:8px;flex-wrap:wrap}
+.bigform input{flex:1;min-width:220px;padding:13px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px}
+.samples{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:20px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px}
+.card{border:1px solid var(--border);background:var(--bg2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card b{font-size:14px}
+.card small{color:var(--muted)}
+.card .row{display:flex;gap:8px}
+.footer{padding:18px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+/* Drawer (mobile) */
+.scrim{display:none}
+.drawerbtn{display:none}
+.modal{position:fixed;inset:0;display:none;place-items:center;padding:16px;z-index:100}
+.modal.open{display:grid}
+.modal .box{max-width:720px;width:100%;max-height:86dvh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.hl-k{color:#7aa5ff}.hl-s{color:#9ece6a}.hl-c{color:#6b7a93;font-style:italic}.hl-n{color:#ff9e64}.hl-f{color:#7dcfff}
+.searchres{max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.searchres button{display:flex;width:100%;gap:8px;background:transparent;border:0;color:var(--text);padding:9px 10px;cursor:pointer;font-size:13px;text-align:left}
+.searchres button:hover{background:var(--bg3)}
+.searchres mark{background:var(--amber);color:#000;border-radius:3px;padding:0 2px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:13px}
+.badge{display:inline-block;font-size:11px;border:1px solid var(--border);border-radius:20px;padding:3px 9px;color:var(--muted)}
+.deplist{font-size:12.5px;max-height:160px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg)}
+.deplist .ok{color:var(--green)}.deplist .bad{color:var(--red)}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:fixed;inset:55px auto 0 0;width:min(86vw,340px);z-index:60;transform:translateX(-102%);transition:transform .22s ease;height:calc(100dvh - 55px)}
+  .sidebar.open{transform:none;box-shadow:var(--shadow)}
+  .scrim{display:block;position:fixed;inset:55px 0 0 0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:55}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawerbtn{display:grid}
+  .previewframe{height:calc(100dvh - 260px)}
+  .topbar{flex-wrap:wrap}
+  .urlbar{order:3;flex-basis:100%}
+  .mdwrap{padding:14px}
+}
+@media (min-width:901px){.scrim{display:none!important}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+<link rel="stylesheet" id="hljsTheme" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="all" onload="this.media='all'">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand" id="brandHome" title="Go to dashboard"> <div class="logo">R</div>
+    <div><b>Repo Apps</b><small>GitHub explorer + HTML preview</small></div>
+  </div>
+  <button class="iconbtn drawerbtn" id="drawerBtn" aria-label="Toggle file explorer">☰</button>
+  <form class="urlbar" id="urlForm">
+    <input id="urlInput" type="url" inputmode="url" placeholder="Paste GitHub URL — e.g. https://github.com/mdn/beginner-html-site" aria-label="GitHub repository URL" autocomplete="off" spellcheck="false">
+    <button class="btn primary" type="submit">Open</button>
+  </form>
+  <button class="iconbtn" id="themeBtn" title="Toggle light/dark theme" aria-label="Toggle theme">◐</button>
+  <button class="iconbtn" id="aboutBtn" title="About / Help" aria-label="About">?</button>
+</header>
+<div class="scrim" id="scrim"></div>
+<main id="viewDash">
+  <div class="dash">
+    <section class="hero">
+      <h1>Open any public repo in your browser.</h1>
+      <p>Browse directories, read syntax-highlighted source, render Markdown, and <b>preview standalone HTML apps</b> with local CSS/JS resolved — from a single <span class="mono">index.html</span> opened via <span class="mono">file://</span>. No install, no server, no token.</p>
+      <form class="bigform" id="dashForm">
+        <input id="dashInput" type="text" placeholder="https://github.com/owner/repo" aria-label="Repository URL" spellcheck="false">
+        <button class="btn primary" type="submit">Explore →</button>
+      </form>
+      <div class="samples">
+        <span class="badge">Try:</span>
+        <button class="chip" data-sample="https://github.com/mdn/beginner-html-site">mdn/beginner-html-site</button>
+        <button class="chip" data-sample="https://github.com/markedjs/marked">markedjs/marked</button>
+        <button class="chip" data-sample="https://github.com/lodash/lodash">lodash/lodash</button>
+      </div>
+      <div class="notice warn" style="margin-top:14px">⚠️ Repository HTML is <b>untrusted</b>. Previews run in a sandboxed iframe (<span class="mono">sandbox="allow-scripts …"</span> without <span class="mono">allow-same-origin</span>), isolated from this app's storage. Sandboxing reduces risk but arbitrary code is never 100% safe — preview only repos you trust. See About.</div>
+    </section>
+    <h3 style="margin:20px 4px 0">Recent repositories</h3>
+    <p style="color:var(--muted);font-size:13px;margin:6px 4px">Stored only in your browser (localStorage). Large file contents are never persisted.</p>
+    <div class="grid" id="historyGrid"></div>
+    <div id="emptyHist" class="notice">No history yet. Open a repository above to get started. First-time tip: open <span class="mono">mdn/beginner-html-site</span>, then click an <span class="mono">.html</span> file → <b>Preview as App</b>.</div>
+    <h3 style="margin:22px 4px 6px">How it works</h3>
+    <div class="grid">
+      <div class="card"><b>📁 Explorer</b><small>Directory listings via GitHub Contents API, loaded on demand and cached per session. Breadcrumbs, back/forward, branch-aware.</small></div>
+      <div class="card"><b>📝 Source + Markdown</b><small>Line numbers, copy/download, syntax highlight (CDN with offline fallback). Markdown renders by default with raw toggle.</small></div>
+      <div class="card"><b>⚡ Preview as App</b><small>Local <span class="mono">&lt;script src&gt;</span>/<span class="mono">&lt;link&gt;</span>/<span class="mono">&lt;img&gt;</span> are fetched from the repo, CSS <span class="mono">@import</span>/<span class="mono">url()</span> resolved, JS/CSS inlined in order, then rendered in a sandboxed iframe.</small></div>
+    </div>
+  </div>
+</main>
+<main id="viewApp" hidden>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Repository explorer">
+      <div class="side-head">
+        <div class="repo-mini"><div class="avatar" id="repoAvatar">?</div>
+          <div style="min-width:0"><b id="repoName">—</b><span id="repoSub">—</span></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn small" id="homeBtn">⌂ Overview</button>
+          <button class="btn small" id="backBtn" title="Back">←</button>
+          <button class="btn small" id="fwdBtn" title="Forward">→</button>
+          <select id="branchSel" class="btn small" title="Branch" style="flex:1;min-width:0"></select>
+        </div>
+        <div class="crumbs" id="crumbs"></div>
+        <div class="side-tools">
+          <input id="filterInput" placeholder="Filter this folder…" aria-label="Filter files">
+          <button class="btn small" id="searchBtn" title="Search all filenames (git tree)">🔍</button>
+        </div>
+        <div class="searchres" id="searchRes" hidden></div>
+      </div>
+      <div class="filelist" id="fileList"></div>
+      <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px">
+        <button class="btn small ghost" id="newRepoBtn">＋ New repo</button>
+        <button class="btn small ghost" id="readmeBtn">📖 README</button>
+      </div>
+    </aside>
+    <section class="main">
+      <div class="toolbar">
+        <button class="btn small" id="upBtn">↑ Up</button>
+        <span class="path" id="curPath">—</span>
+        <div class="seg" id="modeSeg" hidden>
+          <button data-mode="code">Source</button>
+          <button data-mode="md">Rendered</button>
+          <button data-mode="preview">Preview as App</button>
+        </div>
+        <button class="btn small" id="copyBtn" hidden>⧉ Copy</button>
+        <button class="btn small" id="dlBtn" hidden>⬇ Download</button>
+        <button class="btn small" id="refreshBtn" hidden>↻ Refresh preview</button>
+        <button class="btn small" id="openTabBtn" hidden>↗ Open isolated tab</button>
+      </div>
+      <div class="content" id="contentArea"></div>
+    </section>
+  </div>
+</main>
+<footer class="footer" id="footerSign">Repo Apps · single-file explorer · <span id="signLine">…</span> · <a href="#" id="footAbout">About / Help / Limitations</a></footer>
+<div class="modal" id="aboutModal" role="dialog" aria-modal="true" aria-label="About">
+  <div class="box">
+    <h2 style="margin-top:0">About Repo Apps</h2>
+    <div class="kv">
+      <span>Loading a repo</span><span>Paste any <span class="mono">github.com/owner/repo</span> (also <span class="mono">/tree/branch/path</span> or <span class="mono">/blob/branch/file</span>) and press Open. Default branch is auto-detected; no token needed for public repos.</span>
+      <span>Source vs Preview</span><span><b>Source</b> only displays text — nothing executes. <b>Preview as App</b> fetches the HTML + its local CSS/JS/images, inlines them in order, and executes inside a sandboxed iframe. Use Preview only for standalone pages (no backend).</span>
+      <span>Markdown</span><span>Rendered by default (sanitized). Toggle to Raw to see source. Relative images/links resolve against the file's repo path; broken ones show a placeholder.</span>
+      <span>Dependency resolver</span><span>Local <span class="mono">src/href</span> → resolved relative to the HTML file → fetched via <span class="mono">raw.githubusercontent.com</span> (cached, deduped, order-preserved). Stylesheets are inlined (avoids raw MIME <span class="mono">nosniff</span> blocking); CSS <span class="mono">@import</span>/<span class="mono">url()</span> rewritten recursively with circular-import guard; external CDN URLs left untouched.</span>
+      <span>GitHub API limits</span><span>Unauthenticated: ~60 req/hour/IP. Directory + file fetches are cached; filename search uses one recursive-tree request. On 403/429 the app shows reset time. Private repos are unsupported (no auth).</span>
+      <span>Security</span><span>Repo content is untrusted: Markdown is sanitized, <span class="mono">eval/new Function</span> never run on repo code in the parent, previews use <span class="mono">&lt;iframe sandbox="allow-scripts allow-modals allow-forms allow-popups …"&gt;</span> <b>without</b> <span class="mono">allow-same-origin</span> so previews get an opaque origin (no access to this app's JS/localStorage). Sandbox ≠ perfect safety.</span>
+      <span>Browser limits</span><span><span class="mono">file://</span>-safe (no modules/workers). Some sites block framing/hotlinking via CSP/CORS; huge files (&gt;~1.5MB) are truncated with download fallback; binary files show metadata + download.</span>
+    </div>
+    <h3>Sign-off</h3>
+    <p id="aboutSign" class="notice">…</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn primary" id="aboutClose">Close</button></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" onerror="window.__hljsFailed=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" onerror="window.__markedFailed=1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" onerror="window.__purifyFailed=1"></script>
+<script>
+"use strict";
+/* Repo Apps — single-file app. Vanilla JS, file:// safe. */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const PROD_DATE=new Date().toISOString();
+const MODEL_ID="Muse Spark 1.3 Contributor (muse-spark-1.3-contributor) via OpenCode";
+const SIGN_TEXT=`Produced ${PROD_DATE} · ${MODEL_ID}`;
+$("#signLine").textContent=SIGN_TEXT; $("#aboutSign").textContent=SIGN_TEXT+" · Single index.html, no build.";
+const store={
+  get(k,f){try{const v=localStorage.getItem(k);return v==null?f:JSON.parse(v)}catch(e){return f}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+let THEME=store.get("ra_theme","dark");
+function applyTheme(){document.documentElement.dataset.theme=THEME;$("#themeBtn").textContent=THEME==="dark"?"◐":"☀"}
+applyTheme();
+$("#themeBtn").onclick=()=>{THEME=THEME==="dark"?"light":"dark";store.set("ra_theme",THEME);applyTheme()};
+function openAbout(){$("#aboutModal").classList.add("open")}
+function closeAbout(){$("#aboutModal").classList.remove("open")}
+$("#aboutBtn").onclick=openAbout; $("#footAbout").onclick=e=>{e.preventDefault();openAbout()}; $("#aboutClose").onclick=closeAbout;
+$("#aboutModal").addEventListener("click",e=>{if(e.target.id==="aboutModal")closeAbout()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeAbout();closeDrawer()}});
+$("#brandHome").onclick=()=>showDash();
+function showDash(){ $("#viewDash").hidden=false; $("#viewApp").hidden=true; renderHistory(); closeDrawer();}
+function showApp(){ $("#viewDash").hidden=true; $("#viewApp").hidden=false;}
+function closeDrawer(){ $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("open")}
+$("#drawerBtn").onclick=()=>{ $("#sidebar").classList.toggle("open"); $("#scrim").classList.toggle("open")};
+$("#scrim").onclick=closeDrawer;
+/* ---------- history ---------- */
+function getHist(){return store.get("ra_hist",[])}
+function pushHist(entry){
+  let h=getHist().filter(x=>!(x.owner===entry.owner&&x.repo===entry.repo));
+  h.unshift({...entry,ts:Date.now()}); h=h.slice(0,24); store.set("ra_hist",h); renderHistory();
+}
+function renderHistory(){
+  const g=$("#historyGrid"); const h=getHist(); g.innerHTML="";
+  $("#emptyHist").style.display=h.length?"none":"block";
+  h.forEach(e=>{
+    const d=document.createElement("div"); d.className="card";
+    d.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><div class="avatar">${e.avatar?`<img src="${e.avatar}" alt="">`:"📦"}</div><div style="min-width:0"><b></b><small></small></div></div><div class="row"></div>`;
+    d.querySelector("b").textContent=e.owner+"/"+e.repo;
+    d.querySelector("small").textContent="last visited "+new Date(e.ts).toLocaleString()+(e.branch?" · "+e.branch:"");
+    const row=d.querySelector(".row");
+    const o=document.createElement("button");o.className="btn small primary";o.textContent="Open";o.onclick=()=>loadRepo(e.owner,e.repo,e.branch||null,"");
+    const r=document.createElement("button");r.className="btn small";r.textContent="Remove";r.onclick=()=>{store.set("ra_hist",getHist().filter(x=>!(x.owner===e.owner&&x.repo===e.repo)));renderHistory()};
+    row.append(o,r); g.appendChild(d);
+  });
+  const clr=document.createElement("div"); clr.style.marginTop="10px";
+  if(h.length){clr.innerHTML="";const b=document.createElement("button");b.className="btn small ghost";b.textContent="Clear all history";b.onclick=()=>{store.set("ra_hist",[]);renderHistory()};clr.appendChild(b);g.appendChild(clr)}
+}
+renderHistory();
+/* ---------- state ---------- */
+const S={owner:null,repo:null,branch:null,meta:null,path:"",kind:"dir",nav:[],navIdx:-1,reqId:0,
+  dirCache:new Map(),fileCache:new Map(),resCache:new Map(),treeCache:null,viewMode:"code",mdMode:store.get("ra_mdmode","rendered"),
+  previewDoc:null,previewErrors:[],curFileText:"",curFileSha:""};
+const GH="https://api.github.com";
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function b64ToText(b64){ // large-safe base64 -> utf8
+  const bin=atob(b64.replace(/\n/g,"")); const len=bin.length; const bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function encPath(p){return p.split("/").filter(x=>x.length).map(encodeURIComponent).join("/")}
+function rawUrl(path){return `https://raw.githubusercontent.com/${S.owner}/${S.repo}/${encodeURIComponent(S.branch)}/${encPath(path)}`}
+function blobUrl(path){return `https://github.com/${S.owner}/${S.repo}/blob/${encodeURIComponent(S.branch)}/${encPath(path)}`}
+async function ghFetch(url){
+  const r=await fetch(url,{headers:{"Accept":"application/vnd.github+json"}});
+  if(r.status===403||r.status===429){
+    let msg="GitHub API rate limit reached (60/hr unauthenticated). ";
+    const reset=r.headers.get("x-ratelimit-reset"); if(reset){msg+=`Resets ${new Date(+reset*1000).toLocaleTimeString()}. `}
+    msg+="Wait a bit or try again later. Directory/file caches still work.";
+    const e=new Error(msg); e.rate=true; throw e;
+  }
+  if(!r.ok){let t="";try{t=await r.text()}catch(_){} throw new Error(`GitHub API ${r.status}: ${t.slice(0,220)||r.statusText}`)}
+  return r.json();
+}
+function parseGitHubUrl(u){
+  u=String(u).trim(); if(!u)throw new Error("Enter a GitHub URL.");
+  if(!/^https?:\/\//i.test(u))u="https://"+u;
+  let m; try{m=new URL(u)}catch(e){throw new Error("That URL is not valid. Example: https://github.com/owner/repo")}
+  if(m.hostname!=="github.com"&&m.hostname!=="www.github.com")throw new Error("Only github.com URLs are supported.");
+  const parts=m.pathname.replace(/^\/|\/$/g,"").split("/").filter(Boolean);
+  if(parts.length<2)throw new Error("URL must include owner and repository, e.g. https://github.com/owner/repo");
+  const owner=parts[0],repo=parts[1].replace(/\.git$/,"");let branch=null,subpath="";
+  if(parts[2]==="tree"||parts[2]==="blob"){branch=parts[3]?decodeURIComponent(parts[3]):null;subpath=parts.slice(4).map(decodeURIComponent).join("/")}
+  return {owner,repo,branch,subpath};
+}
+/* ---------- navigation ---------- */
+function setHash(){const p=S.path?"/"+S.path.split("/").map(encodeURIComponent).join("/"):"";location.hash=`#/${S.owner}/${S.repo}/${encodeURIComponent(S.branch||"HEAD")}${p}`}
+let suppressHash=false;
+window.addEventListener("hashchange",()=>{if(suppressHash)return;const h=location.hash.match(/^#\/([^/]+)\/([^/]+)\/([^/]+)(\/.*)?/);if(!h||!S.owner)return;
+  const [,o,r,b,pp]=h;const path=pp?decodeURIComponent(pp.slice(1)):null;
+  if(o===S.owner&&r===S.repo&&(b===S.branch||S.branch)){if(path!==null&&path!==S.path)navTo(path,true)}});
+function navPush(kind,path){S.nav=S.nav.slice(0,S.navIdx+1);S.nav.push({kind,path});if(S.nav.length>100)S.nav.shift();S.navIdx=S.nav.length-1;updateNavBtns()}
+function navTo(path,isHash){ // path "" = root dir
+  navPush(S.kind,path); render(); if(window.innerWidth<=900)closeDrawer();
+}
+function updateNavBtns(){$("#backBtn").disabled=S.navIdx<=0;$("#fwdBtn").disabled=S.navIdx>=S.nav.length-1}
+$("#backBtn").onclick=()=>{if(S.navIdx>0){S.navIdx--;const n=S.nav[S.navIdx];S.kind=n.kind;S.path=n.path;render(true)}};
+$("#fwdBtn").onclick=()=>{if(S.navIdx<S.nav.length-1){S.navIdx++;const n=S.nav[S.navIdx];S.kind=n.kind;S.path=n.path;render(true)}};
+$("#upBtn").onclick=()=>{if(!S.path)return;const p=S.path.split("/").slice(0,-1).join("/");S.kind="dir";S.path=p;navPush("dir",p);render()};
+/* ---------- repo loading ---------- */
+async function loadRepo(owner,repo,branchHint,pathHint){
+  showApp(); setLoading("Loading repository…");
+  S.owner=owner;S.repo=repo;S.branch=branchHint;S.meta=null;S.path="";S.kind="dir";
+  S.dirCache.clear();S.fileCache.clear();S.resCache.clear();S.treeCache=null;S.nav=[];S.navIdx=-1;
+  S.previewDoc=null;S.curFileText="";
+  try{
+    const meta=await ghFetch(`${GH}/repos/${owner}/${repo}`);
+    S.meta=meta; S.branch=branchHint||meta.default_branch||"main";
+    pushHist({owner,repo,url:`https://github.com/${owner}/${repo}`,branch:S.branch,avatar:meta.owner&&meta.owner.avatar_url});
+    $("#repoName").textContent=owner+"/"+repo;
+    $("#repoSub").textContent=(meta.description||"No description").slice(0,90)+` · ⭑${meta.stargazers_count??0} · ${S.branch}`;
+    $("#repoAvatar").innerHTML=meta.owner&&meta.owner.avatar_url?`<img src="${meta.owner.avatar_url}" alt="">`:esc(owner[0].toUpperCase());
+    await loadBranches();
+    if(pathHint){
+      // Determine if path is file or dir: try contents API
+      try{
+        const c=await ghFetch(`${GH}/repos/${owner}/${repo}/contents/${encPath(pathHint)}?ref=${encodeURIComponent(S.branch)}`);
+        if(Array.isArray(c)){S.kind="dir";S.path=pathHint.replace(/\/$/,"")}
+        else if(c.type==="file"){S.kind="file";S.path=pathHint}
+        else{S.kind="dir";S.path=pathHint}
+      }catch(e){S.kind="dir";S.path=""}
+    } else {
+      // Convenient overview: root dir
+      S.kind="dir";S.path="";
+    }
+    S.nav=[{kind:S.kind==="file"?"home":"dir",path:"__home__"}];S.navIdx=0;
+    // Actually start at overview screen; push dir after
+    S.kind="dir";
+    render();
+  }catch(e){setError(esc(e.message))}
+}
+async function loadBranches(){
+  const sel=$("#branchSel");sel.innerHTML="";
+  const b0=document.createElement("option");b0.value=S.branch;b0.textContent="⎇ "+S.branch;sel.appendChild(b0);
+  try{const br=await ghFetch(`${GH}/repos/${S.owner}/${S.repo}/branches?per_page=20`);sel.innerHTML="";
+    br.forEach(x=>{const o=document.createElement("option");o.value=x.name;o.textContent="⎇ "+x.name;if(x.name===S.branch)o.selected=true;sel.appendChild(o)});
+    if(S.meta){const d=document.createElement("option");d.value=S.meta.default_branch;d.textContent="★ "+S.meta.default_branch+" (default)";sel.prepend(d);sel.value=S.branch}
+  }catch(e){/* keep single */}
+}
+$("#branchSel").onchange=async e=>{S.branch=e.target.value;S.dirCache.clear();S.fileCache.clear();S.treeCache=null;S.path="";S.kind="dir";setHash();render()};
+async function listDir(path){
+  const key=S.branch+"::"+path;
+  if(S.dirCache.has(key))return S.dirCache.get(key);
+  const q=path?"/"+encPath(path):"";
+  const data=await ghFetch(`${GH}/repos/${S.owner}/${S.repo}/contents${q}?ref=${encodeURIComponent(S.branch)}`);
+  if(!Array.isArray(data))throw new Error("Expected directory but got a file.");
+  data.sort((a,b)=>(a.type===b.type?a.name.localeCompare(b.name):a.type==="dir"?-1:1));
+  S.dirCache.set(key,data);return data;
+}
+async function getFile(path){
+  const key=S.branch+"::"+path;
+  if(S.fileCache.has(key))return S.fileCache.get(key);
+  const data=await ghFetch(`${GH}/repos/${S.owner}/${S.repo}/contents/${encPath(path)}?ref=${encodeURIComponent(S.branch)}`);
+  if(Array.isArray(data))throw new Error("Expected file but got a directory.");
+  if(data.type!=="file")throw new Error("Not a file: "+data.type);
+  let text=null,truncated=false;
+  if(data.encoding==="base64"&&data.content){
+    if(data.size>1500000){ // use raw for huge
+      const r=await fetch(data.download_url); text=await r.text(); truncated=text.length>200000;
+      if(truncated)text=text.slice(0,200000);
+    } else text=b64ToText(data.content);
+  } else if(data.download_url){
+    const r=await fetch(data.download_url); if(!r.ok)throw new Error("Download failed: "+r.status);
+    // binary guard
+    const ct=r.headers.get("content-type")||"";
+    if(!/text|json|javascript|xml|markdown|svg/i.test(ct)&&data.size>500000)throw new Error("Binary file — use Download.");
+    text=await r.text(); if(text.length>200000){text=text.slice(0,200000);truncated=true}
+  }
+  const rec={meta:data,text,truncated};S.fileCache.set(key,rec);return rec;
+}
+/* ---------- render shell ---------- */
+function setLoading(msg){$("#contentArea").innerHTML=`<div class="state"><span class="spinner"></span><h2>Loading</h2><p>${esc(msg)}</p></div>`}
+function setError(msg){$("#contentArea").innerHTML=`<div class="state"><h2>⚠️ Something went wrong</h2><p>${msg}</p><p><button class="btn" onclick="document.getElementById('urlInput').focus()">Try another URL</button></p><p style="font-size:12px">Unauthenticated GitHub API allows ~60 requests/hour. Cached pages still work offline-ish.</p></div>`;renderExplorerShell([])}
+function fileIcon(name,type){
+  if(type==="dir")return"📁";
+  const e=name.split(".").pop().toLowerCase();
+  if(/^(png|jpe?g|gif|svg|webp|ico|bmp|avif)$/.test(e))return"🖼️";
+  if(/^(md|markdown)$/.test(e))return"📝";
+  if(/^(html?|htm)$/.test(e))return"🌐";
+  if(/^(js|ts|jsx|tsx|mjs)$/.test(e))return"🟨";
+  if(/^(css|scss|less)$/.test(e))return"🎨";
+  if(/^(json|ya?ml|toml|xml)$/.test(e))return"🧾";
+  if(/^(py|java|c|cpp|h|hpp|rs|go|rb|php|sql|sh)$/.test(e))return"💻";
+  if(/^(pdf|zip|tar|gz|mp4|mp3|woff2?|ttf)$/.test(e))return"📦";
+  return"📄";
+}
+function langOf(name){
+  const e=name.split(".").pop().toLowerCase();
+  const m={js:"javascript",mjs:"javascript",jsx:"javascript",ts:"typescript",tsx:"typescript",py:"python",html:"xml",htm:"xml",css:"css",scss:"css",json:"json",java:"java",c:"cpp",h:"cpp",cpp:"cpp",hpp:"cpp",sql:"sql",sh:"bash",yml:"yaml",yaml:"yaml",xml:"xml",md:"markdown",markdown:"markdown"};
+  return m[e]||"plaintext";
+}
+async function render(isHist){
+  showApp();
+  suppressHash=true; try{setHash()}finally{setTimeout(()=>suppressHash=false,0)}
+  updateNavBtns();
+  $("#curPath").textContent=S.kind==="file"?S.path:(S.path||"/ (root)")+` @ ${S.branch}`;
+  // explorer list for current dir context
+  const ctxDir=S.kind==="file"?S.path.split("/").slice(0,-1).join("/"):S.path;
+  renderCrumbs(ctxDir);
+  try{
+    const items=await listDir(ctxDir);
+    renderExplorerShell(items,ctxDir);
+  }catch(e){renderExplorerShell(null,ctxDir,e.message)}
+  closeDrawerIfDesktopOpen();
+  if(S.nav.length&&S.nav[S.navIdx]&&S.nav[S.navIdx].path==="__home__"){renderOverview();return}
+  if(S.kind==="dir"){renderDirView(ctxDir)}
+  else{renderFileView(S.path)}
+}
+function closeDrawerIfDesktopOpen(){if(window.innerWidth>900){$("#sidebar").classList.remove("open");$("#scrim").classList.remove("open")}}
+function renderCrumbs(dir){
+  const c=$("#crumbs");c.innerHTML="";
+  const root=document.createElement("button");root.textContent="root";root.onclick=()=>{S.kind="dir";S.path="";navPush("dir","");render()};c.appendChild(root);
+  if(!dir)return;
+  dir.split("/").forEach((seg,i,arr)=>{
+    const s=document.createElement("span");s.className="sep";s.textContent="/";c.appendChild(s);
+    const b=document.createElement("button");b.textContent=seg;
+    if(i===arr.length-1){b.className="cur";b.style.color="var(--text)";b.style.cursor="default";b.onclick=null}
+    else{const p=arr.slice(0,i+1).join("/");b.onclick=()=>{S.kind="dir";S.path=p;navPush("dir",p);render()}}
+    c.appendChild(b);
+  });
+}
+function renderExplorerShell(items,ctxDir,err){
+  const fl=$("#fileList");fl.innerHTML="";
+  const filt=($("#filterInput").value||"").toLowerCase();
+  if(err){fl.innerHTML=`<div class="notice err" style="margin:6px">${esc(err)}</div>`;return}
+  if(!items){fl.innerHTML=`<div style="padding:16px;color:var(--muted)"><span class="spinner"></span> Loading…</div>`;return}
+  const shown=items.filter(x=>!filt||x.name.toLowerCase().includes(filt));
+  if(!shown.length){fl.innerHTML=`<div class="notice" style="margin:6px">Empty directory or no matches.</div>`;return}
+  shown.forEach(it=>{
+    const b=document.createElement("button");
+    b.className="frow"+(it.type==="dir"?" dir":"")+(S.kind==="file"&&S.path===it.path?" active":"");
+    b.innerHTML=`<span class="ic"></span><span class="nm"></span><span class="meta"></span>`;
+    b.querySelector(".ic").textContent=fileIcon(it.name,it.type);
+    b.querySelector(".nm").textContent=it.name;
+    b.querySelector(".meta").textContent=it.type==="dir"?"›":(it.size>1024?Math.round(it.size/1024)+"k":"");
+    b.title=it.path;
+    b.onclick=()=>{
+      if(it.type==="dir"){S.kind="dir";S.path=it.path;navPush("dir",it.path);render()}
+      else{S.kind="file";S.path=it.path;S.viewMode=defaultMode(it.name);navPush("file",it.path);render()}
+      if(window.innerWidth<=900)closeDrawer();
+    };
+    fl.appendChild(b);
+  });
+}
+$("#filterInput").oninput=()=>renderExplorerShell(S.dirCache.get(S.branch+"::"+(S.kind==="file"?S.path.split("/").slice(0,-1).join("/"):S.path))||[],(S.kind==="file"?S.path.split("/").slice(0,-1).join("/"):S.path));
+function defaultMode(name){
+  if(/\.(md|markdown)$/i.test(name))return store.get("ra_mdmode","rendered")==="rendered"?"md":"code";
+  if(/\.(html?|htm)$/i.test(name))return"code";
+  return"code";
+}
+function renderOverview(){
+  const m=S.meta;$("#modeSeg").hidden=true;$("#copyBtn").hidden=true;$("#dlBtn").hidden=true;$("#refreshBtn").hidden=true;$("#openTabBtn").hidden=true;
+  $("#contentArea").innerHTML=`<div class="mdwrap" style="max-width:760px">
+    <div style="display:flex;gap:14px;align-items:center;margin:8px 0 4px"><div class="avatar" style="width:52px;height:52px;font-size:20px">${m&&m.owner?`<img src="${m.owner.avatar_url}">`:"📦"}</div>
+    <div><h2 style="margin:0">${esc(S.owner+"/"+S.repo)}</h2><div style="color:var(--muted);font-size:13px">${esc((m&&m.description)||"")}</div></div></div>
+    <p><span class="badge">⎇ ${esc(S.branch)}</span> <span class="badge">${m?esc(m.default_branch||"")+" default":""}</span> <span class="badge">⭑ ${m?m.stargazers_count:0}</span> <a href="https://github.com/${S.owner}/${S.repo}" target="_blank" rel="noopener">Open on GitHub ↗</a></p>
+    <div class="notice" id="ovFiles">Loading top-level files…</div>
+    <h3>Quick entry points</h3><div style="display:flex;gap:8px;flex-wrap:wrap" id="qpRow"></div>
+    <div class="notice warn" style="margin-top:12px">HTML previews are isolated in a sandboxed iframe with an opaque origin. CDN links keep working; local files are fetched &amp; inlined in order. See About for limits.</div>
+  </div>`;
+  (async()=>{
+    try{
+      const items=await listDir("");
+      const el=$("#ovFiles");if(!el)return;
+      el.innerHTML=`<b>${items.length}</b> items in root — pick one below or browse the explorer.`;
+      const qp=$("#qpRow");const cands=["index.html","README.md","readme.md","package.json"];
+      cands.forEach(n=>{const f=items.find(x=>x.name.toLowerCase()===n.toLowerCase());if(f){const b=document.createElement("button");b.className="btn small";b.textContent=(/html/.test(n)?"🌐 ":"📄 ")+f.name;b.onclick=()=>{S.kind="file";S.path=f.path;S.viewMode=defaultMode(f.name);navPush("file",f.path);render()};qp.appendChild(b)}});
+      if(!qp.children.length)qp.innerHTML=`<span style="color:var(--muted);font-size:13px">No index.html / README / package.json at root — browse left.</span>`;
+    }catch(e){const el=$("#ovFiles");if(el)el.innerHTML=`<span style="color:var(--red)">${esc(e.message)}</span>`}
+  })();
+}
+function renderDirView(dir){
+  $("#modeSeg").hidden=true;$("#copyBtn").hidden=true;$("#dlBtn").hidden=true;$("#refreshBtn").hidden=true;$("#openTabBtn").hidden=true;
+  $("#contentArea").innerHTML=`<div class="state"><h2>📁 ${esc(dir||"/ (root)")}</h2><p>Select a file from the explorer to view it. Directories load on demand via the GitHub API.</p><p><span class="badge">Tip: 🔍 searches all filenames via one recursive-tree call</span></p></div>`;
+}
+/* ---------- file view ---------- */
+async function renderFileView(path){
+  const myId=++S.reqId;
+  $("#contentArea").innerHTML=`<div class="state"><span class="spinner"></span><p>Loading ${esc(path)}…</p></div>`;
+  $("#copyBtn").hidden=true;$("#dlBtn").hidden=true;$("#refreshBtn").hidden=true;$("#openTabBtn").hidden=true;$("#modeSeg").hidden=true;
+  try{
+    const rec=await getFile(path);
+    if(myId!==S.reqId)return; // stale
+    S.curFileText=rec.text||"";S.curFileSha=rec.meta.sha;
+    const name=path.split("/").pop();
+    const isMd=/\.(md|markdown)$/i.test(name), isHtml=/\.(html?|htm)$/i.test(name);
+    const isImg=/\.(png|jpe?g|gif|svg|webp|ico|bmp|avif)$/i.test(name);
+    const binary=/\.(pdf|zip|tar|gz|mp4|mp3|mov|woff2?|ttf|eot)$/i.test(name)||(rec.text==null);
+    const seg=$("#modeSeg");seg.hidden=false;
+    const btns=[...seg.querySelectorAll("button")];
+    btns.forEach(b=>b.style.display="");
+    const bCode=btns[0],bMd=btns[1],bPrev=btns[2];
+    bMd.style.display=isMd?"":"none"; bPrev.style.display=isHtml?"":"none";
+    if(S.viewMode==="md"&&!isMd)S.viewMode="code";
+    if(S.viewMode==="preview"&&!isHtml)S.viewMode="code";
+    btns.forEach(b=>b.classList.toggle("on",b.dataset.mode===S.viewMode||(S.viewMode==="code"&&b.dataset.mode==="code")));
+    $("#copyBtn").hidden=false;$("#dlBtn").hidden=false;
+    if(isImg){renderImageView(rec,path);return}
+    if(binary){renderBinaryView(rec,path);return}
+    if(S.viewMode==="md"&&isMd)renderMarkdownView(rec,path);
+    else if(S.viewMode==="preview"&&isHtml)renderPreview(rec,path);
+    else renderCodeView(rec,path,rec.truncated);
+  }catch(e){if(myId!==S.reqId)return;$("#contentArea").innerHTML=`<div class="state"><h2>Cannot open file</h2><p>${esc(e.message)}</p><p><button class="btn" id="retryBtn">Retry</button></p></div>`;$("#retryBtn").onclick=()=>renderFileView(path)}
+}
+$("#modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  S.viewMode=b.dataset.mode;
+  if(S.viewMode==="md")store.set("ra_mdmode","rendered");
+  if(S.viewMode==="code"&&/\.(md|markdown)$/i.test(S.path))store.set("ra_mdmode","raw");
+  renderFileView(S.path);
+});
+function renderCodeView(rec,path,truncated){
+  $("#refreshBtn").hidden=true;$("#openTabBtn").hidden=true;
+  const lang=langOf(path);
+  const code=rec.text||"";
+  const lines=code.split("\n");
+  const cap=lines.length>4000;
+  const shown=cap?lines.slice(0,4000):lines;
+  let html="";
+  const useHljs=window.hljs&&!window.__hljsFailed;
+  if(useHljs){
+    try{
+      let out;
+      if(lang!=="plaintext"&&hljs.getLanguage(lang))out=hljs.highlight(code.slice(0,200000),{language:lang}).value;
+      else out=hljs.highlightAuto(code.slice(0,60000)).value;
+      // line-split highlighted html safely per line is hard; use plain line numbers with full highlight block + overlay numbers via CSS? Use split on \n of highlighted (tags may break) — instead render as single pre with line-number gutter via JS count.
+      const nLines=code.split("\n").length;
+      let gutter="";for(let i=1;i<=Math.min(nLines,4000);i++)gutter+=`<div class="ln" style="position:static;border:0">${i}</div>`;
+      $("#contentArea").innerHTML=`${truncated?`<div class="notice warn" style="margin:10px">Truncated to first 200k chars / 4000 lines. Use Download for full file.</div>`:""}
+      <div class="codewrap" style="display:flex"><div style="flex:none">${gutter}</div><pre style="margin:0;padding:6px 0;flex:1"><code class="lc hljs" style="display:block">${out}</code></pre></div>`;
+      return;
+    }catch(e){/* fallback */}
+  }
+  // fallback: escaped + tiny regex highlight
+  const escLine=s=>esc(s);
+  html=shown.map((ln,i)=>`<div class="codeline"><span class="ln">${i+1}</span><span class="lc">${tinyHl(escLine(ln))||" "}</span></div>`).join("");
+  $("#contentArea").innerHTML=`${truncated?`<div class="notice warn" style="margin:10px">Large file truncated (first 4000 lines). Use Download.</div>`:""}<div class="codewrap">${html}${cap?`<div class="notice" style="margin:10px">… ${lines.length-4000} more lines (truncated for performance).</div>`:""}</div>`;
+}
+function tinyHl(e){
+  // e is already escaped; highlight comments/strings/keywords conservatively
+  return e.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|&quot;[^&]*?&quot;)/g,'<span class="hl-s">$1</span>')
+    .replace(/\b(const|let|var|function|return|import|from|export|class|if|else|for|while|def|print|include|using|namespace|public|private|SELECT|FROM|WHERE)\b/g,'<span class="hl-k">$1</span>')
+    .replace(/(#[^\n]*|&lt;!--.*?--&gt;|\/\/[^\n]*)/g,'<span class="hl-c">$1</span>');
+}
+$("#copyBtn").onclick=async()=>{try{await navigator.clipboard.writeText(S.curFileText);toast("Copied to clipboard")}catch(e){toast("Copy failed: "+e.message)}};
+$("#dlBtn").onclick=()=>{
+  const name=(S.path.split("/").pop()||"file");
+  const blob=new Blob([S.curFileText],{type:"text/plain"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+};
+function toast(m){const c=$("#contentArea");const d=document.createElement("div");d.className="notice";d.style.cssText="position:sticky;top:8px;margin:8px;z-index:5";d.textContent=m;c.prepend(d);setTimeout(()=>d.remove(),2200)}
+/* ---------- markdown ---------- */
+function sanitize(html){
+  if(window.DOMPurify&&!window.__purifyFailed){try{return DOMPurify.sanitize(html,{ADD_ATTR:["target","rel"]})}catch(e){}}
+  // minimal fallback: strip script/iframe/event handlers/javascript: urls
+  return html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/<iframe[\s\S]*?<\/iframe>/gi,"").replace(/\son\w+="[^"]*"/gi,"").replace(/\son\w+='[^']*'/gi,"").replace(/javascript:/gi,"");
+}
+function mdFallback(src){
+  // compact but capable renderer: headings, lists, tables, code, quotes, links, images, bold/italic/inline code
+  let h=esc(src);
+  // fenced code
+  h=h.replace(/```(\w*)\n([\s\S]*?)```/g,(m,l,c)=>`<pre><code>${c.replace(/^\n/,"")}</code></pre>`);
+  h=h.replace(/^###### (.*)$/gm,"<h6>$1</h6>").replace(/^##### (.*)$/gm,"<h5>$1</h5>").replace(/^#### (.*)$/gm,"<h4>$1</h4>").replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>");
+  h=h.replace(/^&gt; (.*)$/gm,"<blockquote>$1</blockquote>");
+  h=h.replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.*\|\n?)+)/g,(m,hd,bd)=>{
+    const th=hd.split("|").filter(Boolean).map(c=>`<th>${c.trim()}</th>`).join("");
+    const trs=bd.trim().split("\n").map(r=>`<tr>${r.split("|").filter(Boolean).map(c=>`<td>${c.trim()}</td>`).join("")}</tr>`).join("");
+    return `<table><tr>${th}</tr>${trs}</table>`});
+  h=h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">').replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h=h.replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\*([^*]+)\*/g,"<i>$1</i>").replace(/`([^`]+)`/g,"<code>$1</code>");
+  // lists
+  h=h.replace(/^(?:- |\* )(.*)$/gm,"<li>$1</li>");h=h.replace(/(<li>.*<\/li>\n?)+/g,"<ul>$&</ul>");
+  h=h.replace(/^\d+\. (.*)$/gm,"<li>$1</li>");
+  h=h.split(/\n{2,}/).map(p=>/^\s*<(h\d|ul|ol|pre|blockquote|table|li)/.test(p)?p:`<p>${p.replace(/\n/g,"<br>")}</p>`).join("\n");
+  return h;
+}
+function resolveRelMd(html,baseDir){
+  const d=document.createElement("div");d.innerHTML=html;
+  d.querySelectorAll("img").forEach(img=>{
+    let s=img.getAttribute("src");if(!s||/^(https?:|data:|blob:|#)/i.test(s))return;
+    try{const p=normPath(baseDir+"/"+s.split("#")[0]);img.src=rawUrl(p);img.onerror=()=>{img.alt="⚠️ missing: "+s;img.style.border="1px dashed var(--red)"}}catch(e){}
+  });
+  d.querySelectorAll("a").forEach(a=>{
+    let href=a.getAttribute("href");if(!href||/^(https?:|mailto:|#|data:)/i.test(href))return;
+    try{const clean=href.split("#")[0];const p=normPath(baseDir+"/"+clean);
+      a.href=blobUrl(p);a.target="_blank";a.rel="noopener"}catch(e){}
+  });
+  // fenced code language keep
+  return d.innerHTML;
+}
+function renderMarkdownView(rec,path){
+  $("#refreshBtn").hidden=true;$("#openTabBtn").hidden=true;
+  const mode=store.get("ra_mdmode","rendered");
+  const bar=document.createElement("div");bar.style.cssText="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--bg2)";
+  bar.innerHTML=`<span class="badge">Markdown</span><div class="seg"><button data-m="rendered">Rendered</button><button data-m="raw">Raw</button></div>`;
+  const [br,bw]=bar.querySelectorAll("button");
+  br.classList.toggle("on",mode==="rendered");bw.classList.toggle("on",mode!=="rendered");
+  br.onclick=()=>{store.set("ra_mdmode","rendered");S.viewMode="md";renderFileView(path)};
+  bw.onclick=()=>{store.set("ra_mdmode","raw");S.viewMode="code";renderFileView(path)};
+  const wrap=document.createElement("div");
+  if(mode==="raw"){ $("#contentArea").innerHTML="";$("#contentArea").append(bar);renderCodeView(rec,path,rec.truncated);$("#contentArea").prepend(bar);return}
+  let html;
+  try{
+    if(window.marked&&!window.__markedFailed){html=marked.parse(rec.text||"",{breaks:true})}else html=mdFallback(rec.text||"");
+  }catch(e){html=mdFallback(rec.text||"")}
+  html=sanitize(html);
+  const baseDir=path.split("/").slice(0,-1).join("/");
+  html=resolveRelMd(html,baseDir);
+  $("#contentArea").innerHTML="";$("#contentArea").append(bar);
+  const md=document.createElement("div");md.className="mdwrap view";md.innerHTML=html||"<p><i>Empty document.</i></p>";
+  // mark broken links note
+  $("#contentArea").append(md);
+}
+function renderImageView(rec,path){
+  $("#modeSeg").hidden=true;
+  $("#contentArea").innerHTML=`<div class="state"><h3>${esc(path.split("/").pop())}</h3><img src="${rawUrl(path)}" style="max-width:100%;border-radius:12px;border:1px solid var(--border)" alt=""><p><span class="badge">${rec.meta.size} bytes</span> <a href="${rawUrl(path)}" target="_blank" rel="noopener">Open raw ↗</a></p></div>`;
+}
+function renderBinaryView(rec,path){
+  $("#modeSeg").hidden=true;
+  $("#contentArea").innerHTML=`<div class="state"><h2>📦 Binary file</h2><p class="mono">${esc(path)}</p><p>${rec.meta.size??""} bytes — preview not available.</p><p><button class="btn primary" id="dlB">⬇ Download via raw URL</button></p></div>`;
+  $("#dlB").onclick=()=>window.open(rawUrl(path),"_blank");
+}
+/* ---------- path utils ---------- */
+function normPath(p){
+  const parts=[];p.split("/").forEach(s=>{if(!s||s===".")return;if(s==="..")parts.pop();else parts.push(s)});
+  return parts.join("/");
+}
+function dirOf(p){const i=p.lastIndexOf("/");return i<0?"":p.slice(0,i)}
+function isExternalRef(u){return /^(https?:\/\/|data:|blob:|mailto:|tel:|#)/i.test(u)||u.startsWith("//")}
+function absRawFor(htmlDir,ref){
+  const clean=ref.split("#")[0].split("?")[0];
+  if(!clean||clean.startsWith("#"))return null;
+  if(isExternalRef(clean))return{external:true,url:ref};
+  const resolved=normPath(htmlDir?htmlDir+"/"+clean:clean);
+  return{external:false,repoPath:resolved,url:rawUrl(resolved)};
+}
+/* ---------- HTML preview + dependency resolver ---------- */
+async function fetchTextCached(repoPath){
+  if(S.resCache.has(repoPath))return S.resCache.get(repoPath);
+  const p=fetch(rawUrl(repoPath)).then(async r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.text()});
+  S.resCache.set(repoPath,p);
+  try{const t=await p;S.resCache.set(repoPath,Promise.resolve(t));return t}catch(e){S.resCache.delete(repoPath);throw e}
+}
+async function resolveCss(cssText,cssDir,seen){
+  // returns {css, deps:[{ref,ok,err}]}
+  const deps=[];
+  // @import "..." / url(...)
+  const importRe=/@import\s+(?:url\()?['"]?([^'";)]+)['"]?\)?\s*;/g;
+  let m; const imports=[];
+  while((m=importRe.exec(cssText)))imports.push(m[1]);
+  for(const ref of imports){
+    if(isExternalRef(ref))continue;
+    const clean=ref.split("#")[0].split("?")[0];
+    const rp=normPath(cssDir?cssDir+"/"+clean:clean);
+    if(seen.has(rp)){cssText=cssText.split(ref).join(rawUrl(rp));deps.push({ref,repoPath:rp,ok:false,err:"circular — skipped"});continue}
+    try{seen.add(rp);const t=await fetchTextCached(rp);const sub=await resolveCss(t,dirOf(rp),seen);
+      deps.push({ref,repoPath:rp,ok:true});deps.push(...sub.deps);
+      cssText=cssText.replace(m?m[0]:`@import "${ref}";`,`\n/* inlined @import ${esc(ref)} */\n${sub.css}\n`);}catch(e){deps.push({ref,repoPath:rp,ok:false,err:String(e.message)})}
+  }
+  // url(...) -> absolute raw
+  cssText=cssText.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g,(full,q,ref)=>{
+    if(isExternalRef(ref)||ref.startsWith("data:"))return full;
+    const clean=ref.split("#")[0].split("?")[0];if(!clean)return full;
+    const rp=normPath(cssDir?cssDir+"/"+clean:clean);
+    deps.push({ref,repoPath:rp,ok:true,assumed:true});
+    return `url("${rawUrl(rp)}")`;
+  });
+  return{css:cssText,deps};
+}
+async function buildPreview(htmlText,htmlPath){
+  const htmlDir=dirOf(htmlPath);
+  const doc=new DOMParser().parseFromString(htmlText,"text/html");
+  const deps=[];const seenCss=new Set();
+  const ordered=[...doc.querySelectorAll("link[href], script[src]")];
+  // process in order to preserve execution order; fetch sequentially for scripts/styles that need inlining
+  for(const el of ordered){
+    const tag=el.tagName.toLowerCase();
+    if(tag==="link"){
+      const href=el.getAttribute("href");const rel=(el.getAttribute("rel")||"").toLowerCase();
+      if(!href)continue;
+      if(isExternalRef(href)){deps.push({kind:"link",ref:href,external:true,ok:true});continue}
+      const clean=href.split("#")[0].split("?")[0];
+      const rp=normPath(htmlDir?htmlDir+"/"+clean:clean);
+      if(rel.includes("stylesheet")){
+        try{const css=await fetchTextCached(rp);const out=await resolveCss(css,dirOf(rp),new Set([rp]));
+          const st=doc.createElement("style");st.setAttribute("data-ra-inlined",rp);st.textContent=`\n/* inlined ${rp} */\n`+out.css;
+          el.replaceWith(st);deps.push({kind:"css",ref:href,repoPath:rp,ok:true});deps.push(...out.deps.map(d=>({kind:"css-asset",...d})));}
+        catch(e){deps.push({kind:"css",ref:href,repoPath:rp,ok:false,err:String(e.message)});el.setAttribute("data-ra-missing",rp)}
+      } else {
+        // icons etc -> rewrite to raw
+        el.setAttribute("href",rawUrl(rp));deps.push({kind:"link-asset",ref:href,repoPath:rp,ok:true,assumed:true});
+        // verify
+        fetchTextCached(rp).catch(()=>{});
+      }
+    } else if(tag==="script"){
+      const src=el.getAttribute("src");if(!src)continue;
+      if(isExternalRef(src)){deps.push({kind:"script",ref:src,external:true,ok:true});continue}
+      const clean=src.split("#")[0].split("?")[0];
+      const rp=normPath(htmlDir?htmlDir+"/"+clean:clean);
+      try{const js=await fetchTextCached(rp);
+        const ns=doc.createElement("script");ns.textContent=`\n/* inlined ${rp} */\n;`+js;
+        // copy type/module attrs
+        if(el.getAttribute("type"))ns.setAttribute("type",el.getAttribute("type"));
+        el.replaceWith(ns);deps.push({kind:"js",ref:src,repoPath:rp,ok:true});}
+      catch(e){deps.push({kind:"js",ref:src,repoPath:rp,ok:false,err:String(e.message)});el.removeAttribute("src");el.setAttribute("data-ra-missing",rp)}
+    }
+  }
+  // media + misc assets: rewrite to absolute raw
+  const assetSel="img[src], source[src], source[srcset], img[srcset], video[src], audio[src], track[src], embed[src], object[data], video[poster], input[src]";
+  doc.querySelectorAll(assetSel).forEach(el=>{
+    ["src","srcset","data","poster"].forEach(attr=>{
+      const v=el.getAttribute(attr);if(!v)return;
+      if(attr==="srcset"){
+        const parts=v.split(",").map(s=>{const [u,d]=s.trim().split(/\s+/);if(!u||isExternalRef(u))return s.trim();
+          const rp=normPath(htmlDir?htmlDir+"/"+u.split("#")[0].split("?")[0]:u);deps.push({kind:"asset",ref:u,repoPath:rp,ok:true,assumed:true});return `${rawUrl(rp)}${d?" "+d:""}`});
+        el.setAttribute(attr,parts.join(", "));return;
+      }
+      if(isExternalRef(v))return;
+      const rp=normPath(htmlDir?htmlDir+"/"+v.split("#")[0].split("?")[0]:v);
+      el.setAttribute(attr,rawUrl(rp));deps.push({kind:"asset",ref:v,repoPath:rp,ok:true,assumed:true});
+    });
+  });
+  // inline <style> blocks: resolve url() relative to html dir
+  for(const st of doc.querySelectorAll("style")){
+    if(st.hasAttribute("data-ra-inlined"))continue;
+    try{const out=await resolveCss(st.textContent,htmlDir,new Set());st.textContent=out.css;deps.push(...out.deps.map(d=>({kind:"css-asset",...d})))}catch(e){}
+  }
+  // inline style="" attributes
+  doc.querySelectorAll("[style]").forEach(el=>{
+    const s=el.getAttribute("style");if(!s||!s.includes("url("))return;
+    el.setAttribute("style",s.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g,(f,q,r)=>{
+      if(isExternalRef(r)||r.startsWith("data:"))return f;
+      const rp=normPath(htmlDir?htmlDir+"/"+r.split("#")[0]:r);return `url("${rawUrl(rp)}")`}));
+  });
+  // relative anchors -> GitHub blob (open outside preview via _blank base target handling)
+  doc.querySelectorAll("a[href]").forEach(a=>{
+    const h=a.getAttribute("href");if(!h||isExternalRef(h)||h.startsWith("#"))return;
+    if(/\.(html?|htm)$/i.test(h.split("#")[0].split("?")[0])){
+      a.setAttribute("data-ra-local-html",h); // intercepted for in-preview nav
+    } else {const rp=normPath(htmlDir?htmlDir+"/"+h.split("#")[0]:h);a.setAttribute("href",blobUrl(rp));a.setAttribute("target","_blank")}
+  });
+  // ensure charset/viewport
+  if(!doc.querySelector("meta[charset]")){const mt=doc.createElement("meta");mt.setAttribute("charset","utf-8");doc.head.prepend(mt)}
+  const warn=doc.createElement("div");warn.setAttribute("data-ra-banner","1");
+  doc.body?doc.body.prepend(warn):doc.documentElement.prepend(warn);
+  return{html:"<!DOCTYPE html>\n"+doc.documentElement.outerHTML,deps};
+}
+async function renderPreview(rec,path){
+  const myId=S.reqId;
+  $("#refreshBtn").hidden=false;$("#openTabBtn").hidden=false;
+  $("#contentArea").innerHTML=`<div class="previewbar"><span class="spinner"></span><span>Resolving dependencies for <b class="mono">${esc(path)}</b>…</span></div><div class="state"><p>Fetching local CSS/JS/images via raw.githubusercontent.com, preserving order. External CDNs are left untouched.</p></div>`;
+  try{
+    const {html,deps}=await buildPreview(rec.text||"",path);
+    if(myId!==S.reqId)return;
+    S.previewDoc=html;S.previewErrors=deps.filter(d=>d.ok===false);
+    const ok=deps.filter(d=>d.ok).length, bad=S.previewErrors.length, ext=deps.filter(d=>d.external).length;
+    const depRows=deps.slice(0,60).map(d=>`<div>${d.ok?'<span class="ok">✓</span>':'<span class="bad">✗</span>'} <span class="mono">${esc(d.ref||"")}</span> ${d.external?'<span class="badge">CDN/external</span>':`<span class="badge">${esc(d.repoPath||"")}</span>`} ${d.err?`<span style="color:var(--red)">${esc(d.err)}</span>`:""}</div>`).join("")||"<div>No external/local refs detected.</div>";
+    $("#contentArea").innerHTML=`
+      <div class="previewbar">
+        <span class="badge">sandboxed iframe · opaque origin</span>
+        <span>${ok} resolved · ${ext} external · ${bad} missing</span>
+        <button class="btn small" id="depToggle">Dependencies (${deps.length})</button>
+        <button class="btn small" id="backSrc">← Source</button>
+      </div>
+      <div class="notice warn" id="depBox" hidden style="margin:10px"><b>Dependency resolution</b> (local → raw.githubusercontent, inlined in order; CDNs untouched):<div class="deplist" style="margin-top:8px">${depRows}</div>
+      ${bad?`<p style="color:var(--red)">⚠️ ${bad} missing/failed — preview may be incomplete. Paths resolve relative to <span class="mono">${esc(dirOf(path)||"/")}</span>.</p>`:""}
+      <p style="margin:6px 0 0">Security: preview cannot access this app's JS or localStorage (<span class="mono">allow-same-origin</span> omitted). Sandboxing reduces but does not eliminate risk — preview only code you trust.</p></div>
+      ${bad?`<div class="notice err" style="margin:10px">Missing: ${S.previewErrors.map(d=>`<span class="mono">${esc(d.ref)}</span>`).join(", ")}</div>`:""}
+      <iframe id="pvFrame" class="previewframe" title="HTML preview" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads"></iframe>`;
+    const fr=$("#pvFrame");
+    fr.srcdoc=S.previewDoc;
+    fr.addEventListener("load",()=>{
+      // intercept local html navigation (stretch: multi-file workspace)
+      try{
+        // cannot access cross-origin srcdoc DOM (opaque) — instead inject via rewritten srcdoc script? We embed a tiny postMessage bridge by appending a script before serialization.
+      }catch(e){}
+    });
+    $("#depToggle").onclick=()=>{const b=$("#depBox");b.hidden=!b.hidden};
+    $("#backSrc").onclick=()=>{S.viewMode="code";renderFileView(path)};
+  }catch(e){if(myId!==S.reqId)return;$("#contentArea").innerHTML=`<div class="state"><h2>Preview failed</h2><p>${esc(e.message)}</p><p><button class="btn" id="toSrc">← Back to source</button></p></div>`;$("#toSrc").onclick=()=>{S.viewMode="code";renderFileView(path)}}
+}
+$("#refreshBtn").onclick=()=>{if(S.kind==="file")renderFileView(S.path)};
+$("#openTabBtn").onclick=()=>{
+  if(!S.previewDoc)return;
+  const b=new Blob([S.previewDoc],{type:"text/html"});const u=URL.createObjectURL(b);window.open(u,"_blank");setTimeout(()=>URL.revokeObjectURL(u),60000);
+};
+/* ---------- search ---------- */
+async function getTree(){
+  if(S.treeCache)return S.treeCache;
+  const br=S.branch;
+  const t=await ghFetch(`${GH}/repos/${S.owner}/${S.repo}/git/trees/${encodeURIComponent(br)}?recursive=1`);
+  if(t.truncated){toast("Large repo: tree truncated — search may be partial")}
+  S.treeCache=(t.tree||[]).filter(x=>x.type==="blob").map(x=>x.path);
+  return S.treeCache;
+}
+function hiMatch(path,q){
+  const i=path.toLowerCase().indexOf(q.toLowerCase());if(i<0)return null;
+  return esc(path.slice(0,i))+"<mark>"+esc(path.slice(i,i+q.length))+"</mark>"+esc(path.slice(i+q.length));
+}
+$("#searchBtn").onclick=async()=>{
+  const box=$("#searchRes");box.hidden=false;box.innerHTML=`<div style="padding:10px"><span class="spinner"></span> Loading file tree…</div>`;
+  try{
+    const all=await getTree();
+    box.innerHTML=`<div style="padding:8px"><input id="qIn" placeholder="Type to filter ${all.length} files…" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)"><div id="qList" style="margin-top:6px"></div></div>`;
+    const qIn=$("#qIn"),qList=$("#qList");
+    qIn.focus();
+    const draw=()=>{
+      const q=qIn.value.trim();const res=(q?all.filter(p=>p.toLowerCase().includes(q.toLowerCase())):all).slice(0,60);
+      qList.innerHTML=res.map(p=>`<button data-p="${esc(p)}">${hiMatch(p,q||"~")}</button>`).join("")||`<div style="padding:10px;color:var(--muted)">No matches. Filtering is filename-only; repo is never fully downloaded.</div>`;
+      qList.querySelectorAll("button").forEach(b=>b.onclick=()=>{box.hidden=true;S.kind="file";S.path=b.dataset.p;S.viewMode=defaultMode(b.dataset.p);navPush("file",b.dataset.p);render()});
+    };
+    qIn.oninput=draw;draw();
+  }catch(e){box.innerHTML=`<div style="padding:10px;color:var(--red)">${esc(e.message)}. Falling back to current-folder filter.</div>`}
+};
+$("#readmeBtn").onclick=async()=>{
+  try{
+    const items=await listDir(S.kind==="file"?dirOf(S.path):S.path);
+    const r=items.find(x=>/^readme(\.md|\.markdown)?$/i.test(x.name));
+    if(r&&r.type!=="dir"){S.kind="file";S.path=r.path;S.viewMode="md";navPush("file",r.path);render()}
+    else toast("No README in this folder");
+  }catch(e){toast(e.message)}
+};
+$("#homeBtn").onclick=()=>{S.nav.push({kind:"home",path:"__home__"});S.navIdx=S.nav.length-1;render()};
+$("#newRepoBtn").onclick=showDash;
+/* ---------- forms ---------- */
+async function openFromInput(v){
+  try{const {owner,repo,branch,subpath}=parseGitHubUrl(v);$("#urlInput").value=`https://github.com/${owner}/${repo}`;await loadRepo(owner,repo,branch,subpath||"")}catch(e){showDash();toast(e.message);$("#dashInput").focus()}
+}
+$("#urlForm").addEventListener("submit",e=>{e.preventDefault();openFromInput($("#urlInput").value)});
+$("#dashForm").addEventListener("submit",e=>{e.preventDefault();openFromInput($("#dashInput").value)});
+document.querySelectorAll("[data-sample]").forEach(b=>b.onclick=()=>{ $("#dashInput").value=b.dataset.sample; openFromInput(b.dataset.sample)});
+</script>
+</body>
+</html>
