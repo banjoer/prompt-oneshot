@@ -1,0 +1,683 @@
+<!-- Built 2026-10-31 11:46 UTC · Muse Spark 1.3 Contributor (mobile) · vanilla HTML/CSS/JS, no libraries -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+<meta name="theme-color" content="#1e2430">
+<title>Safestep Minesweeper — Mobile</title>
+<style>
+  :root{
+    --cell:30px;
+    --bg:#1e2430; --panel:#2a3345; --line:#3c4861;
+    --ink:#e8ecf3; --muted:#9aa6bd; --accent:#4f7cff;
+    --gold:#ffd76a; --green:#7CFF9B; --red:#ff6b6b;
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-t:env(safe-area-inset-top,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;align-items:center;
+    padding-top:var(--safe-t);
+    padding-bottom:var(--safe-b);
+    overscroll-behavior-y:none;
+  }
+  h1{margin:14px 0 2px;font-size:1.45rem;letter-spacing:.5px;text-align:center;padding:0 12px;}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:10px;text-align:center;padding:0 16px;}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px 12px 14px;display:flex;flex-direction:column;gap:10px;align-items:center;
+    width:min(96vw,920px);margin-bottom:12px;
+  }
+  .diff-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:stretch;width:100%;}
+  .diff-btn{
+    flex:1 1 0;min-width:100px;min-height:52px;
+    border:1px solid #4a5878;background:#35405a;color:var(--ink);
+    border-radius:10px;padding:8px 10px;cursor:pointer;font-size:.92rem;line-height:1.25;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  }
+  .diff-btn.active{background:var(--accent);border-color:var(--accent);font-weight:700;}
+  .diff-btn small{display:block;color:#c4cde0;font-size:.72rem;font-weight:400;margin-top:2px;}
+  .best-tag{font-size:.72rem;color:var(--gold);margin-left:4px;}
+  .hud{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .counter-box{
+    background:#0d1117;border:2px inset #555;border-radius:6px;min-width:64px;
+    text-align:center;font-family:ui-monospace,Consolas,monospace;font-size:1.35rem;
+    color:#ff3b30;padding:2px 10px;display:inline-block;
+  }
+  .hud-label{font-size:1.1rem;}
+  #faceBtn{
+    font-size:1.8rem;width:60px;height:60px;border-radius:12px;
+    border:2px outset #888;background:#bdbdbd;cursor:pointer;line-height:1;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  }
+  #faceBtn:active{border-style:inset;transform:scale(.96);}
+  /* Mobile toolbar: mode + zoom + sound */
+  .toolbar{
+    display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;width:100%;
+  }
+  .seg{display:flex;background:#0f1520;border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;}
+  .seg button{
+    border:0;border-radius:8px;padding:10px 16px;min-height:44px;font-size:1rem;font-weight:700;
+    background:transparent;color:var(--muted);cursor:pointer;touch-action:manipulation;
+    display:flex;align-items:center;gap:6px;
+  }
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff;}
+  .seg button#modeFlag[aria-pressed="true"]{background:#e8a100;color:#111;}
+  .tool-btn{
+    min-height:44px;min-width:48px;border-radius:10px;border:1px solid #4a5878;
+    background:#35405a;color:var(--ink);font-size:1.05rem;font-weight:700;cursor:pointer;
+    padding:8px 12px;touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  }
+  .tool-btn:active{transform:scale(.95);}
+  #message{min-height:1.4em;font-weight:700;color:var(--green);text-align:center;padding:0 8px;}
+  #message.lost{color:var(--red);}
+  #newBest{display:none;color:var(--gold);font-weight:800;}
+  #boardWrap{
+    max-width:100%;width:100%;overflow:auto;background:#808080;padding:6px;border-radius:10px;
+    border:3px outset #aaa;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    touch-action:pan-x pan-y; /* pan natively (swipe/drag), pinch handled in JS */
+    max-height:62vh;max-height:62dvh;
+  }
+  #board{
+    display:grid;gap:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    touch-action:manipulation;margin:0 auto;width:max-content;
+  }
+  .cell{
+    width:var(--cell);height:var(--cell);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:calc(var(--cell)*0.62);line-height:1;padding:0;margin:0;
+    border:2px outset #fff;background:#bdbdbd;cursor:pointer;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+    font-family:inherit;
+  }
+  .cell.covered:active,.cell.touching{border-style:inset;filter:brightness(.92);}
+  .cell.long-armed{outline:3px solid #ffd76a;outline-offset:-3px;}
+  .cell.revealed{border:1px solid #7d7d7d;background:#c9c9c9;cursor:default;}
+  .cell.flagged{cursor:pointer;}
+  .cell.mine-hit{background:#f00!important;border:1px solid #7d7d7d;}
+  .cell.wrong-flag{background:#c9c9c9;border:1px solid #7d7d7d;}
+  .n1{color:#0000ff}.n2{color:#008000}.n3{color:#ff0000}.n4{color:#000080}
+  .n5{color:#800000}.n6{color:#008080}.n7{color:#000}.n8{color:#808080}
+  details.gestures{
+    width:100%;background:#0f1520;border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;font-size:.85rem;color:#c4cde0;
+  }
+  details.gestures summary{cursor:pointer;font-weight:700;color:var(--ink);min-height:44px;display:flex;align-items:center;}
+  details.gestures ul{margin:6px 0 4px;padding-left:20px;}
+  details.gestures li{margin:4px 0;}
+  .help{font-size:.78rem;color:var(--muted);text-align:center;max-width:680px;padding:0 4px;}
+  footer{margin:8px 0 24px;color:#8b96ad;font-size:.82rem;text-align:center;padding:0 12px;}
+  #toast{
+    position:fixed;left:50%;bottom:calc(18px + var(--safe-b));transform:translateX(-50%) translateY(20px);
+    background:#0f1520;border:1px solid var(--accent);color:var(--ink);border-radius:10px;
+    padding:10px 16px;font-size:.9rem;font-weight:600;opacity:0;pointer-events:none;
+    transition:opacity .2s,transform .2s;z-index:50;max-width:92vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  @media (max-width:700px){
+    h1{font-size:1.25rem;}
+    .diff-btn{font-size:.85rem;min-height:56px;}
+  }
+</style>
+</head>
+<body>
+<h1>💣 Safestep Minesweeper</h1>
+<div class="sub">First tap is always safe — and always opens a region.</div>
+<div class="panel">
+  <div class="diff-row" id="diffRow" role="tablist" aria-label="Difficulty">
+    <button class="diff-btn" data-diff="beginner" role="tab">Beginner<small>9×9 · 10 💣 <span class="best-tag" id="best-beginner"></span></small></button>
+    <button class="diff-btn" data-diff="intermediate" role="tab">Intermediate<small>16×16 · 40 💣 <span class="best-tag" id="best-intermediate"></span></small></button>
+    <button class="diff-btn" data-diff="expert" role="tab">Expert<small>30×16 · 99 💣 <span class="best-tag" id="best-expert"></span></small></button>
+  </div>
+  <div class="hud" aria-live="off">
+    <div title="Mines remaining"><span class="hud-label">🚩</span> <span class="counter-box" id="mineCounter">10</span></div>
+    <button id="faceBtn" title="Reset (tap to restart)" aria-label="Reset game">🙂</button>
+    <div title="Timer"><span class="hud-label">⏱</span> <span class="counter-box" id="timer">0</span></div>
+  </div>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Input mode">
+      <button id="modeDig" aria-pressed="true" title="Dig mode: tap reveals">💣 Dig</button>
+      <button id="modeFlag" aria-pressed="false" title="Flag mode: tap flags">🚩 Flag</button>
+    </div>
+    <button class="tool-btn" id="zoomOut" title="Smaller cells" aria-label="Zoom out">A−</button>
+    <button class="tool-btn" id="zoomIn" title="Bigger cells" aria-label="Zoom in">A+</button>
+    <button class="tool-btn" id="soundBtn" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+  </div>
+  <div id="message" aria-live="polite"></div>
+  <div id="newBest">★ New best! ★</div>
+  <div id="boardWrap"><div id="board"></div></div>
+  <details class="gestures" open>
+    <summary>📱 How to play on mobile — taps, touches, swipes &amp; gestures</summary>
+    <ul>
+      <li>👆 <b>Tap</b> a covered cell to reveal · tap an open number to <b>chord</b>.</li>
+      <li>👇 <b>Long-press (hold ~0.5s)</b> a covered cell to flag / unflag — works in any mode, with vibration.</li>
+      <li>🚩 <b>Flag-mode switch</b>: tap <b>🚩 Flag</b> so every tap flags; tap <b>💣 Dig</b> to go back. Good for one-handed play.</li>
+      <li>✌️ <b>Two-finger tap</b> on the board toggles Dig / Flag mode.</li>
+      <li>↔️ <b>Swipe / drag</b> on the board to pan (scroll) around big boards like Expert.</li>
+      <li>🤏 <b>Pinch</b> on the board to zoom cells bigger/smaller (or use A− / A+).</li>
+      <li>🖱️ <b>Desktop</b>: left-click reveal · right-click flag · click a satisfied number to chord.</li>
+    </ul>
+  </details>
+  <div class="help">Win by revealing all safe cells. First tap of every board is guaranteed safe and opens a region. Timer starts on first tap.</div>
+</div>
+<footer>Built 2026-10-31 11:46 UTC · Muse Spark 1.3 Contributor (mobile)</footer>
+<div id="toast" role="status"></div>
+<script>
+(function(){
+"use strict";
+var DIFFS = {
+  beginner: { rows:9, cols:9, mines:10 },
+  intermediate: { rows:16, cols:16, mines:40 },
+  expert: { rows:16, cols:30, mines:99 }
+};
+var cur = 'beginner';
+var rows=9, cols=9, totalMines=10;
+var grid=[];
+var minesPlaced=false, gameStatus='ready'; // ready|playing|won|lost
+var flagsPlaced=0, revealedCount=0, seconds=0, timerId=null;
+var hitR=-1, hitC=-1;
+var mode='dig'; // dig | flag  (mobile flag-mode switch)
+var cellSize=30;
+var soundOn=true;
+
+var boardEl=document.getElementById('board'),
+    wrapEl=document.getElementById('boardWrap'),
+    counterEl=document.getElementById('mineCounter'),
+    timerEl=document.getElementById('timer'),
+    faceBtn=document.getElementById('faceBtn'),
+    msgEl=document.getElementById('message'),
+    newBestEl=document.getElementById('newBest'),
+    modeDigBtn=document.getElementById('modeDig'),
+    modeFlagBtn=document.getElementById('modeFlag'),
+    toastEl=document.getElementById('toast'),
+    soundBtn=document.getElementById('soundBtn');
+
+var toastTimer=null;
+function toast(t){
+  toastEl.textContent=t; toastEl.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ toastEl.classList.remove('show'); },1400);
+}
+function vibrate(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+
+/* ---------- sound (Web Audio, generated in code, no files) ---------- */
+var audioCtx=null;
+function ensureAudio(){
+  if(!soundOn) return null;
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+    return audioCtx;
+  }catch(e){ return null; }
+}
+function tone(freq,dur,type,vol,when){
+  if(!soundOn) return;
+  var ctx=ensureAudio(); if(!ctx) return;
+  try{
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    var t=ctx.currentTime+(when||0);
+    g.gain.setValueAtTime(vol||0.12,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function sndReveal(){ tone(620,0.06,'triangle',0.08); }
+function sndFlag(){ tone(880,0.07,'square',0.06); tone(660,0.07,'square',0.05,0.06); }
+function sndChord(){ tone(420,0.08,'triangle',0.09); tone(760,0.1,'triangle',0.09,0.07); }
+function sndWin(){ tone(523,0.12,'triangle',0.1); tone(659,0.12,'triangle',0.1,0.12); tone(784,0.2,'triangle',0.1,0.24); }
+function sndBoom(){
+  if(!soundOn) return;
+  var ctx=ensureAudio(); if(!ctx) return;
+  try{
+    tone(180,0.4,'sawtooth',0.16); tone(60,0.5,'sine',0.18,0.05);
+    var len=Math.floor(ctx.sampleRate*0.35), buf=ctx.createBuffer(1,len,ctx.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2)*0.5;
+    var src=ctx.createBufferSource(); src.buffer=buf;
+    var g=ctx.createGain(); g.gain.value=0.5;
+    src.connect(g); g.connect(ctx.destination); src.start();
+  }catch(e){}
+}
+
+/* ---------- persistence ---------- */
+function loadBest(){ try{ var v=JSON.parse(localStorage.getItem('safestepBest')||'{}'); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } }
+function saveBest(o){ try{ localStorage.setItem('safestepBest', JSON.stringify(o)); }catch(e){} }
+function refreshBestLabels(){
+  var b=loadBest();
+  ['beginner','intermediate','expert'].forEach(function(k){
+    var el=document.getElementById('best-'+k);
+    el.textContent = (b[k]!=null) ? ('· ⏱'+b[k]+'s') : '';
+  });
+}
+function markActiveDiff(){
+  document.querySelectorAll('.diff-btn').forEach(function(btn){
+    var on = btn.getAttribute('data-diff')===cur;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on?'true':'false');
+  });
+}
+function setMode(m, silent){
+  mode=m;
+  modeDigBtn.setAttribute('aria-pressed', m==='dig'?'true':'false');
+  modeFlagBtn.setAttribute('aria-pressed', m==='flag'?'true':'false');
+  if(!silent) toast(m==='flag' ? '🚩 Flag mode — taps place flags' : '💣 Dig mode — taps reveal');
+}
+
+/* ---------- timer / HUD ---------- */
+function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+function startTimer(){
+  stopTimer();
+  timerId=setInterval(function(){
+    if(gameStatus!=='playing') return;
+    seconds++;
+    timerEl.textContent = Math.min(seconds,999);
+  },1000);
+}
+function updateHUD(){
+  counterEl.textContent = (totalMines - flagsPlaced);
+  if(gameStatus!=='playing'){ timerEl.textContent = Math.min(seconds,999); }
+  faceBtn.textContent = gameStatus==='lost' ? '😵' : (gameStatus==='won' ? '😎' : '🙂');
+}
+
+/* ---------- sizing / zoom ---------- */
+function defaultCellSize(){
+  var w = Math.min(window.innerWidth||360, wrapEl.clientWidth||360);
+  var avail = Math.max(200, w-28);
+  var fit = Math.floor(avail / cols);
+  var cap = (cur==='expert') ? 30 : 34;
+  var base = Math.max(20, Math.min(cap, fit));
+  // Slightly larger targets on coarse (touch) pointers
+  try{
+    if(window.matchMedia && window.matchMedia('(pointer:coarse)').matches) base=Math.max(24, base);
+  }catch(e){}
+  return Math.min(44, Math.max(18, base));
+}
+function applyCellSize(){
+  cellSize=Math.min(48, Math.max(16, cellSize));
+  document.documentElement.style.setProperty('--cell', cellSize+'px');
+}
+
+/* ---------- game core ---------- */
+function newGame(diffKey){
+  cur=diffKey;
+  var d=DIFFS[cur]; rows=d.rows; cols=d.cols; totalMines=d.mines;
+  grid=[]; for(var r=0;r<rows;r++){ var row=[]; for(var c=0;c<cols;c++) row.push({mine:false,revealed:false,flagged:false,adj:0}); grid.push(row); }
+  minesPlaced=false; gameStatus='ready'; flagsPlaced=0; revealedCount=0; seconds=0; hitR=hitC=-1;
+  stopTimer();
+  msgEl.textContent=''; msgEl.className='';
+  newBestEl.style.display='none';
+  timerEl.textContent='0';
+  cellSize=defaultCellSize();
+  applyCellSize();
+  markActiveDiff(); refreshBestLabels(); buildDOM(); updateHUD();
+  cancelGesture();
+  // keep scroll at top-left of board for a fresh board
+  try{ wrapEl.scrollLeft=0; wrapEl.scrollTop=0; }catch(e){}
+}
+function buildDOM(){
+  boardEl.style.gridTemplateColumns='repeat('+cols+', var(--cell))';
+  boardEl.style.gridTemplateRows='repeat('+rows+', var(--cell))';
+  boardEl.innerHTML='';
+  var frag=document.createDocumentFragment();
+  for(var r=0;r<rows;r++) for(var c=0;c<cols;c++){
+    var b=document.createElement('button');
+    b.className='cell covered'; b.type='button';
+    b.dataset.r=r; b.dataset.c=c;
+    b.setAttribute('aria-label','covered cell row '+(r+1)+' col '+(c+1));
+    frag.appendChild(b);
+  }
+  boardEl.appendChild(frag);
+}
+function cellEl(r,c){ return boardEl.children[r*cols+c]; }
+function inB(r,c){ return r>=0&&r<rows&&c>=0&&c<cols; }
+function neighbours(r,c){
+  var out=[];
+  for(var dr=-1;dr<=1;dr++) for(var dc=-1;dc<=1;dc++){
+    if(!dr&&!dc) continue;
+    var nr=r+dr,nc=c+dc; if(inB(nr,nc)) out.push([nr,nc]);
+  }
+  return out;
+}
+function placeMines(safeR,safeC){
+  var safe={};
+  for(var dr=-1;dr<=1;dr++) for(var dc=-1;dc<=1;dc++){
+    var nr=safeR+dr,nc=safeC+dc; if(inB(nr,nc)) safe[nr+','+nc]=true;
+  }
+  var candidates=[];
+  for(var r=0;r<rows;r++) for(var c=0;c<cols;c++) if(!safe[r+','+c]) candidates.push([r,c]);
+  for(var i=candidates.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=candidates[i]; candidates[i]=candidates[j]; candidates[j]=t; }
+  for(var k=0;k<totalMines;k++){ var cell=candidates[k]; grid[cell[0]][cell[1]].mine=true; }
+  for(var rr=0;rr<rows;rr++) for(var cc=0;cc<cols;cc++){
+    if(grid[rr][cc].mine) continue;
+    var n=0; neighbours(rr,cc).forEach(function(nb){ if(grid[nb[0]][nb[1]].mine) n++; });
+    grid[rr][cc].adj=n;
+  }
+  minesPlaced=true;
+}
+function paintCell(r,c){
+  var el=cellEl(r,c), s=grid[r][c];
+  el.className='cell'; el.textContent='';
+  if(s.revealed){
+    if(s.mine){ el.classList.add('revealed'); el.textContent='💣'; el.setAttribute('aria-label','mine'); }
+    else{
+      el.classList.add('revealed');
+      if(s.adj>0){ el.textContent=String(s.adj); el.classList.add('n'+s.adj); el.setAttribute('aria-label',s.adj+' adjacent mines'); }
+      else el.setAttribute('aria-label','empty');
+    }
+  } else if(s.flagged){ el.classList.add('covered','flagged'); el.textContent='🚩'; el.setAttribute('aria-label','flagged'); }
+  else { el.classList.add('covered'); el.setAttribute('aria-label','covered cell row '+(r+1)+' col '+(c+1)); }
+}
+function paintAll(){ for(var r=0;r<rows;r++) for(var c=0;c<cols;c++) paintCell(r,c); }
+function revealFlood(sr,sc){
+  var q=[[sr,sc]];
+  var seen={}; seen[sr+','+sc]=true;
+  while(q.length){
+    var curc=q.shift(), r=curc[0], c=curc[1];
+    var s=grid[r][c];
+    if(s.revealed||s.flagged) continue;
+    s.revealed=true; revealedCount++;
+    if(s.adj===0 && !s.mine){
+      neighbours(r,c).forEach(function(nb){
+        var k=nb[0]+','+nb[1];
+        if(!seen[k]){ seen[k]=true; var ns=grid[nb[0]][nb[1]]; if(!ns.revealed&&!ns.flagged) q.push(nb); }
+      });
+    }
+  }
+}
+function onLeft(r,c){
+  if(gameStatus==='won'||gameStatus==='lost') return;
+  var s=grid[r][c];
+  if(s.flagged) return;
+  if(s.revealed){ chord(r,c); return; }
+  if(!minesPlaced){
+    placeMines(r,c);
+    gameStatus='playing'; seconds=0; timerEl.textContent='0'; startTimer();
+  }
+  if(s.mine){ lose(r,c); return; }
+  revealFlood(r,c);
+  sndReveal(); vibrate(8);
+  paintAll(); updateHUD(); checkWin();
+}
+function toggleFlag(r,c){
+  if(gameStatus==='won'||gameStatus==='lost') return false;
+  var s=grid[r][c];
+  if(s.revealed) return false;
+  s.flagged=!s.flagged;
+  flagsPlaced += s.flagged?1:-1;
+  paintCell(r,c); updateHUD();
+  sndFlag(); vibrate(25);
+  return true;
+}
+function onRight(r,c){ toggleFlag(r,c); }
+function chord(r,c){
+  var s=grid[r][c];
+  if(!s.revealed||s.mine||s.adj===0) return;
+  var nbs=neighbours(r,c), flagCount=0;
+  nbs.forEach(function(nb){ if(grid[nb[0]][nb[1]].flagged) flagCount++; });
+  if(flagCount!==s.adj) return;
+  var toOpen=nbs.filter(function(nb){ var q=grid[nb[0]][nb[1]]; return !q.revealed&&!q.flagged; });
+  var hitMine=null;
+  for(var i=0;i<toOpen.length;i++){
+    var q=grid[toOpen[i][0]][toOpen[i][1]];
+    if(q.mine){ hitMine=toOpen[i]; break; }
+  }
+  if(hitMine){ lose(hitMine[0],hitMine[1]); return; }
+  if(!toOpen.length) return;
+  toOpen.forEach(function(nb){ revealFlood(nb[0],nb[1]); });
+  sndChord(); vibrate(12);
+  paintAll(); updateHUD(); checkWin();
+}
+function lose(hr,hc){
+  gameStatus='lost'; hitR=hr; hitC=hc; stopTimer();
+  sndBoom(); vibrate([90,40,90]);
+  for(var r=0;r<rows;r++) for(var c=0;c<cols;c++){
+    var s=grid[r][c], el=cellEl(r,c);
+    el.className='cell'; el.textContent='';
+    if(r===hr&&c===hc){ el.classList.add('mine-hit'); el.textContent='💥'; }
+    else if(s.mine){ if(s.flagged){ el.classList.add('covered','flagged'); el.textContent='🚩'; } else { el.classList.add('revealed'); el.textContent='💣'; } }
+    else { if(s.flagged){ el.classList.add('wrong-flag'); el.textContent='❌'; } else if(s.revealed){ el.classList.add('revealed'); if(s.adj>0){ el.textContent=String(s.adj); el.classList.add('n'+s.adj);} } else { el.classList.add('covered'); } }
+  }
+  msgEl.textContent='💥 Boom! You hit a mine. Tap 🙂 to retry.';
+  msgEl.className='lost';
+  updateHUD();
+}
+function checkWin(){
+  if(gameStatus!=='playing'||!minesPlaced) return;
+  if(revealedCount===(rows*cols-totalMines)){
+    gameStatus='won'; stopTimer();
+    flagsPlaced=0;
+    for(var r=0;r<rows;r++) for(var c=0;c<cols;c++){
+      var s=grid[r][c];
+      if(s.mine){ s.flagged=true; flagsPlaced++; }
+    }
+    paintAll(); updateHUD();
+    msgEl.textContent='🏆 You win! All safe cells cleared.';
+    msgEl.className='';
+    sndWin(); vibrate([30,40,30,40,60]);
+    var b=loadBest(), prev=b[cur];
+    if(prev==null||seconds<prev){
+      b[cur]=seconds; saveBest(b); refreshBestLabels();
+      newBestEl.style.display='block';
+    }
+  }
+}
+
+/* ---------- unified touch + mouse gestures ----------
+   tap            -> reveal / chord (or flag when in flag-mode)
+   long-press     -> flag toggle (touch/pen, ~450ms, with haptic)
+   two-finger tap -> toggle dig/flag mode
+   swipe / drag   -> pan the board (native scroll)
+   pinch          -> zoom cells
+   right-click    -> flag (desktop)
+------------------------------------------------------ */
+var LONG_MS=450, MOVE_TOL=12;
+var activePtrs=new Map();   // pointerId -> {r,c,x,y,el}
+var longTimer=null, longFired=false, longPtrId=null;
+var suppressClickUntil=0;
+var pinch=null;             // {startDist,startSize}
+var twoFinger=null;         // {t0,moved}
+function cancelGesture(){
+  activePtrs.clear();
+  if(longTimer){ clearTimeout(longTimer); longTimer=null; }
+  longFired=false; longPtrId=null; pinch=null; twoFinger=null;
+  var armed=boardEl.querySelectorAll('.touching,.long-armed');
+  for(var i=0;i<armed.length;i++) armed[i].classList.remove('touching','long-armed');
+}
+function cellFromEvent(e){
+  var t=e.target && e.target.closest ? e.target.closest('.cell') : null;
+  if(!t || !boardEl.contains(t)) return null;
+  var r=parseInt(t.dataset.r,10), c=parseInt(t.dataset.c,10);
+  if(isNaN(r)||isNaN(c)) return null;
+  return {r:r,c:c,el:t};
+}
+function ptrDist(a,b){ var dx=a.x-b.x, dy=a.y-b.y; return Math.sqrt(dx*dx+dy*dy); }
+
+boardEl.addEventListener('pointerdown', function(e){
+  ensureAudio();
+  if(gameStatus==='won'||gameStatus==='lost'){ return; }
+  // desktop right / middle button: let contextmenu handle it
+  if(e.pointerType==='mouse' && e.button!==0) return;
+  var cell=cellFromEvent(e);
+  // Track every pointer for pinch / two-finger-tap even if not on a cell
+  var rec={x:e.clientX,y:e.clientY,r:cell?cell.r:-1,c:cell?cell.c:-1,el:cell?cell.el:null,type:e.pointerType};
+  activePtrs.set(e.pointerId, rec);
+  if(activePtrs.size===2){
+    // second finger: cancel pending long-press, begin pinch / two-finger-tap tracking
+    if(longTimer){ clearTimeout(longTimer); longTimer=null; }
+    var pts=Array.from(activePtrs.values());
+    pinch={startDist:Math.max(20,ptrDist(pts[0],pts[1])),startSize:cellSize};
+    twoFinger={t0:Date.now(),moved:false};
+    boardEl.querySelectorAll('.touching,.long-armed').forEach(function(el){ el.classList.remove('touching','long-armed'); });
+    e.preventDefault();
+    return;
+  }
+  if(activePtrs.size>2){ if(longTimer){ clearTimeout(longTimer); longTimer=null; } return; }
+  if(!cell) return;
+  if(cell.el){ cell.el.classList.add('touching'); }
+  // long-press to flag (touch + pen only; mouse uses right-click)
+  if(e.pointerType!=='mouse'){
+    longFired=false; longPtrId=e.pointerId;
+    var lr=cell.r, lc=cell.c, lel=cell.el;
+    if(lel) lel.classList.add('long-armed');
+    longTimer=setTimeout(function(){
+      longTimer=null; longFired=true;
+      if(lel) lel.classList.remove('touching');
+      // haptic + action
+      if(inB(lr,lc) && gameStatus!=='won' && gameStatus!=='lost'){
+        var s=grid[lr][lc];
+        if(!s.revealed){ toggleFlag(lr,lc); }
+        else { toast('Open cell — tap it to chord'); vibrate(10); }
+      }
+      suppressClickUntil=Date.now()+600;
+    }, LONG_MS);
+  }
+}, {passive:false});
+
+boardEl.addEventListener('pointermove', function(e){
+  if(!activePtrs.has(e.pointerId)) return;
+  var rec=activePtrs.get(e.pointerId);
+  var dx=e.clientX-rec.x, dy=e.clientY-rec.y;
+  var dist=Math.sqrt(dx*dx+dy*dy);
+  rec.nx=e.clientX; rec.ny=e.clientY;
+  if(activePtrs.size===2 && pinch){
+    var pts=Array.from(activePtrs.values());
+    var a=pts[0], b=pts[1];
+    var ax=a.nx!=null?a.nx:a.x, ay=a.ny!=null?a.ny:a.y;
+    var bx=b.nx!=null?b.nx:b.x, by=b.ny!=null?b.ny:b.y;
+    var ddx=ax-bx, ddy=ay-by;
+    var d=Math.sqrt(ddx*ddx+ddy*ddy);
+    if(Math.abs(d-pinch.startDist)>8 && twoFinger) twoFinger.moved=true;
+    if(d>10){
+      var ns=pinch.startSize*(d/pinch.startDist);
+      var clamped=Math.min(48,Math.max(16,Math.round(ns)));
+      if(clamped!==cellSize){ cellSize=clamped; applyCellSize(); }
+    }
+    e.preventDefault();
+    return;
+  }
+  if(dist>MOVE_TOL){
+    // swipe/drag: it is a pan gesture, cancel tap + long-press
+    if(longTimer && e.pointerId===longPtrId){ clearTimeout(longTimer); longTimer=null; }
+    if(rec.el){ rec.el.classList.remove('touching','long-armed'); }
+    rec.swiped=true;
+  }
+}, {passive:false});
+
+function endPointer(e, cancelled){
+  if(!activePtrs.has(e.pointerId)){
+    // second pointer of an old pinch may already be gone; still check two-finger tap end
+    return;
+  }
+  var rec=activePtrs.get(e.pointerId);
+  activePtrs.delete(e.pointerId);
+  if(longTimer && e.pointerId===longPtrId){ clearTimeout(longTimer); longTimer=null; }
+  if(rec.el){ rec.el.classList.remove('touching','long-armed'); }
+  // pinch / two-finger end
+  if(pinch && activePtrs.size<2){
+    var wasTwo=!pinch||true;
+    var dt=Date.now()-(twoFinger?twoFinger.t0:Date.now());
+    var moved=twoFinger?twoFinger.moved:false;
+    // also treat leftover pointer's swipe as movement
+    if(rec.swiped) moved=true;
+    if(!cancelled && !moved && dt<400 && wasTwo){
+      // ✌️ two-finger tap -> toggle mode
+      setMode(mode==='dig'?'flag':'dig');
+      vibrate(20);
+      suppressClickUntil=Date.now()+600;
+    }
+    pinch=null; twoFinger=null;
+    // swallow the pointerup that ends a pinch so it never reveals
+    suppressClickUntil=Math.max(suppressClickUntil, Date.now()+300);
+    if(activePtrs.size===1){
+      // one finger remains held from the pinch: reset its anchor so a continued
+      // hold doesn't instantly count as a swipe/tap
+      var remaining=Array.from(activePtrs.entries())[0];
+      if(remaining){ remaining[1].x=e.clientX; remaining[1].y=e.clientY; remaining[1].swiped=true; }
+      if(longTimer){ clearTimeout(longTimer); longTimer=null; }
+    }
+    return;
+  }
+  if(cancelled) return;
+  if(activePtrs.size>0) return; // still another finger down
+  if(e.pointerType==='mouse' && e.button!==0) return;
+  if(longFired && e.pointerId===longPtrId){ longFired=false; longPtrId=null; suppressClickUntil=Date.now()+400; return; }
+  if(rec.swiped){ return; } // it was a swipe/pan, not a tap
+  if(rec.r<0) return;
+  if(gameStatus==='won'||gameStatus==='lost') return;
+  // single-finger tap (covers mouse click too)
+  suppressClickUntil=Date.now()+500;
+  if(mode==='flag' && !grid[rec.r][rec.c].revealed){
+    toggleFlag(rec.r, rec.c);
+  } else {
+    onLeft(rec.r, rec.c);
+  }
+}
+boardEl.addEventListener('pointerup', function(e){ endPointer(e,false); });
+boardEl.addEventListener('pointercancel', function(e){ endPointer(e,true); });
+
+// Desktop right-click flag + context-menu suppression (also blocks mobile callout menu)
+boardEl.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  ensureAudio();
+  var cell=cellFromEvent(e);
+  if(cell && gameStatus!=='won' && gameStatus!=='lost'){ onRight(cell.r,cell.c); }
+  suppressClickUntil=Date.now()+400;
+  return false;
+});
+wrapEl.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+
+// Keyboard / assistive-tech activation (click without a preceding pointer tap)
+boardEl.addEventListener('click', function(e){
+  if(Date.now()<suppressClickUntil) return;
+  var cell=cellFromEvent(e);
+  if(!cell) return;
+  if(gameStatus==='won'||gameStatus==='lost') return;
+  ensureAudio();
+  if(mode==='flag' && !grid[cell.r][cell.c].revealed) toggleFlag(cell.r,cell.c);
+  else onLeft(cell.r,cell.c);
+});
+
+// Prevent double-tap-to-zoom on iOS Safari around the board
+var lastTouchEnd=0;
+document.addEventListener('touchend', function(e){
+  var now=Date.now();
+  if(now-lastTouchEnd<300 && boardEl.contains(e.target)){ e.preventDefault(); }
+  lastTouchEnd=now;
+}, {passive:false});
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+
+/* ---------- chrome bindings ---------- */
+document.querySelectorAll('.diff-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){ ensureAudio(); newGame(btn.getAttribute('data-diff')); });
+});
+faceBtn.addEventListener('click', function(){ ensureAudio(); newGame(cur); });
+modeDigBtn.addEventListener('click', function(){ setMode('dig'); });
+modeFlagBtn.addEventListener('click', function(){ setMode('flag'); });
+document.getElementById('zoomIn').addEventListener('click', function(){ cellSize+=3; applyCellSize(); });
+document.getElementById('zoomOut').addEventListener('click', function(){ cellSize-=3; applyCellSize(); });
+soundBtn.addEventListener('click', function(){
+  soundOn=!soundOn;
+  soundBtn.textContent=soundOn?'🔊':'🔇';
+  if(soundOn){ ensureAudio(); sndReveal(); }
+});
+window.addEventListener('resize', function(){
+  // keep custom zoom if the user pinched; otherwise refit gently — do nothing to
+  // avoid yanking the board while playing. Only refit before first click.
+  if(!minesPlaced){ var d=defaultCellSize(); if(Math.abs(d-cellSize)>6){ cellSize=d; applyCellSize(); } }
+});
+window.addEventListener('orientationchange', function(){
+  setTimeout(function(){ if(!minesPlaced){ cellSize=defaultCellSize(); applyCellSize(); } },200);
+});
+
+setMode('dig', true);
+newGame('beginner');
+})();
+</script>
+</body>
+</html>

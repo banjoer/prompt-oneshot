@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<!-- Typefall — Falling Words Typing Arcade | Produced: 2026-10-31 00:00 UTC | Author: Muse Spark 1.3 Contributor (opencode) | Mobile-friendly single-file build -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1026">
+<title>Typefall — Falling Words Typing Arcade</title>
+<style>
+  :root{
+    --bg0:#070b1d; --bg1:#0b1026; --panel:#131a3a; --panel2:#1a2350;
+    --accent:#4cc9f0; --accent2:#f72585; --good:#80ff9e; --bad:#ff5d5d;
+    --gold:#ffd166; --ink:#eef2ff; --dim:#9aa3c7;
+    --danger:#ff3860; --kbd:#1e2a63; --kbd-active:#4cc9f0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0; padding:0;}
+  body{
+    background:radial-gradient(1200px 800px at 50% -10%, #1b2456 0%, var(--bg1) 45%, var(--bg0) 100%);
+    color:var(--ink);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    overflow:hidden; overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none;
+    touch-action:manipulation;
+  }
+  #game{
+    height:100vh; height:100dvh; width:100vw; max-width:720px; margin:0 auto;
+    display:flex; flex-direction:column; position:relative;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  header#topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 12px 4px; gap:8px;
+  }
+  #logo{font-weight:900; letter-spacing:2px; font-size:clamp(18px,5vw,26px); white-space:nowrap;}
+  #logo span{color:var(--accent);}
+  #logo em{color:var(--accent2); font-style:normal;}
+  #topbtns{display:flex; gap:6px;}
+  .iconbtn{
+    background:var(--panel); border:1px solid #2c3875; color:var(--ink);
+    border-radius:10px; padding:8px 10px; font-size:16px; line-height:1;
+    cursor:pointer; min-width:44px; min-height:40px; touch-action:manipulation;
+  }
+  .iconbtn:active{transform:scale(.94); background:var(--panel2);}
+  #hud{
+    display:grid; grid-template-columns:repeat(5,1fr);
+    gap:6px; padding:4px 10px 6px;
+  }
+  .stat{background:rgba(19,26,58,.9); border:1px solid #2a356e; border-radius:10px;
+    padding:5px 4px; text-align:center; min-width:0;}
+  .stat .k{font-size:10px; letter-spacing:1px; color:var(--dim);}
+  .stat .v{font-size:clamp(14px,4vw,18px); font-weight:800; white-space:nowrap;}
+  #subhud{display:flex; gap:6px; padding:0 10px 6px; align-items:center;}
+  #levelPill,#comboPill,#shockPill{
+    flex:1; text-align:center; font-size:12px; font-weight:700;
+    background:var(--panel); border:1px solid #2c3875; border-radius:999px; padding:5px 8px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #comboPill.combo-hot{border-color:var(--gold); color:var(--gold); box-shadow:0 0 12px rgba(255,209,102,.4);}
+  #shockPill.ready{border-color:var(--accent); color:var(--accent);}
+  #shockPill.spent{opacity:.45;}
+  #playfield{
+    position:relative; flex:1; min-height:220px;
+    margin:0 10px; border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(76,201,240,.08), rgba(247,37,133,.06)), #0d1330;
+    border:1px solid #2c3875;
+    touch-action:none; /* we handle swipes ourselves */
+  }
+  #playfield.paused-fx{filter:saturate(.4) brightness(.7);}
+  .word{
+    position:absolute; transform:translate(-50%,0);
+    font-size:clamp(20px,6vw,30px); font-weight:800; letter-spacing:1px;
+    background:rgba(10,16,44,.88); border:1px solid #3a4a9a; border-radius:10px;
+    padding:4px 10px; white-space:nowrap; cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+    touch-action:none;
+    will-change:top, transform;
+  }
+  .word .typed{color:var(--good);}
+  .word .rest{color:var(--ink);}
+  .word.targeted{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(255,209,102,.55);}
+  .word.targeted::after{
+    content:"◉ TARGET"; position:absolute; top:-18px; left:50%; transform:translateX(-50%);
+    font-size:10px; color:var(--gold); letter-spacing:1px;
+  }
+  .word.typo-flash{animation:typoFlash .28s;}
+  @keyframes typoFlash{0%{border-color:var(--bad); background:#4a1220;}100%{}}
+  .word.pop{animation:pop .3s forwards;}
+  @keyframes pop{to{transform:translate(-50%,-30px) scale(1.6); opacity:0;}}
+  #dangerline{
+    position:absolute; left:0; right:0; height:0;
+    border-top:3px dashed var(--danger);
+    filter:drop-shadow(0 0 6px var(--danger));
+  }
+  #dangerline .tag{
+    position:absolute; right:8px; top:-22px; font-size:11px; font-weight:800;
+    background:var(--danger); color:#fff; border-radius:6px; padding:2px 7px; letter-spacing:1px;
+  }
+  #dangerline.hit{animation:dangerHit .4s;}
+  @keyframes dangerHit{0%{background:rgba(255,56,96,.5);}100%{}}
+  #flash{position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(circle, rgba(255,93,93,.35), transparent 70%);}
+  #flash.on{animation:flashA .3s;}
+  @keyframes flashA{0%{opacity:1;}100%{opacity:0;}}
+  .particle{position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; z-index:5;}
+  .floatscore{position:absolute; font-weight:900; color:var(--good); pointer-events:none; z-index:6; font-size:20px;}
+  #shakescreen{position:absolute; inset:0; pointer-events:none;}
+  .shake{animation:shakeA .3s;}
+  @keyframes shakeA{0%,100%{transform:translate(0,0);}25%{transform:translate(-6px,2px);}50%{transform:translate(6px,-3px);}75%{transform:translate(-3px,-2px);}}
+  #inputbar{
+    display:flex; gap:8px; align-items:stretch; padding:8px 10px 6px;
+  }
+  #inputdisplay{
+    flex:1; background:#05081a; border:1px solid #2c3875; border-radius:12px;
+    min-height:52px; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(20px,6vw,28px); font-weight:900; letter-spacing:3px;
+    overflow:hidden; position:relative; touch-action:pan-x;
+  }
+  #inputdisplay.empty::after{content:"tap keys below / type…"; font-size:12px; letter-spacing:1px; color:var(--dim); font-weight:400;}
+  #inputdisplay.shake{animation:shakeA .3s; border-color:var(--bad);}
+  #inputdisplay .caret{display:inline-block; width:3px; height:1.2em; background:var(--accent); margin-left:4px; animation:blink 1s infinite; vertical-align:middle;}
+  @keyframes blink{50%{opacity:0;}}
+  .barbtn{
+    border:1px solid #2c3875; border-radius:12px; background:var(--panel);
+    color:var(--ink); font-weight:800; font-size:14px; padding:0 12px;
+    min-width:56px; min-height:52px; cursor:pointer; touch-action:manipulation;
+  }
+  .barbtn:active{transform:scale(.95);}
+  #shockBtn{border-color:var(--accent); color:var(--accent);}
+  #shockBtn:disabled{opacity:.35;}
+  /* Touch keyboard */
+  #touchkbd{padding:2px 8px 8px; display:flex; flex-direction:column; gap:6px;}
+  #touchkbd .row{display:flex; gap:6px; justify-content:center;}
+  .key{
+    flex:1; max-width:64px; min-height:50px;
+    background:var(--kbd); border:1px solid #33407e; border-bottom-width:3px;
+    color:var(--ink); border-radius:10px; font-size:18px; font-weight:800;
+    cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .key:active,.key.pressed{background:var(--kbd-active); color:#06122b; transform:translateY(2px); border-bottom-width:1px;}
+  .key.wide{max-width:96px; font-size:15px; background:#2a1f4d;}
+  .key.fn{font-size:13px;}
+  #hint{font-size:11px; color:var(--dim); text-align:center; padding:0 12px 6px; line-height:1.4;}
+  /* Overlays */
+  .overlay{
+    position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,8,26,.86); backdrop-filter:blur(6px); padding:16px;
+  }
+  .overlay[hidden]{display:none;}
+  .card{
+    width:100%; max-width:480px; background:linear-gradient(180deg, var(--panel2), var(--panel));
+    border:1px solid #3a4a9a; border-radius:18px; padding:22px 20px; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+    max-height:92%; overflow:auto;
+  }
+  .card h1{margin:0 0 4px; font-size:clamp(30px,9vw,46px); letter-spacing:2px;}
+  .card h1 span{color:var(--accent);} .card h1 em{color:var(--accent2); font-style:normal;}
+  .card p{color:#c9d1f2; font-size:14px; line-height:1.55; margin:8px 0;}
+  .card .bestline{font-size:14px; background:#05081a; border:1px solid #2c3875; border-radius:10px; padding:8px;}
+  .card .bestline b{color:var(--gold);}
+  .bigbtn{
+    display:block; width:100%; margin:12px 0 6px; padding:16px; font-size:18px; font-weight:900;
+    letter-spacing:1px; border-radius:14px; border:none; cursor:pointer;
+    background:linear-gradient(90deg, var(--accent), #80ff9e); color:#06122b;
+    min-height:56px; touch-action:manipulation;
+  }
+  .bigbtn:active{transform:scale(.97);}
+  .ghostbtn{
+    display:block; width:100%; padding:12px; margin-top:8px; border-radius:12px;
+    background:transparent; border:1px solid #3a4a9a; color:var(--ink); font-weight:700; cursor:pointer;
+  }
+  .gesture-grid{text-align:left; font-size:13px; background:#05081a; border-radius:10px; padding:10px 12px; margin:10px 0; border:1px solid #2c3875;}
+  .gesture-grid div{margin:4px 0;}
+  #overStats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0;}
+  #overStats .s{background:#05081a; border:1px solid #2c3875; border-radius:10px; padding:10px;}
+  #overStats .s .k{font-size:11px; color:var(--dim); letter-spacing:1px;}
+  #overStats .s .v{font-size:24px; font-weight:900;}
+  #newBest{
+    display:none; font-weight:900; color:#06122b; background:linear-gradient(90deg,var(--gold),#ff9e5e);
+    border-radius:999px; padding:8px 14px; margin:8px auto; animation:pop2 1s infinite alternate;
+  }
+  #newBest.show{display:inline-block;}
+  @keyframes pop2{from{transform:scale(1);}to{transform:scale(1.06);}}
+  footer{font-size:11px; color:var(--dim); text-align:center; padding:4px 10px calc(6px + env(safe-area-inset-bottom));}
+  #osInput{position:fixed; bottom:0; left:0; width:4px; height:4px; opacity:0.01; border:none; padding:0; font-size:16px;}
+  #pausedTag{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:15;
+    background:#05081a; border:1px solid var(--gold); color:var(--gold); font-weight:900;
+    padding:10px 18px; border-radius:12px; display:none; letter-spacing:1px;}
+  #pausedTag.show{display:block;}
+  @media (max-height:640px){
+    #hint{display:none;} .key{min-height:44px;} #inputdisplay{min-height:44px;} .barbtn{min-height:44px;}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <header id="topbar">
+    <div id="logo"><span>TYPE</span><em>FALL</em> ⌨️⬇️</div>
+    <div id="topbtns">
+      <button class="iconbtn" id="pauseBtn" title="Pause (P)" aria-label="Pause">⏸</button>
+      <button class="iconbtn" id="soundBtn" title="Sound on/off" aria-label="Sound">🔊</button>
+      <button class="iconbtn" id="kbdToggle" title="Show/hide touch keyboard" aria-label="Keyboard">⌨️</button>
+      <button class="iconbtn" id="osKbdBtn" title="Open OS keyboard (for swipe-typing)" aria-label="OS keyboard">📲</button>
+    </div>
+  </header>
+
+  <div id="hud" aria-live="polite">
+    <div class="stat"><div class="k">SCORE</div><div class="v" id="hScore">0</div></div>
+    <div class="stat"><div class="k">WPM</div><div class="v" id="hWpm">0.0</div></div>
+    <div class="stat"><div class="k">ACC</div><div class="v" id="hAcc">100%</div></div>
+    <div class="stat"><div class="k">LIVES</div><div class="v" id="hLives">❤❤❤</div></div>
+    <div class="stat"><div class="k">BEST</div><div class="v" id="hBest">—</div></div>
+  </div>
+  <div id="subhud">
+    <div id="levelPill">LV 1 · 40px/s</div>
+    <div id="comboPill">COMBO ×0</div>
+    <div id="shockPill" class="ready">💥 SHOCK READY</div>
+  </div>
+
+  <div id="playfield">
+    <div id="flash"></div>
+    <div id="dangerline"><span class="tag">⚠ DANGER</span></div>
+    <div id="pausedTag">PAUSED — TAP ▶ TO RESUME</div>
+  </div>
+
+  <div id="inputbar">
+    <button class="barbtn" id="backBtn" aria-label="Backspace">⌫</button>
+    <div id="inputdisplay" class="empty" aria-label="Current input"></div>
+    <button class="barbtn" id="shockBtn" aria-label="Shockwave">💥</button>
+  </div>
+
+  <div id="touchkbd" aria-label="Touch keyboard">
+    <div class="row" data-row="0"></div>
+    <div class="row" data-row="1"></div>
+    <div class="row" data-row="2"></div>
+  </div>
+  <div id="hint">TAP a word to lock target · SWIPE ↓ on field = shockwave · SWIPE ← on input = delete · 2-finger TAP = shockwave · SPACE = shockwave (once)</div>
+
+  <!-- START -->
+  <div class="overlay" id="startScreen">
+    <div class="card">
+      <h1><span>TYPE</span><em>FALL</em></h1>
+      <p><b>Falling-words typing arcade.</b> Words rain down — type them before they cross the danger line. 3 lives. Speed ramps up fast. How long can you survive?</p>
+      <div class="bestline" id="startBest">BEST WPM: — (first run!)</div>
+      <div class="gesture-grid">
+        <div>⌨️ <b>Type / tap keys</b> — destroys targeted word</div>
+        <div>👆 <b>Tap a word</b> — lock target (shared first letters)</div>
+        <div>👇 <b>Swipe ↓ / 2-finger tap / SPACE / 💥</b> — shockwave: clears screen (once per run, no score)</div>
+        <div>⬅️ <b>Swipe ← on input / ⌫</b> — delete letter</div>
+        <div>📲 <b>OS-keyboard button</b> — opens system keyboard for swipe-typing / voice dictation</div>
+        <div>⏸ <b>P / pause button / auto-pause</b> — pause when tab hidden</div>
+      </div>
+      <p style="font-size:12px">Deterministic targeting: first letter locks the word <b>closest to the danger line</b> starting with it. Wrong key = typo + flash. Backspace edits.</p>
+      <button class="bigbtn" id="startBtn">▶ START — TAP OR PRESS ENTER</button>
+      <footer>Built 2026-10-31 · Muse Spark 1.3 Contributor (opencode) · single file, no assets</footer>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="overlay" id="overScreen" hidden>
+    <div class="card">
+      <h1>GAME <em>OVER</em></h1>
+      <div id="newBest">★ NEW BEST! ★</div>
+      <div id="overStats">
+        <div class="s"><div class="k">SCORE</div><div class="v" id="fScore">0</div></div>
+        <div class="s"><div class="k">WPM</div><div class="v" id="fWpm">0</div></div>
+        <div class="s"><div class="k">ACCURACY</div><div class="v" id="fAcc">0%</div></div>
+        <div class="s"><div class="k">BEST</div><div class="v" id="fBest">—</div></div>
+      </div>
+      <p id="overMsg"></p>
+      <button class="bigbtn" id="againBtn">↻ PLAY AGAIN — TAP OR ENTER</button>
+      <button class="ghostbtn" id="menuBtn">← back to menu</button>
+      <footer>Built 2026-10-31 · Muse Spark 1.3 Contributor (opencode) · best saved as typefall.bestWPM</footer>
+    </div>
+  </div>
+
+  <input id="osInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+    enterkeyhint="go" aria-label="OS keyboard input" />
+</div>
+
+<script>
+"use strict";
+/* No third-party libraries. Vanilla JS only. */
+
+const WORDS = [
+  "apple","arrow","anchor","acorn","beach","bridge","breeze","birch",
+  "candle","castle","canyon","clover","cloud","crystal","dancer","dragon",
+  "dream","desert","dune","eagle","ember","engine","elm","falcon",
+  "feather","fern","flame","forest","frost","galaxy","garden","glacier",
+  "goblin","grove","hammer","harbor","hawk","helium","honey","horizon",
+  "igloo","insect","iris","island","ivory","jacket","jade","jewel",
+  "jigsaw","jungle","kayak","kettle","kitten","kelp","koala","ladder",
+  "lagoon","lantern","lemon","light","lily","magic","marble","meadow",
+  "meteor","mirror","moss","music","nebula","nectar","needle","noodle",
+  "nova","oak","ocean","onyx","orbit","orange","owl","paper",
+  "parrot","pencil","piano","pine","prairie","quartz","queen","quiver",
+  "rabbit","rainbow","reed","riddle","river","rocket","saddle","sage",
+  "shadow","silver","stone","storm","summit","sunset","thunder","tiger",
+  "timber","tower","tulip","umber","umbrella","unicorn","vapor","velvet",
+  "violet","volcano","walnut","whale","willow","window","yarn","yellow",
+  "zebra","zipper"
+];
+
+// ---- DOM ----
+const $ = id => document.getElementById(id);
+const playfield=$("playfield"), dangerEl=$("dangerline"),
+  hScore=$("hScore"), hWpm=$("hWpm"), hAcc=$("hAcc"), hLives=$("hLives"), hBest=$("hBest"),
+  levelPill=$("levelPill"), comboPill=$("comboPill"), shockPill=$("shockPill"),
+  inputDisplay=$("inputdisplay"), startScreen=$("startScreen"), overScreen=$("overScreen"),
+  startBest=$("startBest"), newBestEl=$("newBest"),
+  fScore=$("fScore"), fWpm=$("fWpm"), fAcc=$("fAcc"), fBest=$("fBest"), overMsg=$("overMsg"),
+  flashEl=$("flash"), pausedTag=$("pausedTag"), touchkbd=$("touchkbd"),
+  osInput=$("osInput");
+
+// ---- State ----
+let screen="start"; // start | playing | over
+let words=[], target=null, input="";
+let score=0, lives=3, correctChars=0, totalKeys=0, startTime=0, elapsed=0;
+let combo=0, maxCombo=0, typoInWord=false, shockUsed=false;
+let fallSpeed=40, spawnInterval=2000, level=1, spawnTimer=null, rafId=null, lastT=0, lastSpawn=0, paused=false;
+let soundOn=true, audioCtx=null, kbdVisible=true, wordSeq=0;
+
+const BEST_KEY="typefall.bestWPM";
+function loadBest(){ try{ const v=parseFloat(localStorage.getItem(BEST_KEY)); return isFinite(v)&&v>0?v:null; }catch(e){ return null; } }
+function saveBest(v){ try{ localStorage.setItem(BEST_KEY, String(v)); }catch(e){} }
+let bestWPM=loadBest();
+function fmtBest(v){ return v==null?"—":(Math.round(v*10)/10).toString(); }
+function refreshBestUI(){
+  hBest.textContent=fmtBest(bestWPM);
+  startBest.innerHTML = bestWPM==null ? "BEST WPM: — (first run!)" : ("BEST WPM: <b>"+fmtBest(bestWPM)+"</b>");
+}
+
+// ---- Audio (Web Audio, synthesized) ----
+function ac(){
+  if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(audioCtx && audioCtx.state==="suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq,dur,type,vol,when){
+  if(!soundOn) return; const c=ac(); if(!c) return;
+  try{
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    const t=c.currentTime+(when||0);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const sfx={
+  key(){ tone(420+Math.min(combo,12)*45,0.07,"triangle",0.12); },
+  destroy(){ const b=480+Math.min(combo,15)*40; tone(b,0.09,"square",0.12); tone(b*1.5,0.12,"sine",0.14,0.06); },
+  typo(){ tone(130,0.16,"sawtooth",0.16); },
+  life(){ tone(300,0.2,"sawtooth",0.18); tone(180,0.3,"sawtooth",0.18,0.12); },
+  over(){ [400,320,240,160].forEach((f,i)=>tone(f,0.25,"triangle",0.16,i*0.18)); },
+  shock(){ tone(150,0.4,"sawtooth",0.2); tone(900,0.3,"sine",0.12,0.05); },
+  start(){ tone(523,0.1,"triangle",0.15); tone(659,0.1,"triangle",0.15,0.09); tone(784,0.16,"triangle",0.15,0.18); }
+};
+
+// ---- Touch keyboard build ----
+const ROWS=[["q","w","e","r","t","y","u","i","o","p"],
+            ["a","s","d","f","g","h","j","k","l"],
+            ["z","x","c","v","b","n","m"]];
+function buildKbd(){
+  const containers=touchkbd.querySelectorAll(".row");
+  containers.forEach(r=>r.innerHTML="");
+  ROWS[0].forEach(ch=>containers[0].appendChild(mkKey(ch)));
+  ROWS[1].forEach(ch=>containers[1].appendChild(mkKey(ch)));
+  const r2=containers[2];
+  const sh=mkKey("💥","wide fn"); sh.dataset.fn="shock"; sh.title="Shockwave (once)";
+  r2.appendChild(sh);
+  ROWS[2].forEach(ch=>r2.appendChild(mkKey(ch)));
+  const bk=mkKey("⌫","wide fn"); bk.dataset.fn="back"; bk.title="Backspace";
+  r2.appendChild(bk);
+}
+function mkKey(ch,cls){
+  const b=document.createElement("button");
+  b.className="key"+(cls?" "+cls:""); b.textContent=ch;
+  if(!cls) b.dataset.ch=ch;
+  b.setAttribute("aria-label","key "+ch);
+  // pointerdown = lowest latency on mobile; preventDefault stops double-firing + focus loss
+  b.addEventListener("pointerdown",e=>{ e.preventDefault(); pressKeyVisual(b); handleKeyButton(ch,b); },{passive:false});
+  return b;
+}
+function pressKeyVisual(b){ b.classList.add("pressed"); setTimeout(()=>b.classList.remove("pressed"),120); }
+
+// ---- Layout helpers ----
+function dangerY(){ return playfield.clientHeight-64; }
+function layoutDanger(){ dangerEl.style.top=dangerY()+"px"; }
+
+// ---- Game flow ----
+function startGame(){
+  // reset
+  words.forEach(w=>w.el.remove()); words=[]; target=null; input="";
+  score=0; lives=3; correctChars=0; totalKeys=0; combo=0; maxCombo=0;
+  typoInWord=false; shockUsed=false; fallSpeed=40; spawnInterval=2000; level=1;
+  elapsed=0; startTime=performance.now(); lastSpawn=performance.now(); lastT=performance.now();
+  paused=false; pausedTag.classList.remove("show"); playfield.classList.remove("paused-fx");
+  startScreen.hidden=true; overScreen.hidden=true; screen="playing";
+  $("shockBtn").disabled=false; shockPill.textContent="💥 SHOCK READY"; shockPill.className="ready"; shockPill.id="shockPill";
+  refreshBestUI(); updateHUD(); renderInput();
+  layoutDanger();
+  sfx.start();
+  cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(loop);
+  // dismiss OS kbd (custom kbd is primary)
+  try{ osInput.blur(); }catch(e){}
+}
+function endGame(){
+  screen="over";
+  cancelAnimationFrame(rafId);
+  words.forEach(w=>w.el.remove()); words=[]; target=null;
+  const mins=Math.max(elapsed/60000,1/6000);
+  const finalWPM=(correctChars/5)/mins;
+  const acc=totalKeys===0?100:(correctChars/totalKeys*100);
+  const isBest=bestWPM==null||finalWPM>bestWPM;
+  if(isBest && finalWPM>0){ bestWPM=Math.round(finalWPM*10)/10; saveBest(bestWPM); }
+  refreshBestUI();
+  fScore.textContent=score;
+  fWpm.textContent=(Math.round(finalWPM*10)/10).toString();
+  fAcc.textContent=(Math.round(acc*10)/10)+"%";
+  fBest.textContent=fmtBest(bestWPM);
+  newBestEl.classList.toggle("show",isBest&&finalWPM>0);
+  overMsg.textContent = score===0 ? "No words destroyed — warm up those fingers and try again!"
+    : maxCombo>=5 ? ("Blazing! Best combo ×"+maxCombo+". The fall only gets faster…")
+    : "Nice run! Tip: tap a word to lock it, and save 💥 for emergencies.";
+  overScreen.hidden=false;
+  sfx.over();
+  try{ osInput.blur(); }catch(e){}
+}
+function togglePause(force){
+  if(screen!=="playing") return;
+  paused = force!==undefined?force:!paused;
+  pausedTag.classList.toggle("show",paused);
+  playfield.classList.toggle("paused-fx",paused);
+  $("pauseBtn").textContent=paused?"▶":"⏸";
+  if(!paused){ lastT=performance.now(); }
+}
+
+// ---- Spawning / loop ----
+function pickWord(){
+  for(let t=0;t<12;t++){ const w=WORDS[(Math.random()*WORDS.length)|0];
+    if(!words.some(o=>o.text===w)) return w; }
+  return WORDS[(Math.random()*WORDS.length)|0];
+}
+function spawnWord(){
+  if(words.length>=6) return;
+  const text=pickWord();
+  const el=document.createElement("div");
+  el.className="word"; el.dataset.id=++wordSeq;
+  // tap-to-target
+  el.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); lockTargetByTap(text); },{passive:false});
+  playfield.appendChild(el);
+  const maxX=playfield.clientWidth-20;
+  const approxW=Math.max(90,text.length*17);
+  const x=20+Math.random()*Math.max(40,maxX-Math.min(approxW,maxX-40));
+  const w={text,x,y:-46,el,id:wordSeq};
+  words.push(w);
+  positionWord(w); paintWord(w);
+}
+function positionWord(w){
+  w.el.style.left=w.x+"px"; w.el.style.top=w.y+"px";
+}
+function paintWord(w){
+  const n = (target===w)?input.length:0;
+  const t=w.text.slice(0,n), r=w.text.slice(n);
+  // escape not needed (a-z only)
+  w.el.innerHTML='<span class="typed">'+t+'</span><span class="rest">'+r+'</span>';
+  w.el.classList.toggle("targeted",target===w);
+}
+function paintAll(){ words.forEach(paintWord); }
+
+function loop(now){
+  if(screen!=="playing") return;
+  if(!paused){
+    const dt=Math.min((now-lastT)/1000,0.1); lastT=now;
+    elapsed=now-startTime;
+    // escalation every 15s
+    const step=Math.floor(elapsed/15000);
+    level=step+1;
+    fallSpeed=Math.min(40+15*step,200);
+    spawnInterval=Math.max(2000-150*step,700);
+    if(now-lastSpawn>=spawnInterval){ lastSpawn=now; spawnWord(); }
+    const dy=dangerY();
+    // move
+    for(let i=words.length-1;i>=0;i--){
+      const w=words[i]; w.y+=fallSpeed*dt; positionWord(w);
+      if(w.y+34>=dy){ // reached danger line
+        burst(w.x,w.y+10,["#ff3860","#ff9e5e","#fff"],10);
+        w.el.remove(); words.splice(i,1);
+        dangerEl.classList.remove("hit"); void dangerEl.offsetWidth; dangerEl.classList.add("hit");
+        flashEl.classList.remove("on"); void flashEl.offsetWidth; flashEl.classList.add("on");
+        if(target===w){ target=null; input=""; renderInput(); }
+        lives--; combo=0; typoInWord=false;
+        sfx.life();
+        playfield.classList.remove("shake"); void playfield.offsetWidth; playfield.classList.add("shake");
+        updateHUD();
+        if(lives<=0){ updateHUD(); endGame(); return; }
+      }
+    }
+    updateHUD();
+  } else { lastT=now; }
+  rafId=requestAnimationFrame(loop);
+}
+
+// ---- Typing core (deterministic) ----
+function handleChar(ch){
+  if(screen!=="playing"||paused) return;
+  ch=ch.toLowerCase();
+  if(!/^[a-z]$/.test(ch)) return;
+  totalKeys++;
+  if(!target){
+    // closest to danger line (largest y) whose text starts with ch
+    let best=null;
+    for(const w of words){ if(w.text[0]===ch && (!best||w.y>best.y)) best=w; }
+    if(best){ target=best; input=ch; correctChars++; typoInWord=false; sfx.key(); }
+    else { registerTypo(null); }
+  } else {
+    const next=target.text[input.length];
+    if(ch===next){ input+=ch; correctChars++; sfx.key();
+      if(input===target.text){ destroyTarget(); }
+    } else { registerTypo(target); }
+  }
+  renderInput(); paintAll(); updateHUD();
+}
+function registerTypo(w){
+  typoInWord=true; combo=0;
+  sfx.typo();
+  inputDisplay.classList.remove("shake"); void inputDisplay.offsetWidth; inputDisplay.classList.add("shake");
+  if(w){ w.el.classList.remove("typo-flash"); void w.el.offsetWidth; w.el.classList.add("typo-flash"); }
+  else { flashEl.classList.remove("on"); void flashEl.offsetWidth; flashEl.classList.add("on"); }
+}
+function handleBack(){
+  if(screen!=="playing"||paused) return;
+  if(input.length>0){ input=input.slice(0,-1); if(input==="") target=null; renderInput(); paintAll(); tone(250,0.06,"sine",0.08); }
+}
+function destroyTarget(){
+  const w=target;
+  score++;
+  if(!typoInWord){ combo++; maxCombo=Math.max(maxCombo,combo); } else { combo=0; }
+  const cx=w.x, cy=w.y+12;
+  burst(cx,cy,["#80ff9e","#4cc9f0","#ffd166","#fff"],14);
+  floatText(cx,cy,"+1"+(combo>=2?"  ×"+combo:""));
+  w.el.classList.add("pop");
+  setTimeout(()=>w.el.remove(),280);
+  words.splice(words.indexOf(w),1);
+  target=null; input=""; typoInWord=false;
+  sfx.destroy();
+}
+function shockwave(){
+  if(screen!=="playing"||paused||shockUsed) return;
+  shockUsed=true;
+  $("shockBtn").disabled=true; shockPill.textContent="💥 SHOCK SPENT"; shockPill.className="spent"; shockPill.id="shockPill";
+  // clear all words, no score
+  words.forEach(w=>{ burst(w.x,w.y+12,["#4cc9f0","#fff"],8); w.el.remove(); });
+  words=[]; target=null; input=""; typoInWord=false; combo=0;
+  flashEl.classList.remove("on"); void flashEl.offsetWidth; flashEl.classList.add("on");
+  renderInput(); paintAll(); updateHUD();
+  sfx.shock();
+}
+function lockTargetByTap(text){
+  if(screen!=="playing"||paused) return;
+  const w=words.find(o=>o.text===text);
+  if(!w) return;
+  if(target===w) return;
+  if(input!=="" && w.text.startsWith(input)){ target=w; }
+  else { target=w; input=""; typoInWord=false; }
+  tone(600,0.06,"sine",0.1);
+  renderInput(); paintAll();
+}
+function handleKeyButton(ch,btn){
+  if(ch==="⌫"||btn.dataset.fn==="back"){ handleBack(); return; }
+  if(ch==="💥"||btn.dataset.fn==="shock"){ shockwave(); return; }
+  handleChar(ch);
+}
+
+// ---- HUD / input ----
+function updateHUD(){
+  hScore.textContent=score;
+  const mins=Math.max(elapsed/60000,0.0001);
+  const wpm=(correctChars/5)/mins;
+  hWpm.textContent=(elapsed<500?"0.0":(Math.round(wpm*10)/10).toString());
+  const acc=totalKeys===0?100:(correctChars/totalKeys*100);
+  hAcc.textContent=Math.round(acc)+"%";
+  hLives.textContent="❤".repeat(Math.max(0,lives))+"🤍".repeat(Math.max(0,3-lives));
+  levelPill.textContent="LV "+level+" · "+Math.round(fallSpeed)+"px/s";
+  comboPill.textContent=combo>=2?("🔥 COMBO ×"+combo):("COMBO ×"+combo);
+  comboPill.classList.toggle("combo-hot",combo>=2);
+}
+function renderInput(){
+  inputDisplay.innerHTML="";
+  if(input===""){ inputDisplay.classList.add("empty"); }
+  else{
+    inputDisplay.classList.remove("empty");
+    const s=document.createElement("span"); s.textContent=input; inputDisplay.appendChild(s);
+  }
+  const c=document.createElement("span"); c.className="caret"; inputDisplay.appendChild(c);
+}
+
+// ---- Particles ----
+function burst(x,y,colors,n){
+  for(let i=0;i<n;i++){
+    const p=document.createElement("div"); p.className="particle";
+    p.style.background=colors[i%colors.length];
+    p.style.left=x+"px"; p.style.top=y+"px";
+    playfield.appendChild(p);
+    const dx=(Math.random()-0.5)*220, dyy=-40-Math.random()*160;
+    try{
+      p.animate([{transform:"translate(0,0) scale(1)",opacity:1},
+        {transform:`translate(${dx}px,${dyy+120}px) scale(.2)`,opacity:0}],
+        {duration:500+Math.random()*300,easing:"cubic-bezier(.2,.7,.3,1)"}).onfinish=()=>p.remove();
+      setTimeout(()=>p.remove(),1000);
+    }catch(e){ setTimeout(()=>p.remove(),400); }
+  }
+}
+function floatText(x,y,txt){
+  const f=document.createElement("div"); f.className="floatscore"; f.textContent=txt;
+  f.style.left=x+"px"; f.style.top=y+"px"; playfield.appendChild(f);
+  try{ f.animate([{transform:"translate(-50%,0)",opacity:1},{transform:"translate(-50%,-60px)",opacity:0}],
+    {duration:700,easing:"ease-out"}).onfinish=()=>f.remove(); setTimeout(()=>f.remove(),800);
+  }catch(e){ setTimeout(()=>f.remove(),700); }
+}
+
+// ---- Physical keyboard ----
+document.addEventListener("keydown",e=>{
+  if(screen==="start" && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); startGame(); return; }
+  if(screen==="over" && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); startGame(); return; }
+  if(screen!=="playing") return;
+  if(e.key==="Backspace"){ e.preventDefault(); handleBack(); return; }
+  if(e.key===" "){ e.preventDefault(); shockwave(); return; }
+  if(e.key==="p"||e.key==="P"||e.key==="Escape"){ togglePause(); return; }
+  if(e.key.length===1 && /^[a-zA-Z]$/.test(e.key)){ handleChar(e.key); }
+});
+// OS keyboard bridge (swipe-typing / voice / BT keyboards that don't fire keydown properly)
+let osPrev="";
+osInput.addEventListener("input",()=>{
+  const v=osInput.value; 
+  if(v.length>osPrev.length){
+    const added=v.slice(osPrev.length);
+    for(const ch of added){ if(ch===" ") shockwave(); else if(/^[a-zA-Z]$/.test(ch)) handleChar(ch); }
+  } else if(v.length<osPrev.length){ handleBack(); }
+  osPrev=v;
+  if(osInput.value.length>24){ osInput.value=""; osPrev=""; }
+});
+
+// ---- Buttons ----
+$("startBtn").addEventListener("click",startGame);
+$("againBtn").addEventListener("click",startGame);
+$("menuBtn").addEventListener("click",()=>{ overScreen.hidden=true; startScreen.hidden=false; screen="start"; refreshBestUI(); });
+$("backBtn").addEventListener("pointerdown",e=>{e.preventDefault();handleBack();});
+$("shockBtn").addEventListener("click",shockwave);
+$("pauseBtn").addEventListener("click",()=>togglePause());
+$("soundBtn").addEventListener("click",e=>{ soundOn=!soundOn; e.target.textContent=soundOn?"🔊":"🔇"; if(soundOn) tone(600,0.08,"sine",0.12); });
+$("kbdToggle").addEventListener("click",()=>{
+  kbdVisible=!kbdVisible; touchkbd.style.display=kbdVisible?"flex":"none";
+  $("hint").style.display=kbdVisible?"block":"none"; layoutDanger();
+});
+$("osKbdBtn").addEventListener("click",()=>{
+  try{ osInput.value=""; osPrev=""; osInput.focus({preventScroll:true}); }catch(e){ osInput.focus(); }
+});
+startScreen.addEventListener("click",e=>{ if(e.target===startScreen) startGame(); });
+playfield.addEventListener("click",()=>{ if(screen==="playing"&&paused) togglePause(false); });
+
+// ---- Swipe / gesture handling on playfield & input ----
+// Swipe DOWN on field = shockwave. Two-finger tap = shockwave.
+let tS=null;
+playfield.addEventListener("touchstart",e=>{
+  if(e.touches.length===2){ e.preventDefault(); shockwave(); return; }
+  if(e.touches.length===1){ tS={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()}; }
+},{passive:false});
+playfield.addEventListener("touchmove",e=>{ e.preventDefault(); },{passive:false});
+playfield.addEventListener("touchend",e=>{
+  if(!tS||e.changedTouches.length!==1){ tS=null; return; }
+  const dx=e.changedTouches[0].clientX-tS.x, dy=e.changedTouches[0].clientY-tS.y;
+  if(dy>60&&Math.abs(dy)>Math.abs(dx)*1.4) shockwave();
+  tS=null;
+},{passive:true});
+
+let iS=null;
+inputDisplay.addEventListener("touchstart",e=>{ iS={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+inputDisplay.addEventListener("touchend",e=>{
+  if(!iS) return;
+  const dx=e.changedTouches[0].clientX-iS.x, dy=e.changedTouches[0].clientY-iS.y;
+  if(dx<-50&&Math.abs(dx)>Math.abs(dy)*1.4) handleBack(); // swipe left = delete
+  iS=null;
+},{passive:true});
+
+// ---- Housekeeping ----
+window.addEventListener("resize",layoutDanger);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&screen==="playing"&&!paused) togglePause(true); });
+// Prevent double-tap zoom / context menu on long-press during play
+document.addEventListener("dblclick",e=>e.preventDefault(),{passive:false});
+playfield.addEventListener("contextmenu",e=>e.preventDefault());
+touchkbd.addEventListener("contextmenu",e=>e.preventDefault());
+// Unlock audio on first gesture (mobile autoplay policy)
+window.addEventListener("pointerdown",()=>ac(),{once:true});
+
+// ---- Init ----
+buildKbd();
+refreshBestUI(); updateHUD(); renderInput(); layoutDanger();
+setTimeout(layoutDanger,100);
+// Auto-show touch kbd on touch devices, keep visible on desktop too (clickable)
+if(!("ontouchstart" in window) && window.innerWidth>760){ /* keep visible anyway for mouse users */ }
+</script>
+</body>
+</html>

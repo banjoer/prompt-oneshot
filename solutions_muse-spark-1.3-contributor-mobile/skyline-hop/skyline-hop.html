@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<!--
+  Skyline Hop — One-Button Endless Runner (mobile-friendly edition)
+  Single-file game: markup + styles + logic, no build, no assets, no network.
+  Runs from file:// — just double-click / tap to open in any modern browser.
+
+  Produced: 2026-10-31  (UTC) — solution build date, see footer line on page.
+  Author/Model: Muse Spark 1.3 Contributor (via OpenCode)
+  Third-party libraries: NONE (vanilla HTML/CSS/JS + Canvas 2D only).
+
+  Mobile input map (all trigger the SAME one-button action):
+    - tap (single finger, anywhere) ............ jump / start / restart
+    - touch-and-hold release is NOT a 2nd action (still one button)
+    - swipe up / swipe down / diagonal swipe .. jump (same action)
+    - two-finger tap ........................... jump (same action, debounced)
+    - shake device ............................. restart when game over
+    - mouse click, Space, ArrowUp, KeyW ........ jump (desktop parity)
+    - haptics via navigator.vibrate where available
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1026">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Skyline Hop — Pocket Arcade</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg0:#0b1026; --bg1:#141b3d;
+    --accent:#ffd23f; --accent2:#4dd8ff;
+    --panel:rgba(8,12,30,.82);
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    margin:0;padding:0;min-height:100%;
+    background:radial-gradient(120% 90% at 50% 0%,var(--bg1),var(--bg0) 70%);
+    color:#eef2ff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+    overscroll-behavior:none;
+    touch-action:none;
+    -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
+  }
+  body{
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100dvh;
+    padding:calc(10px + var(--safe-t)) 12px calc(10px + var(--safe-b));
+    gap:10px;
+  }
+  #wrap{width:100%;max-width:920px;display:flex;flex-direction:column;gap:8px}
+  header{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:2px 4px;
+  }
+  header h1{
+    margin:0;font-size:clamp(18px,4.6vw,26px);letter-spacing:.5px;font-weight:800;
+  }
+  header h1 .hop{color:var(--accent)}
+  #hiDom{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:clamp(11px,3.2vw,14px);color:#bcd0ff;white-space:nowrap;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+    padding:5px 10px;border-radius:999px;
+  }
+  #stage{
+    position:relative;width:100%;
+    border-radius:16px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    background:#0b1026;
+    touch-action:none;
+  }
+  canvas{
+    display:block;width:100%;height:auto;aspect-ratio:2/1;
+    touch-action:none;
+  }
+  #rotateHint{
+    display:none;text-align:center;font-size:12px;color:#9fb2e8;
+    padding:6px 10px;background:rgba(77,216,255,.08);
+    border:1px dashed rgba(77,216,255,.35);border-radius:10px;
+  }
+  @media (orientation:portrait) and (max-width:600px){
+    #rotateHint{display:block}
+  }
+  #controls{
+    display:flex;gap:8px;align-items:stretch;
+  }
+  #bigBtn{
+    flex:1;
+    appearance:none;border:0;cursor:pointer;
+    border-radius:14px;padding:16px 12px;
+    font-size:clamp(16px,4.5vw,20px);font-weight:800;letter-spacing:.4px;
+    color:#10142b;background:linear-gradient(180deg,#ffe37a,#ffb52e);
+    box-shadow:0 6px 0 #9a5b00,0 10px 24px rgba(0,0,0,.45);
+    touch-action:manipulation;
+    min-height:56px;
+  }
+  #bigBtn:active{transform:translateY(3px);box-shadow:0 3px 0 #9a5b00}
+  #muteBtn{
+    width:56px;min-height:56px;border-radius:14px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
+    color:#fff;font-size:22px;touch-action:manipulation;
+  }
+  #help{
+    font-size:clamp(12px,3.4vw,14px);line-height:1.5;color:#c6d4ff;
+    background:var(--panel);border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;padding:10px 12px;
+  }
+  #help b{color:#fff}
+  footer{
+    text-align:center;font-size:clamp(11px,3vw,13px);color:#8ea0d6;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    padding:4px 6px 8px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>SKYLINE <span class="hop">HOP</span></h1>
+    <div id="hiDom">HI 0</div>
+  </header>
+
+  <div id="stage">
+    <canvas id="game" width="800" height="400" aria-label="Skyline Hop endless runner. Tap to jump."></canvas>
+  </div>
+  <div id="rotateHint">Portrait detected — fully playable with thumbs. Rotate for a wider skyline.</div>
+
+  <div id="controls">
+    <button id="bigBtn" type="button">TAP TO JUMP</button>
+    <button id="muteBtn" type="button" aria-label="Toggle sound">♪</button>
+  </div>
+
+  <div id="help">
+    <b>One button does everything:</b> tap anywhere, click, <b>Space / ↑</b>,
+    swipe up / down, two-finger tap — all jump &amp; double-jump.
+    Land to recharge. Shake phone or tap to restart after game over.
+  </div>
+
+  <footer id="foot">Skyline Hop • built 2026-10-31 UTC • by Muse Spark 1.3 Contributor (OpenCode)</footer>
+</div>
+
+<script>
+"use strict";
+/* ================= Skyline Hop — mobile edition =================
+   Canvas logical resolution: 800 x 400. Delta-time physics.
+   No dependencies, no network, localStorage hi-score with fallback.
+------------------------------------------------------------------ */
+const W = 800, H = 400;
+const GROUND_H = 60, GROUND_Y = H - GROUND_H;
+const GRAV = 2200, JUMP_V = -720, DJUMP_V = -620;
+const START_SPEED = 260, RAMP = 6, MAX_SPEED = 620;
+const SINGLE_AIRTIME = 2 * 720 / 2200;      // ~0.6545 s
+const TIME_TO_CLEAR = SINGLE_AIRTIME + 0.25;// safety margin
+const BUILD_DATE = "2026-10-31 UTC";
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const hiDom = document.getElementById("hiDom");
+const bigBtn = document.getElementById("bigBtn");
+const muteBtn = document.getElementById("muteBtn");
+
+// Crisp rendering on high-DPI phones: scale backing store, keep logical coords.
+(function setupDPR(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+})();
+
+// ---------- persistence (localStorage with session fallback) ----------
+let hiScore = 0, storageOK = true;
+try {
+  const raw = localStorage.getItem("skyline-hop-hi");
+  hiScore = raw ? (parseInt(raw, 10) || 0) : 0;
+} catch (e) { storageOK = false; hiScore = 0; }
+function saveHi(v){
+  hiScore = v;
+  hiDom.textContent = "HI " + v;
+  if (!storageOK) return;
+  try { localStorage.setItem("skyline-hop-hi", String(v)); }
+  catch (e) { storageOK = false; }
+}
+hiDom.textContent = "HI " + hiScore;
+
+// ---------- audio (tiny generated beeps, no files) ----------
+let actx = null, muted = false;
+function audio(){
+  if (muted) return null;
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  } catch (e) { return null; }
+}
+function beep(f0, f1, dur, type){
+  const ac = audio(); if (!ac) return;
+  try {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(f0, ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), ac.currentTime + dur);
+    g.gain.setValueAtTime(0.12, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + dur + 0.02);
+  } catch (e) {}
+}
+function buzz(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+muteBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  muted = !muted;
+  muteBtn.textContent = muted ? "✕" : "♪";
+  muteBtn.style.opacity = muted ? ".55" : "1";
+});
+
+// ---------- parallax city patterns (seamless, period = 1600) ----------
+const PERIOD = 1600;
+function makeLayer(n, hMin, hMax, wMin, wMax){
+  const arr = []; let x = 0;
+  while (x < PERIOD){
+    const w = wMin + Math.random() * (wMax - wMin);
+    const h = hMin + Math.random() * (hMax - hMin);
+    const lit = Math.random() < 0.7;
+    arr.push({ x, w, h, lit, seed: Math.random() * 1000 });
+    x += w + 4 + Math.random() * 26;
+  }
+  return arr;
+}
+const farLayer  = makeLayer(0, 60, 150, 50, 110);
+const midLayer  = makeLayer(0, 70, 180, 40, 90);
+const nearLayer = makeLayer(0, 14, 46, 60, 160);
+
+// ---------- game state ----------
+const player = { x: 120, y: GROUND_Y - 36, w: 32, h: 36, vy: 0, grounded: true, canDouble: true, spin: 0, spinning: false };
+let obstacles = [];       // {x,w,h,tall}
+let particles = [];       // {x,y,vx,vy,life,maxLife,color,r}
+let state = "ready";      // ready | playing | over
+let distance = 0, elapsed = 0, speed = START_SPEED;
+let score = 0, newBest = false, overAt = 0;
+let jumpBuffer = 0, lastPressT = -9;
+let shakeLast = 0;
+
+function clearableGap(spd, tall){
+  const lo = 0.9, hi = 1.6;
+  let g = spd * TIME_TO_CLEAR * (lo + Math.random() * (hi - lo));
+  if (tall) g *= 1.25;
+  return g;
+}
+let distToSpawn = 300;
+
+function reset(){
+  player.y = GROUND_Y - player.h; player.vy = 0;
+  player.grounded = true; player.canDouble = true;
+  player.spin = 0; player.spinning = false;
+  obstacles = []; particles = [];
+  distance = 0; elapsed = 0; speed = START_SPEED; score = 0;
+  newBest = false; jumpBuffer = 0; distToSpawn = 320;
+}
+
+function spawnObstacle(){
+  const tall = Math.random() < 0.28;   // tall bars REQUIRE double-jump at speed
+  const w = 18 + Math.random() * 24;
+  const h = tall ? (56 + Math.random() * 36)   // 56..92
+                 : (28 + Math.random() * 27);  // 28..55
+  obstacles.push({ x: W + 4, w, h, tall });
+  distToSpawn = clearableGap(speed, tall);
+}
+
+function doJump(){
+  const now = performance.now() / 1000;
+  if (now - lastPressT < 0.08) return;  // debounce multi-touch / tap+swipe dupes
+  lastPressT = now;
+  audio(); // unlock audio on iOS gesture
+  if (state === "ready"){ reset(); state = "playing"; }
+  else if (state === "over"){
+    if (performance.now() - overAt < 350) return; // let panel be seen
+    reset(); state = "playing";
+    bigBtn.textContent = "TAP TO JUMP";
+    return;
+  }
+  // playing: buffer the press so touch latency never eats a jump
+  jumpBuffer = 0.12;
+}
+
+function consumeJump(){
+  if (player.grounded){
+    player.vy = JUMP_V; player.grounded = false; player.canDouble = true;
+    beep(420, 700, 0.12, "square"); buzz(12);
+    burst(player.x + player.w/2, player.y + player.h, 7, "#9fe8ff");
+  } else if (player.canDouble){
+    player.canDouble = false;
+    player.vy = DJUMP_V; player.spinning = true; player.spin = 0;
+    beep(620, 940, 0.14, "square"); buzz(18);
+    ring(player.x + player.w/2, player.y + player.h/2);
+  }
+  jumpBuffer = 0;
+}
+
+function burst(x, y, n, color){
+  for (let i = 0; i < n; i++)
+    particles.push({ x, y, vx: (Math.random()-0.5)*260, vy: -Math.random()*220,
+      life: 0, maxLife: 0.4 + Math.random()*0.25, color, r: 2 + Math.random()*2.5 });
+}
+function ring(x, y){
+  for (let i = 0; i < 14; i++){
+    const a = (i / 14) * Math.PI * 2;
+    particles.push({ x, y, vx: Math.cos(a)*220, vy: Math.sin(a)*220,
+      life: 0, maxLife: 0.35, color: "#ffd23f", r: 2.5 });
+  }
+}
+
+function crash(){
+  state = "over"; overAt = performance.now();
+  newBest = score > hiScore;
+  if (newBest) saveHi(score);
+  beep(220, 55, 0.35, "sawtooth"); buzz([90, 40, 90]);
+  burst(player.x + player.w/2, player.y + player.h/2, 22, "#ff5a5a");
+  bigBtn.textContent = "TAP TO RESTART";
+}
+
+// ---------- update ----------
+function update(dt){
+  if (state !== "playing") {
+    // idle particles still animate on menus
+    for (const p of particles){ p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 900*dt; }
+    particles = particles.filter(p => p.life < p.maxLife);
+    if (player.spinning){ player.spin += dt * 12; if (player.spin > Math.PI*2){ player.spinning = false; player.spin = 0; } }
+    return;
+  }
+  elapsed += dt;
+  speed = Math.min(MAX_SPEED, START_SPEED + RAMP * elapsed);
+  distance += speed * dt;
+  score = Math.floor(distance / 50);
+
+  if (jumpBuffer > 0){
+    jumpBuffer -= dt;
+    if (player.grounded || player.canDouble) consumeJump();
+    if (jumpBuffer < 0) jumpBuffer = 0;
+  }
+
+  // physics
+  player.vy += GRAV * dt;
+  player.y += player.vy * dt;
+  if (player.spinning){
+    player.spin += dt * 13;
+    if (player.spin >= Math.PI * 2){ player.spinning = false; player.spin = 0; }
+  }
+  if (player.y >= GROUND_Y - player.h){
+    if (!player.grounded) burst(player.x + player.w/2, GROUND_Y, 5, "#5b6b9e");
+    player.y = GROUND_Y - player.h; player.vy = 0;
+    player.grounded = true; player.canDouble = true;
+  }
+
+  // obstacles
+  distToSpawn -= speed * dt;
+  if (distToSpawn <= 0) spawnObstacle();
+  for (const o of obstacles) o.x -= speed * dt;
+  obstacles = obstacles.filter(o => o.x + o.w > -20);
+
+  // forgiving AABB (3px inset helps fat thumbs on small screens)
+  const px0 = player.x + 3, px1 = player.x + player.w - 3;
+  const py0 = player.y + 3, py1 = player.y + player.h;
+  for (const o of obstacles){
+    const ox0 = o.x + 2, ox1 = o.x + o.w - 2;
+    const oy0 = GROUND_Y - o.h, oy1 = GROUND_Y;
+    if (px0 < ox1 && px1 > ox0 && py0 < oy1 && py1 > oy0){ crash(); break; }
+  }
+
+  for (const p of particles){ p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 900*dt; }
+  particles = particles.filter(p => p.life < p.maxLife);
+}
+
+// ---------- draw ----------
+function skyColors(){
+  // slow day/night cycle (~75 s): lerp sky top/bottom + sun/moon
+  const t = (elapsed % 75) / 75 * Math.PI * 2;
+  const night = (Math.sin(t - Math.PI/2) + 1) / 2; // 0 day .. 1 night
+  const lerp = (a, b) => Math.round(a + (b - a) * night);
+  return {
+    top: `rgb(${lerp(126,11)},${lerp(200,16)},${lerp(255,38)})`,
+    bot: `rgb(${lerp(235,38)},${lerp(244,52)},${lerp(255,92)})`,
+    night
+  };
+}
+
+function drawLayer(layer, factor, baseY, fill, winColor, windows){
+  const off = (distance * factor) % PERIOD;
+  ctx.fillStyle = fill;
+  for (let rep = -1; rep <= 1; rep++){
+    for (const b of layer){
+      const x = b.x - off + rep * PERIOD;
+      if (x + b.w < -10 || x > W + 10) continue;
+      const y = baseY - b.h;
+      ctx.fillRect(x, y, b.w, b.h);
+      if (windows && b.lit && winColor){
+        ctx.fillStyle = winColor;
+        const cols = Math.max(1, Math.floor(b.w / 14));
+        const rows = Math.max(1, Math.floor(b.h / 20));
+        for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++){
+          if (((c * 7 + r * 13 + (b.seed | 0)) % 5) < 2)
+            ctx.fillRect(x + 5 + c * 14, y + 7 + r * 20, 6, 8);
+        }
+        ctx.fillStyle = fill;
+      }
+    }
+  }
+}
+
+function drawPlayer(){
+  const cx = player.x + player.w/2, cy = player.y + player.h/2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (player.spinning) ctx.rotate(player.spin);
+  else if (!player.grounded) ctx.rotate(-0.12);
+  // body
+  const g = ctx.createLinearGradient(0, -20, 0, 20);
+  g.addColorStop(0, "#4dd8ff"); g.addColorStop(1, "#1f6fff");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-player.w/2, -player.h/2, player.w, player.h, 7);
+  else ctx.rect(-player.w/2, -player.h/2, player.w, player.h);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2; ctx.stroke();
+  // eye
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(4, -10, 10, 10);
+  ctx.fillStyle = "#10142b";
+  ctx.fillRect(9, -7, 5, 5);
+  // scarf
+  ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = 4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-player.w/2, -4);
+  const wave = Math.sin(performance.now()/90) * 4;
+  ctx.lineTo(-player.w/2 - 12, -2 + wave);
+  ctx.stroke();
+  // double-jump cue: golden ring + "x2"
+  if (!player.grounded && player.canDouble){
+    ctx.strokeStyle = "rgba(255,210,63,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw(){
+  const sky = skyColors();
+  const grd = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  grd.addColorStop(0, sky.top); grd.addColorStop(1, sky.bot);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, GROUND_Y + 2);
+
+  // sun / moon
+  const t = (elapsed % 75) / 75 * Math.PI * 2;
+  const sx = 640 - (distance * 0.01 % 900);
+  const sy = 70 + Math.sin(t) * 20;
+  ctx.fillStyle = sky.night > 0.5 ? "#f4f1de" : "#fff3b0";
+  ctx.beginPath(); ctx.arc(((sx % 860) + 860) % 860 - 30, sy, 22, 0, Math.PI*2); ctx.fill();
+  if (sky.night > 0.5){
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    for (let i = 0; i < 40; i++){
+      const px = (i * 197) % W, py = (i * 131) % 220;
+      ctx.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(i + elapsed * 0.7));
+      ctx.fillRect(px, py, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // three parallax layers
+  drawLayer(farLayer, 0.15, GROUND_Y, "rgba(38,48,96,.85)", null, false);
+  drawLayer(midLayer, 0.40, GROUND_Y, "rgba(24,30,68,.95)", "rgba(255,214,100,.85)", true);
+  drawLayer(nearLayer, 0.75, GROUND_Y + 2, "rgba(12,16,38,1)", null, false);
+
+  // ground
+  ctx.fillStyle = "#1a2044"; ctx.fillRect(0, GROUND_Y, W, GROUND_H);
+  ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, GROUND_Y, W, 4);
+  // moving street ticks (speed feedback)
+  ctx.fillStyle = "rgba(255,255,255,.25)";
+  const tickGap = 60, tickOff = distance % tickGap;
+  for (let x = -tickGap; x < W + tickGap; x += tickGap)
+    ctx.fillRect(x - tickOff, GROUND_Y + 26, 28, 5);
+
+  // obstacles: low blocks cyan-topped, tall bars magenta (need double jump)
+  for (const o of obstacles){
+    const y = GROUND_Y - o.h;
+    const body = ctx.createLinearGradient(0, y, 0, GROUND_Y);
+    if (o.tall){ body.addColorStop(0, "#ff5ad0"); body.addColorStop(1, "#7a1e5a"); }
+    else { body.addColorStop(0, "#3ddc84"); body.addColorStop(1, "#14532d"); }
+    ctx.fillStyle = body;
+    ctx.fillRect(o.x, y, o.w, o.h);
+    ctx.fillStyle = o.tall ? "#ffd7f2" : "#d8ffe8";
+    ctx.fillRect(o.x, y, o.w, 5);
+    ctx.fillStyle = "rgba(0,0,0,.25)";
+    ctx.fillRect(o.x, y + 5, 4, o.h - 5);
+    if (o.tall){ // chevrons = "double-jump me"
+      ctx.fillStyle = "#fff"; ctx.font = "bold 13px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("▲", o.x + o.w/2, y + 20);
+    }
+  }
+
+  // particles
+  for (const p of particles){
+    ctx.globalAlpha = 1 - p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawPlayer();
+
+  // HUD
+  ctx.fillStyle = "rgba(5,8,22,.55)";
+  ctx.fillRect(10, 10, 196, 52);
+  ctx.fillRect(W - 206, 10, 196, 52);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 17px ui-monospace,Menlo,monospace"; ctx.textAlign = "left";
+  ctx.fillText("SCORE " + score, 20, 32);
+  ctx.fillStyle = "#9fb2e8"; ctx.font = "13px ui-monospace,Menlo,monospace";
+  ctx.fillText("HI " + Math.max(hiScore, score), 20, 52);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 15px ui-monospace,Menlo,monospace"; ctx.textAlign = "right";
+  ctx.fillText("BEST " + Math.max(hiScore, score), W - 20, 32);
+  ctx.fillStyle = "#4dd8ff"; ctx.font = "13px ui-monospace,Menlo,monospace";
+  ctx.fillText("SPD " + Math.round(speed) + " px/s", W - 20, 52);
+
+  // double-jump pips (mobile-readable recharge indicator)
+  ctx.textAlign = "left"; ctx.font = "13px system-ui,sans-serif";
+  ctx.fillStyle = "#c6d4ff";
+  ctx.fillText("JUMP", 20, 82);
+  ctx.fillStyle = player.grounded ? "#3ddc84" : "#3a4470";
+  ctx.beginPath(); ctx.arc(78, 77, 7, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = (player.grounded || player.canDouble) ? "#ffd23f" : "#3a4470";
+  ctx.beginPath(); ctx.arc(96, 77, 7, 0, Math.PI*2); ctx.fill();
+
+  if (state === "ready"){
+    ctx.fillStyle = "rgba(4,6,18,.62)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd23f"; ctx.font = "800 44px system-ui,sans-serif";
+    ctx.fillText("SKYLINE HOP", W/2, 150);
+    ctx.fillStyle = "#fff"; ctx.font = "17px system-ui,sans-serif";
+    ctx.fillText("tap · click · Space · swipe — all jump", W/2, 182);
+    ctx.fillText("double-tap mid-air for double-jump", W/2, 206);
+    ctx.fillStyle = "#4dd8ff"; ctx.font = "800 20px system-ui,sans-serif";
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 280);
+    ctx.globalAlpha = pulse;
+    ctx.fillText("— TAP TO START —", W/2, 252);
+    ctx.globalAlpha = 1;
+  }
+
+  if (state === "over"){
+    ctx.fillStyle = "rgba(4,6,18,.66)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ff5a5a"; ctx.font = "800 42px system-ui,sans-serif";
+    ctx.fillText("GAME OVER", W/2, 140);
+    ctx.fillStyle = "#fff"; ctx.font = "20px ui-monospace,monospace";
+    ctx.fillText("score " + score + "    best " + Math.max(hiScore, score), W/2, 176);
+    if (newBest){
+      ctx.fillStyle = "#10142b";
+      const bw = 170, bh = 36;
+      ctx.fillStyle = "#ffd23f";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(W/2 - bw/2, 192, bw, bh, 10); else ctx.rect(W/2 - bw/2, 192, bw, bh);
+      ctx.fill();
+      ctx.fillStyle = "#10142b"; ctx.font = "800 19px system-ui,sans-serif";
+      ctx.fillText("★ NEW BEST! ★", W/2, 216);
+    }
+    ctx.fillStyle = "#4dd8ff"; ctx.font = "700 18px system-ui,sans-serif";
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 280);
+    ctx.globalAlpha = pulse;
+    ctx.fillText("tap · shake · Space to hop again", W/2, 268);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- main loop (delta-time, refresh-rate independent) ----------
+let last = performance.now();
+function frame(now){
+  let dt = (now - last) / 1000; last = now;
+  if (dt > 0.05) dt = 0.05;      // clamp tab-switch gaps
+  if (dt < 0) dt = 0;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ================= mobile-first input =================
+// One button, many gestures — every gesture below calls doJump() only.
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW"){
+    e.preventDefault(); doJump();
+  }
+}, { passive: false });
+
+// mouse / pen
+document.addEventListener("mousedown", (e) => {
+  if (e.target === muteBtn) return;
+  doJump();
+});
+
+// touch: tap anywhere jumps instantly (no waiting for touchend => low latency)
+const activeTouches = new Map(); // id -> {x0,y0,swiped}
+document.addEventListener("touchstart", (e) => {
+  if (e.target === muteBtn) return;
+  e.preventDefault(); // kill double-tap zoom / scroll / pinch
+  audio(); requestMotionPermission();
+  for (const t of e.changedTouches) activeTouches.set(t.identifier, { x0: t.clientX, y0: t.clientY, swiped: false });
+  doJump(); // one press per event even for two-finger taps (debounced inside)
+}, { passive: false });
+
+document.addEventListener("touchmove", (e) => {
+  e.preventDefault(); // keep canvas fixed while swiping
+  for (const t of e.changedTouches){
+    const rec = activeTouches.get(t.identifier);
+    if (!rec || rec.swiped) continue;
+    const dx = t.clientX - rec.x0, dy = t.clientY - rec.y0;
+    // swipe in ANY direction = same one-button jump (up/down/diagonal)
+    if (Math.hypot(dx, dy) > 28){
+      rec.swiped = true;
+      doJump(); // debounced: no double-fire if tap already jumped
+    }
+  }
+}, { passive: false });
+
+function endTouch(e){
+  for (const t of e.changedTouches) activeTouches.delete(t.identifier);
+}
+document.addEventListener("touchend", endTouch);
+document.addEventListener("touchcancel", endTouch);
+
+// big thumb button (pointer covers touch+mouse+pen without double-firing)
+bigBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); doJump(); });
+
+// shake-to-restart (hand gesture): strong acceleration while dead restarts
+let motionArmed = false;
+function requestMotionPermission(){
+  try {
+    if (typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function" && !motionArmed){
+      motionArmed = true;
+      DeviceMotionEvent.requestPermission().catch(() => {});
+    }
+  } catch (e) {}
+}
+window.addEventListener("devicemotion", (e) => {
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if (!a) return;
+  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  const now = performance.now();
+  if (mag > 26 && now - shakeLast > 1200 && state === "over"){
+    shakeLast = now;
+    doJump();
+  }
+});
+
+// kill iOS pinch / double-tap zoom leftovers
+document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("contextmenu", (e) => { if (e.target === canvas) e.preventDefault(); });
+document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
+document.getElementById("foot").textContent =
+  "Skyline Hop • built " + BUILD_DATE + " • by Muse Spark 1.3 Contributor (OpenCode) • tap/swipe/shake = jump";
+</script>
+</body>
+</html>

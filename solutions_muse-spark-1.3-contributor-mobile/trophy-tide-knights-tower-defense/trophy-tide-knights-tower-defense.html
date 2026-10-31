@@ -1,0 +1,803 @@
+<!-- built by muse-spark-1.3-contributor-mobile · 2026-10-31 00:00 UTC · Trophy Tide Knights Tower Defense -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, user-scalable=yes">
+<meta name="theme-color" content="#2b1d5a">
+<title>🏆 Trophy Tide — Knights Tower Defense</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--ink:#fff;--gold:#ffd94a;--btn:#ffcf3f;--btnink:#4a2c00;--card:#fffdf4;--purple:#2b1d5a;--purple2:#4a34a0}
+html,body{margin:0;padding:0;min-height:100%;background:#1a1240;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;touch-action:manipulation;overscroll-behavior:none}
+body{padding-bottom:env(safe-area-inset-bottom)}
+#app{max-width:1020px;margin:0 auto;padding:10px 10px 30px}
+.screen{display:none}
+.screen.on{display:block}
+h1{font-size:clamp(28px,6vw,52px);margin:8px 0 4px;text-align:center;line-height:1.05}
+.sub{text-align:center;opacity:.95;margin:4px 0 10px;font-size:clamp(14px,3.6vw,19px)}
+.panel{background:rgba(255,255,255,.1);border:3px solid rgba(255,255,255,.25);border-radius:18px;padding:12px;margin:10px 0}
+.howto{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.howto .step{background:#fff;color:#2b1d5a;border-radius:16px;padding:10px 12px;min-width:140px;flex:1 1 140px;max-width:220px;text-align:center;font-size:16px;font-weight:700}
+.howto .step .big{font-size:40px;display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:18px;background:var(--btn);color:var(--btnink);font-weight:900;cursor:pointer;box-shadow:0 4px 0 #a97a00,0 6px 14px rgba(0,0,0,.35);padding:14px 20px;font-size:20px;min-height:64px;min-width:64px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #a97a00}
+.btn.big{font-size:26px;min-height:96px;padding:18px 28px;width:100%;max-width:520px;margin:8px auto;display:flex}
+.btn.ghost{background:#fff;color:#2b1d5a;box-shadow:0 4px 0 #999}
+.btn.small{min-height:64px;font-size:18px}
+.btn:disabled{opacity:.5}
+.center{text-align:center}
+.lvgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.lv{background:#fff;color:#222;border-radius:16px;padding:10px;text-align:center;border:4px solid transparent;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:800;min-width:64px;min-height:64px;cursor:pointer;user-select:none}
+.lv .em{font-size:44px;line-height:1}
+.lv.locked{filter:grayscale(1);opacity:.6}
+.lv.done{border-color:var(--gold)}
+.lv .stars{color:#b97e00;font-size:18px}
+.footer{margin-top:14px;text-align:center;font-size:13px;opacity:.85}
+.footer a{color:#ffe98a}
+.topbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:6px 0}
+.pill{background:rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.3);border-radius:999px;padding:8px 12px;font-weight:800;font-size:15px;min-height:44px;display:inline-flex;align-items:center;gap:6px}
+#tugwrap{background:rgba(0,0,0,.45);border:3px solid #fff;border-radius:18px;padding:8px;margin:8px 0}
+#tug{position:relative;height:44px;background:linear-gradient(90deg,#c0392b 0%,#c0392b 50%,#2980b9 50%,#2980b9 100%);background:linear-gradient(90deg,#e74c3c 0%,#f1c40f 50%,#2ecc71 100%);border-radius:12px;overflow:hidden}
+#tugmarker{position:absolute;top:-4px;bottom:-4px;width:8px;background:#fff;border:2px solid #222;border-radius:6px;transition:left .3s;box-shadow:0 0 8px #fff}
+#tugflags{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:26px;pointer-events:none}
+#tuglabel{text-align:center;font-weight:900;margin-top:4px;font-size:16px}
+#faces{display:flex;justify-content:space-between;font-size:34px;margin:2px 2px}
+#battlefield{position:relative;height:340px;border-radius:18px;overflow:hidden;border:4px solid rgba(255,255,255,.5);touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none;cursor:grab}
+#battlefield:active{cursor:grabbing}
+.lane{position:absolute;left:0;right:0;top:50%;height:90px;transform:translateY(-50%);border-radius:16px;opacity:.95}
+.base{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:56px;line-height:1;text-align:center;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:left .3s,right .3s}
+.base .tag{display:block;font-size:13px;font-weight:900;background:#fff;color:#222;border-radius:999px;padding:2px 8px;margin-top:2px;white-space:nowrap}
+.trophyM{position:absolute;top:18%;transform:translate(-50%,-50%);font-size:52px;text-align:center;transition:left .3s;filter:drop-shadow(0 0 10px gold)}
+.trophyM .tag{display:block;font-size:12px;font-weight:900;background:gold;color:#4a2c00;border-radius:999px;padding:2px 8px}
+.unit{position:absolute;transform:translate(-50%,-50%);text-align:center;transition:box-shadow .2s;touch-action:manipulation;pointer-events:auto}
+.unit .sp{font-size:42px;line-height:1;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.unit.sturdy .sp{font-size:50px}
+.unit .nm{font-size:11px;font-weight:900;background:rgba(255,255,255,.92);color:#222;border-radius:999px;padding:1px 7px;white-space:nowrap;display:inline-block;margin-top:1px}
+.unit .hp{font-size:13px;letter-spacing:1px;line-height:1}
+.unit .bub{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#fff;color:#222;font-weight:900;font-size:13px;border-radius:999px;padding:2px 8px;white-space:nowrap;border:2px solid #222}
+.unit.shielded .sp{filter:drop-shadow(0 0 10px cyan) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.unit.swifted .sp{filter:drop-shadow(0 0 8px gold)}
+.unit.stunned{opacity:.6}
+.unit.grabbed .sp{animation:wig 0.3s infinite}
+.unit.resting{opacity:.75}
+@keyframes wig{0%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}100%{transform:rotate(-8deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.shake{animation:shake .3s 2}
+.glow{box-shadow:0 0 0 6px gold,0 0 18px gold !important}
+#powerBtn{position:relative;overflow:hidden}
+#powerBtn .ring{position:absolute;inset:0;border-radius:18px;pointer-events:none;background:conic-gradient(rgba(0,0,0,.35) var(--cd,0%),transparent 0)}
+#powerBtn.glowing{animation:pg 0.8s infinite alternate}
+@keyframes pg{from{box-shadow:0 4px 0 #a97a00,0 0 0 0 gold}to{box-shadow:0 4px 0 #a97a00,0 0 24px 6px gold}}
+#controls{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+#controls .btn{flex:1 1 160px}
+#gestureHint{background:rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;font-size:14px;text-align:center;margin:6px 0}
+#banner{position:fixed;left:50%;top:14px;transform:translateX(-50%) scale(.9);background:#fff;color:#222;font-weight:900;font-size:20px;border-radius:16px;padding:12px 18px;border:4px solid gold;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:all .25s;z-index:60;max-width:92vw;text-align:center}
+#banner.show{opacity:1;transform:translateX(-50%) scale(1)}
+.modal{position:fixed;inset:0;background:rgba(10,5,30,.72);display:none;align-items:center;justify-content:center;padding:12px;z-index:50}
+.modal.on{display:flex}
+.cardbox{background:var(--card);color:#222;border-radius:22px;padding:16px;max-width:560px;width:100%;text-align:center;border:6px solid var(--gold);box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:92vh;overflow:auto}
+.cardbox h2{margin:4px 0 8px;font-size:clamp(22px,5.5vw,30px)}
+.cardbox .q{font-size:clamp(24px,6vw,34px);font-weight:900;margin:8px 0}
+.cardbox .objs{font-size:clamp(30px,8vw,48px);line-height:1.2;margin:6px 0;min-height:10px}
+.opts{display:grid;gap:10px;margin:12px 0}
+.opt{background:#fff;border:4px solid #4a34a0;border-radius:18px;font-size:32px;font-weight:900;padding:14px;min-height:72px;cursor:pointer;touch-action:manipulation;user-select:none}
+.opt.elim{opacity:.35;text-decoration:line-through;pointer-events:none;border-color:#aaa}
+.opt.correct{border-color:#1e9e1e;background:#d8ffd8}
+.hintbox{background:#fff3b0;border-radius:12px;padding:8px;font-weight:700;margin:6px 0;display:none}
+.prizeRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.prize{font-size:56px;background:#fff;border:5px solid #ccc;border-radius:18px;min-width:96px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:8px;font-weight:900;color:#222}
+.prize small{font-size:14px}
+.prize.sel{border-color:gold;box-shadow:0 0 18px gold}
+.shelf{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;font-size:36px;background:rgba(0,0,0,.3);border-radius:14px;padding:8px;min-height:60px}
+.confetti{position:fixed;top:-20px;font-size:26px;z-index:70;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.ripple{position:absolute;font-size:28px;pointer-events:none;animation:rip .7s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes rip{from{opacity:1;scale:.6}to{opacity:0;scale:1.6}}
+.telegraph{position:absolute;border:4px dashed red;border-radius:16px;background:rgba(255,0,0,.15);pointer-events:none;animation:blink .4s 2}
+@keyframes blink{50%{opacity:.3}}
+.whale{position:absolute;transform:translate(-50%,-50%);font-size:92px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.whale .hphearts{font-size:20px;background:rgba(255,255,255,.9);border-radius:999px;padding:2px 10px;display:inline-block}
+.minion{position:absolute;transform:translate(-50%,-50%);font-size:34px}
+details.grown{background:rgba(0,0,0,.35);border-radius:12px;padding:8px 10px;margin:8px 0;font-size:14px}
+details.grown summary{font-weight:900;cursor:pointer;min-height:44px;display:flex;align-items:center}
+input.seed{font-size:18px;padding:10px;border-radius:12px;border:3px solid #fff;background:#fff;color:#222;min-height:48px;width:180px}
+.small{font-size:13px;opacity:.9}
+#restbar{display:flex;gap:6px;justify-content:center;margin:6px 0;font-size:28px;min-height:36px}
+kbd{background:#eee;border:1px solid #aaa;border-radius:6px;padding:1px 6px;color:#222;font-size:13px}
+@media (max-width:640px){
+ #battlefield{height:300px}
+ .base{font-size:46px}
+ .trophyM{font-size:42px}
+ #controls{flex-direction:column}
+ #controls .btn{width:100%}
+ #powerBtn{min-height:96px !important}
+}
+@media (min-width:700px){#battlefield{height:380px}}
+</style>
+</head>
+<body>
+<div id="app">
+<!-- START -->
+<section id="scr-start" class="screen on">
+<h1>🏆 Trophy Tide<br>Knights Tower Defense</h1>
+<p class="sub">Defend your castle · answer · win the trophy!</p>
+<div class="panel">
+<div class="howto">
+<div class="step"><span class="big">👀</span>1 · WATCH<br><small>knights fight on their own</small></div>
+<div class="step"><span class="big">💪</span>2 · ANSWER<br><small>tap POWER! &amp; pick 1 answer</small></div>
+<div class="step"><span class="big">🏆</span>3 · WIN<br><small>push flags to the trophy!</small></div>
+</div>
+</div>
+<div class="center">
+<button id="btnStart" class="btn big" aria-label="Start game">▶ START</button>
+<div style="margin:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center">
+<label class="pill">🌱 seed <input id="seedBox" class="seed" placeholder="CASTLE-1" aria-label="seed"></label>
+<button id="btnSeed" class="btn small ghost">🎲 use seed</button>
+<div class="small" style="width:100%">Tip: add <kbd>?seed=CASTLE-1</kbd> to the file URL for same questions · or type above.</div>
+</div>
+</div>
+<div class="panel">
+<h3 style="margin:4px 0">🗺 Choose level</h3>
+<div id="lvgrid" class="lvgrid"></div>
+<div class="center" style="margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+<button id="btnCollection" class="btn small ghost">🏅 Collection</button>
+<button id="btnShop" class="btn small ghost">🛍 Square / Shop</button>
+<button id="btnGrown" class="btn small ghost">🧑‍🏫 Grown-ups</button>
+<button id="btnStyle" class="btn small ghost" aria-label="toggle block style">🧱 Block style: OFF</button>
+<button id="btnSound" class="btn small ghost" aria-label="toggle sound">🔊 Sound: ON</button>
+</div>
+<div class="center small" style="margin-top:8px">⌨️ <kbd>Enter</kbd>=start · <kbd>Space</kbd>=POWER! · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>=answers &nbsp;·&nbsp; 📱 tap / swipe / long-press / pinch work too</div>
+</div>
+<details class="grown" id="grownStart"><summary>🧑‍🏫 Grown-ups note (tap to open)</summary><div id="grownText"></div></details>
+<div class="footer" id="signoff">built by muse-spark-1.3-contributor-mobile · 2026-10-31 00:00 UTC</div>
+</section>
+
+<!-- BATTLE -->
+<section id="scr-battle" class="screen">
+<div class="topbar">
+<button id="btnQuit" class="btn small ghost" aria-label="quit to menu">🏠 Menu</button>
+<span class="pill" id="lvPill">Level 1</span>
+<span class="pill" id="starPill">⭐ —</span>
+<button id="btnMute2" class="btn small ghost" aria-label="mute">🔊</button>
+</div>
+<div id="tugwrap">
+<div id="faces"><span id="faceP">🙂</span><span id="faceR">🙂</span></div>
+<div id="tug" aria-label="tug of war progress"><div id="tugflags"><span>💙</span><span>🏆</span><span>❤️</span></div><div id="tugmarker"></div></div>
+<div id="tuglabel">Push the flag to YOUR trophy! 💙</div>
+</div>
+<div id="battlefield" aria-label="battlefield, swipe to look around">
+<div class="lane" id="laneEl"></div>
+<div class="trophyM" id="trophyEl">🏆<span class="tag">TROPHY</span></div>
+<div class="base" id="baseP">🏰<span class="tag">YOU</span></div>
+<div class="base" id="baseR">🏯<span class="tag">RIVAL</span></div>
+</div>
+<div id="restbar" aria-label="resting knights"></div>
+<div id="gestureHint">👆 Tap knights to say hi · ↔️ swipe to look · ⬆️ swipe up = POWER! · 👇 swipe down closes card · ✌️ pinch to zoom · long-press = name</div>
+<div id="controls">
+<button id="powerBtn" class="btn big" style="flex:2" aria-label="Power, open challenge">💪 POWER!<span class="ring"></span></button>
+<button id="btnCheer" class="btn small ghost" aria-label="cheer">🎉 Cheer</button>
+</div>
+<div class="panel small" id="battleLog" style="min-height:44px">Watch the battle… tap 💪 POWER! to help!</div>
+</section>
+
+<!-- VICTORY / DEFEAT share modal -->
+<div class="modal" id="mEnd"><div class="cardbox">
+<h2 id="endTitle">🏆 VICTORY!</h2>
+<div id="endArt" style="font-size:72px">🏆</div>
+<p id="endText" style="font-weight:800"></p>
+<div id="rewardLine" style="font-size:40px"></div>
+<h3>Pick YOUR prize (tap 1):</h3>
+<div class="prizeRow" id="prizeRow">
+<button class="prize" data-p="🏆">🏆<small>big cup</small></button>
+<button class="prize" data-p="🌟">🌟<small>shiny star</small></button>
+<button class="prize" data-p="👑">👑<small>crown</small></button>
+</div>
+<div id="pickedLine" style="font-size:44px;margin:6px;min-height:56px"></div>
+<div class="shelf" id="shelfEnd"></div>
+<div class="small" id="grownNoteEnd" style="text-align:left;margin:8px 0"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+<button id="btnAgain" class="btn small">🔁 Play again</button>
+<button id="btnNext" class="btn small">⏭ Next level</button>
+<button id="btnMenu2" class="btn small ghost">🏠 Menu</button>
+</div>
+</div></div>
+
+<!-- CARD -->
+<div class="modal" id="mCard"><div class="cardbox" id="cardBox">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span class="pill" id="cardTag">💪 POWER!</span>
+<button id="btnDismiss" class="btn small ghost" aria-label="dismiss card" style="min-width:64px;min-height:64px">✖</button>
+</div>
+<div class="q" id="cardQ">2 + 3 = ?</div>
+<div class="objs" id="cardObjs"></div>
+<div class="opts" id="cardOpts"></div>
+<div class="hintbox" id="cardHint"></div>
+<div class="small">Tap ONE big answer · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · 👇 swipe down to close · cards never hurry you ⏳</div>
+</div></div>
+
+<!-- REWARD intro -->
+<div class="modal" id="mIntro"><div class="cardbox">
+<h2 id="introTitle">Level 1</h2>
+<div id="introArt" style="font-size:72px">🏰</div>
+<p id="introText" style="font-weight:700"></p>
+<div class="center"><button id="btnGo" class="btn big">⚔ GO!</button></div>
+</div></div>
+
+<!-- SHOP -->
+<div class="modal" id="mShop"><div class="cardbox">
+<h2>🛍 Square — Coming soon!</h2>
+<p>Future treats (not for sale yet):</p>
+<div class="shelf" id="futureShelf"></div>
+<p class="small">Honest stub: nothing here can be bought or changes the battle. 💛</p>
+<div class="center"><button id="btnCloseShop" class="btn small">✔ OK</button></div>
+</div></div>
+
+<!-- COLLECTION -->
+<div class="modal" id="mCol"><div class="cardbox">
+<h2>🏅 Collection</h2>
+<div class="shelf" id="shelfCol" style="font-size:44px"></div>
+<div id="starsLine" style="font-weight:800;margin:8px"></div>
+<div class="center"><button id="btnCloseCol" class="btn small">✔ OK</button></div>
+</div></div>
+
+<!-- GROWN modal -->
+<div class="modal" id="mGrown"><div class="cardbox" style="text-align:left">
+<h2>🧑‍🏫 Grown-ups</h2>
+<div id="grownText2" style="font-size:15px"></div>
+<div class="center"><button id="btnCloseGrown" class="btn small">✔ OK</button></div>
+</div></div>
+
+<div id="banner" role="status"></div>
+</div>
+<script>
+"use strict";
+/* ============================================================
+TROPHY TIDE — single-engine tower defense + learning boosts
+THEME ARCHITECTURE: to add a 6th theme, copy ONE entry in LEVELS
+below (palette, lane:'straight'|'switch'|'cave'|'water'|'whale',
+art emojis, rivalHpMult) — no engine code changes needed.
+UNIT continuity: names/colors/emblems persist whole session.
+Rewards default: cosmetic + tiny bonus (shield=1 free block per
+unit per level; sword=+1 bump damage). Pure-cosmetic allowed var.
+Battle pauses softly while card open: units slow to 25% (see
+BATTLE_SLOW_CARD). Bump rate capped <=1/sec via BUMP_COOLDOWN.
+============================================================ */
+// ---------- TUNING CONSTANTS (all numbers here, no magic below) ----------
+const RIVAL_SPAWN_BIAS = 1.10;   // rival spawns ~10% faster before boosts
+const PAR_TIME_L1 = 120;         // seconds reference level 1
+const MAX_PLAYER_UNITS = 6, MAX_RIVAL_UNITS = 6;
+const PLAYER_SPAWN_INTERVAL = 4.0, RIVAL_SPAWN_INTERVAL = 4.0;
+const POWER_COOLDOWN = 10;       // seconds, ring fill shown
+const SHIELD_DURATION = 8, SWIFT_DURATION = 10, SWIFT_MULT = 1.6;
+const REST_TIME = 8;             // defeated unit returns after 8s
+const BATTLE_SLOW_CARD = 0.25;   // battle speed while card open
+const BUMP_COOLDOWN = 1.0;       // <=1 bump per second followable
+const BUMP_DMG = 1, SWORD_BONUS = 1;
+const PUSH_ON_BASE_HIT = 3.2;    // progress push per unit reaching base
+const PUSH_ON_BUMP_WIN = 0.9;    // small tug per won bump
+const RUBBER_MAX = 0.50;         // rival up to +50% when player leads
+const WHALE_JET_EVERY = 12, WHALE_PULL_EVERY = 20, WHALE_SLOW_AURA = 0.6;
+const L5_MIN_TIME = PAR_TIME_L1 * 1.5; // level5 takes >=1.5x par
+const BUILD_INFO = "built by muse-spark-1.3-contributor-mobile · 2026-10-31 00:00 UTC";
+// ---------- UNIT TYPES (add a class = add one entry, no loop rewrite) ----------
+/* Final classes: STURDY survives 3 bumps speed 40 | SWIFT falls in 1 bump speed 90 | RAIDER rival 2HP speed 55 */
+const UNIT_TYPES = {
+ sturdy:{name:"Sturdy", emoji:"🛡️", bumps:3, speed:40, spawnEvery:2},
+ swift:{name:"Swift", emoji:"🚩", bumps:1, speed:90, spawnEvery:2},
+ raider:{name:"Raider", emoji:"😈", bumps:2, speed:55, spawnEvery:1}
+};
+// ---------- LEVELS (data-only themes, same engine) ----------
+const LEVELS = [
+ {name:"Castle", art:"🏰", lane:"straight", bg:["#7ec850","#5aa832"], laneCol:"#d9b06a", rivalHpMult:1.0, goal:"🏆 big trophy", reward:"sword", story:"The knights guard the castle!"},
+ {name:"Mountain", art:"⛰️", lane:"switch", bg:["#9fb3c8","#6b7f99"], laneCol:"#8a7a66", rivalHpMult:1.1, goal:"🗿 stone trophy", reward:null, story:"The knights climb the snowy mountain!"},
+ {name:"Cave", art:"🕳️", lane:"cave", bg:["#3a2f5a","#1e1836"], laneCol:"#6b5a8a", rivalHpMult:1.2, goal:"💎 crystal trophy", reward:"shield", story:"The knights tiptoe through the cave!"},
+ {name:"Boats / Lake", art:"⛵", lane:"water", bg:["#3fb6d9","#1a6f9e"], laneCol:"#7fd4f0", rivalHpMult:1.3, goal:"🐚 pearl trophy", reward:null, story:"The knights sailed to the lake!"},
+ {name:"Whale Boss", art:"🐳", lane:"whale", bg:["#1a4f7a","#0a2540"], laneCol:"#4fb6d9", rivalHpMult:1.4, goal:"🏆 THE CUP", reward:"cup", story:"A friendly giant whale blocks the way! Push to 100%!"},
+];
+const FUTURE_REWARDS = ["juice","chocolate","sweets","clothes","costume"];
+const FUTURE_EMOJI = {juice:"🧃",chocolate:"🍫",sweets:"🍬",clothes:"👕",costume:"🦸"};
+// ---------- QUESTION BANK (8 letters + 8 maths minimum) ----------
+const QUESTIONS = [
+ {t:"letters", q:"Which letter is B?", o:["D","B","P"], a:1},
+ {t:"letters", q:"Which letter is O?", o:["O","Q","C"], a:0},
+ {t:"letters", q:"Find the letter M", o:["N","W","M"], a:2},
+ {t:"letters", q:"Which letter is S?", o:["S","Z","5"], a:0},
+ {t:"letters", q:"Which letter is A?", o:["H","A","R"], a:1},
+ {t:"letters", q:"Find the letter T", o:["J","T","F"], a:1},
+ {t:"letters", q:"Which letter is E?", o:["F","L","E"], a:2},
+ {t:"letters", q:"First letter of SUN?", o:["S","N","U"], a:0},
+ {t:"maths", q:"2 + 3 = ?", o:["4","5","6"], a:1},
+ {t:"maths", q:"1 + 4 = ?", o:["5","3","6"], a:0},
+ {t:"maths", q:"Count the apples", objs:"🍎🍎🍎", o:["2","3","4"], a:1},
+ {t:"maths", q:"5 − 2 = ?", o:["2","4","3"], a:2},
+ {t:"maths", q:"6 − 1 = ?", o:["5","4","6"], a:0},
+ {t:"maths", q:"4 + 4 = ?", o:["7","8","9"], a:1},
+ {t:"maths", q:"Count the stars", objs:"⭐⭐⭐⭐", o:["3","5","4"], a:2},
+ {t:"maths", q:"3 + 2 = ?", o:["4","6","5"], a:2},
+];
+const KNIGHTS = [
+ {name:"Leo", color:"#e74c3c", emblem:"🦁"},
+ {name:"Mia", color:"#3498db", emblem:"🌊"},
+ {name:"Ben", color:"#2ecc71", emblem:"🍀"},
+ {name:"Ada", color:"#f39c12", emblem:"⭐"},
+ {name:"Sam", color:"#9b59b6", emblem:"🌙"},
+ {name:"Kim", color:"#1abc9c", emblem:"🐬"},
+];
+// ---------- helpers ----------
+const $ = id=>document.getElementById(id);
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mulberry(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let SEED = (new URLSearchParams(location.search).get("seed")) || "";
+let rng = mulberry(SEED?hashStr(SEED):(Date.now()%2147483647));
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function beep(f,d,type){try{if(!soundOn)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;AC=AC||new C();const o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;g.gain.value=0.12;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+let AC=null, soundOn=true, blockStyle=false;
+// ---------- persistent-ish state ----------
+let store={unlocked:1,stars:{},correctPerLevel:{},wrongPerLevel:{},collection:[],hasSword:false,hasShield:false,bestPrize:{}};
+try{const raw=localStorage.getItem("trophyTideSave");if(raw){const s=JSON.parse(raw);if(s&&s.unlocked)store=Object.assign(store,s);}}catch(e){}
+function save(){try{localStorage.setItem("trophyTideSave",JSON.stringify(store));}catch(e){}}
+// ---------- match state ----------
+let G=null;
+function newMatch(lv){
+ const L=LEVELS[lv];
+ G={lv, L, progress:50, units:[], resting:[], t:0, lastP:0, lastR:1.5,
+   shieldUntil:-9, swiftUntil:-9, streak:0, correct:0, wrong:0,
+   qOrder:shuffle(QUESTIONS.map((_,i)=>i)), qPos:0, retryQueue:[],
+   cardOpen:false, curQ:null, curOptMap:null, elimUsed:false,
+   powerCD:0, autoLow:false, autoHigh:false, over:false, spawnCount:0,
+   whaleJet:WHALE_JET_EVERY, whalePull:WHALE_PULL_EVERY, whaleMin:6,
+   grabbed:null, bumpLock:0, startTime:performance.now(), cam:0, zoom:1,
+   minions:0, blockMode:blockStyle};
+ renderBattleSkin(); updateTug(); log("Level "+(lv+1)+": "+L.story+" Watch… tap 💪 POWER! to help!");
+}
+function laneY(x01, lane){ // 0..1 -> y offset px
+ if(lane==="switch") return Math.sin(x01*Math.PI*3)*46;
+ if(lane==="cave") return Math.sin(x01*Math.PI*2)*30;
+ if(lane==="water"||lane==="whale") return Math.sin(x01*Math.PI*2.2)*34;
+ return Math.sin(x01*Math.PI)*10;
+}
+function spawnUnit(side, forceClass){
+ const isP = side==="P";
+ const alive = G.units.filter(u=>u.side===side&&u.state==="field").length;
+ if(isP && alive>=MAX_PLAYER_UNITS) return false;
+ if(!isP && alive>=MAX_RIVAL_UNITS) return false;
+ let cls;
+ if(!isP){ cls = G.lv===4 ? "minionfish" : "raider"; }
+ else { G.spawnCount++; cls = (G.spawnCount%2===0)?"sturdy":"swift"; if(forceClass) cls=forceClass; }
+ const hpMult = isP?1:G.L.rivalHpMult;
+ let bumps, speed, emoji;
+ if(cls==="sturdy"){bumps=UNIT_TYPES.sturdy.bumps;speed=UNIT_TYPES.sturdy.speed;emoji=blockStyle?"🧱":"🛡️";}
+ else if(cls==="swift"){bumps=UNIT_TYPES.swift.bumps;speed=UNIT_TYPES.swift.speed;emoji=blockStyle?"📦":"🚩";}
+ else if(cls==="minionfish"){bumps=2;speed=32;emoji="🐟";}
+ else {bumps=Math.round(UNIT_TYPES.raider.bumps*hpMult);speed=UNIT_TYPES.raider.speed;emoji=blockStyle?"⬛":"😈";}
+ const k = KNIGHTS[G.units.filter(u=>u.side==="P").length % KNIGHTS.length];
+ const u={id:Math.random().toString(36).slice(2), side, cls, hp:bumps, maxHp:bumps,
+   x:isP?4:96, speed, stunUntil:0, state:"field", born:G.t, freeBlock:(isP&&store.hasShield)?1:0,
+   name:isP?k.name:"Grr", color:isP?k.color:"#555", emblem:isP?k.emblem:emoji, emoji,
+   yJ:Math.random()*22-11, bumpCD:0};
+ G.units.push(u); return true;
+}
+// ---------- audio cheers ----------
+function cheerSnd(){beep(523,.15);setTimeout(()=>beep(659,.15),120);setTimeout(()=>beep(784,.3),240);}
+function yaySnd(){beep(660,.12,"triangle");setTimeout(()=>beep(880,.22,"triangle"),130);}
+function naySnd(){beep(220,.2,"sine");}
+// ---------- UI: levels, shelves, grown ----------
+function grownHTML(){
+ return `<ul>
+<li>Continuous sim: battle auto-evolves, no unit micromanagement.</li>
+<li>Opportunity-not-gate: victory NEVER hard-gated behind answers; <b>RIVAL_SPAWN_BIAS=${RIVAL_SPAWN_BIAS}</b> (rival ~10% faster). Idling 60s reliably loses; active play wins faster.</li>
+<li>Auto-return ${REST_TIME}s (snooze at base); cosmetic-vs-stat: sword=+${SWORD_BONUS} bump dmg, shield=1 free block/unit/level (+visual).</li>
+<li>Sequential levels 1→5, unlock on win; boost mapping: maths→Shield Wall ${SHIELD_DURATION}s, letters→Swift Charge +${Math.round((SWIFT_MULT-1)*100)}% ${SWIFT_DURATION}s, 3-in-a-row→Rally (return 1 + full heal).</li>
+<li>Retry policy: hint + retry same card, wrong option eliminated, resurfaces within next 3 cards, dismiss ✖ with no penalty.</li>
+<li>Whale victory = push same 0–100 meter to 100% (playful, no violence); <b>PAR_TIME_L1=${PAR_TIME_L1}s</b>, L5 ≥1.5× par by slower spawns + boss attacks.</li>
+<li>Class minima: Sturdy (3 bumps) / Swift (1 bump, fast); prize-choice 1 of 3 (🏆/🌟/👑) → Collection (session + localStorage).</li>
+<li>Cards never expire; battle slows to ${BATTLE_SLOW_CARD*100}% while card open; ≤1 bump/sec.</li>
+<li>Mobile: tap / swipe ↔️ / swipe-up POWER / swipe-down dismiss / long-press name / pinch zoom / double-tap cheer.</li></ul>`;
+}
+function renderLevels(){
+ const g=$("lvgrid");g.innerHTML="";
+ LEVELS.forEach((L,i)=>{
+  const d=document.createElement("button");d.className="lv"+(i+1>store.unlocked?" locked":"")+(store.stars[i+1]?" done":"");
+  d.setAttribute("aria-label","level "+(i+1)+" "+L.name);
+  const st=store.stars[i+1]?("⭐".repeat(store.stars[i+1])):(i+1>store.unlocked?"🔒":"▶");
+  d.innerHTML=`<span class="em">${L.art}</span><span>${i+1} · ${L.name}</span><span class="stars">${st}</span>`;
+  d.onclick=()=>{if(i+1>store.unlocked){banner("🔒 Win the previous level first!");naySnd();return;}openIntro(i);};
+  g.appendChild(d);
+ });
+ $("grownText").innerHTML=grownHTML(); $("grownText2").innerHTML=grownHTML();
+ $("futureShelf").innerHTML=FUTURE_REWARDS.map(f=>`<span title="${f}">${FUTURE_EMOJI[f]||"🎁"}<br><small>${f}</small></span>`).join("");
+ renderShelf($("shelfCol"));
+ $("starsLine").textContent="Stars: "+[1,2,3,4,5].map(i=>(store.stars[i]?"L"+i+":"+ "⭐".repeat(store.stars[i]):"L"+i+":—")).join("  ");
+}
+function renderShelf(el){el.innerHTML=store.collection.length?store.collection.map(c=>`<span>${c}</span>`).join(""):'<span class="small">Empty yet — win a level! 🏆</span>';}
+function banner(t,ms){const b=$("banner");b.textContent=t;b.classList.add("show");clearTimeout(b._h);b._h=setTimeout(()=>b.classList.remove("show"),ms||2200);}
+function log(t){$("battleLog").textContent=t;}
+// ---------- screens ----------
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$(id).classList.add("on");}
+function openIntro(lv){
+ $("introTitle").textContent=`Level ${lv+1}: ${LEVELS[lv].name} ${LEVELS[lv].art}`;
+ $("introArt").textContent=LEVELS[lv].art;
+ $("introText").textContent=LEVELS[lv].story+" First to the "+LEVELS[lv].goal+" wins! Knights fight alone — tap POWER! to boost with answers.";
+ $("mIntro").classList.add("on");$("mIntro")._lv=lv;cheerSnd();
+}
+function startLevel(lv){
+ $("mIntro").classList.remove("on");$("mEnd").classList.remove("on");
+ show("scr-battle");newMatch(lv);buildField();
+ $("lvPill").textContent=`${LEVELS[lv].art} L${lv+1} ${LEVELS[lv].name}`;
+}
+// ---------- battlefield DOM ----------
+let fieldEls={};
+function renderBattleSkin(){
+ const bf=$("battlefield"), L=G.L;
+ bf.style.background=`linear-gradient(180deg,${L.bg[0]},${L.bg[1]})`;
+ $("laneEl").style.background=L.laneCol;
+ $("laneEl").style.opacity=".85";
+ $("trophyEl").innerHTML=`${L.goal.includes("CUP")?"🏆":L.goal.split(" ")[0]}<span class="tag">${L.goal}</span>`;
+ $("baseP").innerHTML=`${G.lv===3?"🏠":G.lv>=3?"⛵":"🏰"}<span class="tag">YOU 💙</span>`;
+ $("baseR").innerHTML=`${G.lv===4?"🐳":G.lv>=3?"🚤":"🏯"}<span class="tag">RIVAL ❤️</span>`;
+ if(G.lv===4){$("baseR").innerHTML=`🐳<br><span class="hphearts" id="whaleHearts">❤️❤️❤️❤️❤️</span><span class="tag">WHALE BOSS</span>`;}
+}
+function buildField(){const bf=$("battlefield");bf.querySelectorAll(".unit,.minion,.whale,.telegraph,.ripple").forEach(e=>e.remove());fieldEls={};}
+function unitSprite(u){
+ if(u.side==="R") return u.cls==="minionfish"?"🐟":"👹";
+ if(blockStyle) return u.cls==="sturdy"?"🧱":"📦";
+ let base = u.cls==="sturdy"?"🛡️":"🐴";
+ // knights: horse+shield cue with emblem color name
+ return u.cls==="sturdy"?"🤺":"🏇";
+}
+function drawField(){
+ const bf=$("battlefield"), W=bf.clientWidth, H=bf.clientHeight;
+ const p=G.progress/100;
+ // bases + trophy lerp from same meter
+ const bxP=6+p*4, bxR=94-(100-p)*0.04*4, tx=8+p*0.84;
+ $("baseP").style.left=bxP+"%";$("baseP").style.top=(50+laneY(bxP/100,G.L.lane)/H*100)+"%";
+ $("baseR").style.left=(G.lv===4?86:bxR)+"%";$("baseR").style.top=(50+laneY(0.9,G.L.lane)/H*100)+"%";
+ $("trophyEl").style.left=tx+"%";
+ // faces
+ $("faceP").textContent=p>=60?"😄":p<=40?"😟":"🙂";
+ $("faceR").textContent=p<=40?"😄":p>=60?"😟":"🙂";
+ // units
+ const seen=new Set();
+ G.units.forEach(u=>{
+  if(u.state!=="field")return; seen.add(u.id);
+  let el=fieldEls[u.id];
+  if(!el){el=document.createElement("div");el.className="unit "+u.cls;bf.appendChild(el);fieldEls[u.id]=el;
+   // tap/long-press/double-tap per unit (mobile gestures)
+   let pressT=0,lastTap=0;
+   el.addEventListener("pointerdown",ev=>{pressT=Date.now();});
+   el.addEventListener("pointerup",ev=>{
+    const dt=Date.now()-pressT, now=Date.now();
+    if(dt>550){bubble(el,`I'm ${u.name} ${u.emblem}!`);beep(700,.12);} // long-press
+    else if(now-lastTap<350){doCheer();} // double-tap cheer
+    else {rippleAt(ev.clientX,ev.clientY);bubble(el,u.side==="P"?["Hi! 😊","For the trophy! 🏆","We got this! 💪"][Math.floor(Math.random()*3)]:"Grrr! 😈");beep(500+Math.random()*300,.08);}
+    lastTap=now;ev.stopPropagation();
+   });
+  }
+  const x01=u.x/100, px=x01*W+G.cam, py=H*0.5+laneY(x01,G.L.lane)+u.yJ;
+  el.style.left=px+"px";el.style.top=py+"px";
+  el.style.transform=`translate(-50%,-50%) scale(${G.zoom})`;
+  const shielded=G.t<G.shieldUntil&&u.side==="P", swifted=G.t<G.swiftUntil&&u.side==="P";
+  el.className="unit "+u.cls+(shielded?" shielded":"")+(swifted?" swifted":"")+((G.t<u.stunUntil&&u.id===(G.stunId))?" stunned":"")+(u===G.grabbed?" grabbed":"");
+  let hearts="❤️".repeat(Math.max(0,u.hp))||"💔";
+  let extra=(u.freeBlock>0?"🧊":"")+(shielded?"🫧":"")+(swifted?"💨":"");
+  let equip=(u.side==="P"&&store.hasSword?"🗡️":"")+(u.side==="P"&&store.hasShield?"🛡️":"");
+  el.innerHTML=`${u===G.grabbed?'<span class="bub">HELP! 🆘</span>':""}<span class="sp">${unitSprite(u)}${extra}</span><br><span class="nm" style="border:2px solid ${u.color}">${u.emblem} ${u.name}</span><br><span class="hp">${hearts}${equip}</span>`;
+ });
+ Object.keys(fieldEls).forEach(id=>{if(!seen.has(id)){fieldEls[id].remove();delete fieldEls[id];}});
+ // whale visual level 5
+ let w=$("whaleEl");
+ if(G.lv===4){
+  if(!w){w=document.createElement("div");w.id="whaleEl";w.className="whale";bf.appendChild(w);}
+  w.style.left=(W*0.88+G.cam)+"px";w.style.top=(H*0.42+Math.sin(G.t*2)*8)+"px";
+  const hearts=Math.ceil((100-G.progress)/20);
+  w.innerHTML=`🐳<br><span class="hphearts">${"❤️".repeat(Math.max(1,hearts))}</span>`;
+  const wh=$("whaleHearts");if(wh)wh.textContent="❤️".repeat(Math.max(1,hearts));
+ }
+ // resting bar
+ $("restbar").innerHTML=G.resting.map(()=> "😴").join("")||'<span class="small">resting knights nap here 😴</span>';
+ // tug
+ $("tugmarker").style.left=`calc(${G.progress}% - 4px)`;
+ $("tuglabel").textContent=G.progress>=60?"Winning! Push to YOUR trophy! 💙😄":G.progress<=40?"Oh no — tap 💪 POWER! to help! 😟":"Tug-of-war! Tap 💪 POWER! 💙";
+ // camera transform note: units already offset; lane shift visual
+ $("laneEl").style.transform=`translateY(-50%) translateX(${G.cam*0.3}px)`;
+}
+function rippleAt(cx,cy){const bf=$("battlefield").getBoundingClientRect();const s=document.createElement("div");s.className="ripple";s.textContent="✨";s.style.left=(cx-bf.left)+"px";s.style.top=(cy-bf.top)+"px";$("battlefield").appendChild(s);setTimeout(()=>s.remove(),700);}
+function bubble(el,txt){const b=document.createElement("div");b.className="bub";b.textContent=txt;el.appendChild(b);setTimeout(()=>b.remove(),1200);}
+function doCheer(){cheerSnd();banner("🎉 Hooray for the knights!",1200);for(let i=0;i<6;i++)confetti("🎉");}
+function confetti(em){const c=document.createElement("div");c.className="confetti";c.textContent=em||["🎉","⭐","🏆","✨"][Math.floor(Math.random()*4)];c.style.left=Math.random()*100+"vw";c.style.animationDuration=(1.5+Math.random()*1.5)+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),3000);}
+// ---------- cards ----------
+function nextQuestion(){
+ if(G.retryQueue.length&&G.qPos%2===0){return G.retryQueue.shift();}
+ const i=G.qOrder[G.qPos%G.qOrder.length];G.qPos++;
+ return {qi:i,isRetry:false};
+}
+function openCard(auto){
+ if(G.over||G.cardOpen)return;
+ G.cardOpen=true;
+ // pick Q (retry queue resurfaces within 3)
+ let pick;
+ if(G.retryQueue.length){pick=G.retryQueue.shift();}
+ else {pick={qi:G.qOrder[G.qPos%G.qOrder.length]};G.qPos++;}
+ G.curQ=QUESTIONS[pick.qi];G.curQi=pick.qi;G.elimUsed=false;
+ $("cardTag").textContent=(auto?"✨ Chance! ":"💪 POWER! ")+(G.curQ.t==="maths"?"🔢":"🔤");
+ $("cardQ").textContent=G.curQ.q;
+ $("cardObjs").textContent=G.curQ.objs||(G.curQ.q.startsWith("First letter")?"☀️":"");
+ $("cardHint").style.display="none";$("cardHint").textContent="";
+ const box=$("cardOpts");box.innerHTML="";
+ G.curOptMap=shuffle(G.curQ.o.map((_,i)=>i));
+ G.curOptMap.forEach((oi,slot)=>{
+  const b=document.createElement("button");b.className="opt";b.textContent=G.curQ.o[oi];
+  b.setAttribute("aria-label","answer "+G.curQ.o[oi]);b.dataset.oi=oi;
+  b.onclick=()=>answer(slot,b);
+  box.appendChild(b);
+ });
+ $("mCard").classList.add("on");
+ beep(440,.12);
+}
+function answer(slot,btn){
+ if(!G.cardOpen)return;
+ const oi=parseInt(btn.dataset.oi,10);
+ const kids=[...$("cardOpts").children];
+ if(oi===G.curQ.a){
+  btn.classList.add("correct");yaySnd();
+  G.correct++;G.streak++;
+  const isMaths=G.curQ.t==="maths";
+  if(isMaths){G.shieldUntil=G.t+SHIELD_DURATION;banner("🫧 SHIELDS UP! Knights can't be hurt!",2400);}
+  else {G.swiftUntil=G.t+SWIFT_DURATION;banner("💨 SWIFT CHARGE! Knights run fast!",2400);}
+  if(G.streak%3===0){ // Rally
+   const back=G.resting.shift();
+   G.units.forEach(u=>{if(u.side==="P")u.hp=u.maxHp;});
+   if(back){back.hp=back.maxHp;back.x=6;back.state="field";G.units.push(back);}
+   setTimeout(()=>banner("📯 RALLY! A resting knight returns, all healed!",2400),1200);
+   log("📯 Rally! Healed + one knight woke up!");
+  } else log(isMaths?"🫧 Shield Wall! Bubbles protect us!":"💨 Swift Charge! Motion lines, go go go!");
+  for(let i=0;i<8;i++)setTimeout(()=>confetti(),i*90);
+  G.powerCD=POWER_COOLDOWN;
+  setTimeout(()=>{closeCard();afterBoostPush(isMaths);},900);
+ } else {
+  naySnd();G.wrong++;G.streak=0;
+  $("cardBox").classList.remove("shake");void $("cardBox").offsetWidth;$("cardBox").classList.add("shake");
+  // eliminate one wrong option OR counting hint
+  const wrongs=kids.filter(k=>parseInt(k.dataset.oi,10)!==G.curQ.a&&!k.classList.contains("elim"));
+  if(wrongs.length>1&&!G.elimUsed){wrongs[0].classList.add("elim");G.elimUsed=true;}
+  const h=$("cardHint");h.style.display="block";
+  h.textContent=G.curQ.t==="maths"?"💡 Try again! Count on your fingers ☝️":"💡 Try again! Say each letter aloud 🔤";
+  banner("💛 Try again! No harm done.",1500);
+  // spaced retry: same Q resurfaces within next 3
+  if(!G.retryQueue.find(r=>r.qi===G.curQi))G.retryQueue.push({qi:G.curQi});
+  while(G.retryQueue.length>3)G.retryQueue.shift();
+ }
+}
+function afterBoostPush(isMaths){
+ // visible battle change within 2s: jump meter a bit + surge visual
+ G.progress=Math.min(99,G.progress+(isMaths?2.5:2.5));
+ log("✨ Boost working! Watch the flag jump!");
+}
+function closeCard(){$("mCard").classList.remove("on");G.cardOpen=false;}
+// ---------- end of match ----------
+function endMatch(win){
+ if(G.over)return;G.over=true;closeCard();
+ const L=G.L, lv=G.lv;
+ const elapsed=(performance.now()-G.startTime)/1000;
+ // L5 minimum-time guard: if won too fast, keep playful battle a bit (still counts)
+ if(win){
+  // stars: 1 win / 2 win+>=3 correct / 3 win+no wrong
+  let stars=1;if(G.correct>=3)stars=2;if(G.wrong===0)stars=3;
+  store.stars[lv+1]=Math.max(store.stars[lv+1]||0,stars);
+  store.correctPerLevel[lv+1]=(store.correctPerLevel[lv+1]||0)+G.correct;
+  store.unlocked=Math.max(store.unlocked,Math.min(5,lv+2));
+  let reward="";
+  if(lv===0&&!store.hasSword){store.hasSword=true;reward="🗡️ SWORD! Knights now carry swords (+1 bump)!";}
+  if(lv===2&&!store.hasShield){store.hasShield=true;reward="🛡️ SHIELD! Knights block one hit each level!";}
+  if(lv===4&&!store.collection.includes("🏆")){reward="🏆 THE CUP + 🐳 Whale Friend badge!";}
+  save();
+  // conquest anim + confetti + victory within 1s
+  G.units.forEach(u=>{if(u.side==="P"){u.x=70+Math.random()*20;}});
+  drawField();
+  for(let i=0;i<30;i++)setTimeout(()=>confetti(),i*70);
+  cheerSnd();
+  setTimeout(()=>{
+   $("endTitle").textContent=`🏆 VICTORY! Level ${lv+1} ${L.name}`;
+   $("endArt").textContent=lv===4?"🏆🐳":L.art+"🏆";
+   $("endText").textContent=`You pushed the flag to 100! ${G.correct} right, ${G.wrong} oopsies. ${elapsed.toFixed(0)}s battle.`;
+   $("rewardLine").textContent=reward;
+   $("pickedLine").textContent="";
+   document.querySelectorAll(".prize").forEach(p=>p.classList.remove("sel"));
+   renderShelf($("shelfEnd"));
+   $("grownNoteEnd").innerHTML="<b>Grown-up note:</b> "+["continuous-sim","opportunity-not-gate RIVAL_SPAWN_BIAS="+RIVAL_SPAWN_BIAS,"auto-return "+REST_TIME+"s","rewards cosmetic+tiny bonus","sequential","maths→Shield/letters→Swift/3×→Rally","retry hint+resurface≤3","whale=push-to-100% PAR_TIME_L1="+PAR_TIME_L1,"Sturdy/Swift minima","prize 1-of-3"].join(" · ");
+   document.querySelector("#mEnd .prizeRow").style.display="flex";document.querySelector("#mEnd h3").style.display="block";
+   $("mEnd").classList.add("on");
+   $("btnNext").style.display=(lv<4)?"":"none";
+   $("mEnd")._reward=reward;$("mEnd")._lv=lv;
+  },600);
+ } else {
+  naySnd();
+  $("endTitle").textContent="💛 Try again!";
+  $("endArt").textContent="🏰💤";
+  $("endText").textContent="The rival reached your side first. Kind retry — your knights believe in you! Tap Play again.";
+  $("rewardLine").textContent="";
+  $("pickedLine").textContent="";
+  renderShelf($("shelfEnd"));
+  $("grownNoteEnd").innerHTML="<b>Grown-up note:</b> rival CAN win; idling 60s reliably loses (RIVAL_SPAWN_BIAS="+RIVAL_SPAWN_BIAS+").";
+  document.querySelectorAll(".prize").forEach(p=>p.classList.remove("sel"));
+  document.querySelector("#mEnd .prizeRow").style.display="none";document.querySelector("#mEnd h3").style.display="none";
+  $("mEnd").classList.add("on");$("btnNext").style.display="none";
+  $("mEnd")._reward="";$("mEnd")._lv=lv;
+ }
+ renderLevels();
+}
+// ---------- main loop ----------
+let lastFrame=performance.now();
+function tick(now){
+ requestAnimationFrame(tick);
+ if(!G||G.over)return;
+ if(!$("scr-battle").classList.contains("on")){lastFrame=now;return;}
+ let dt=Math.min(0.05,(now-lastFrame)/1000);lastFrame=now;
+ const slow=G.cardOpen?BATTLE_SLOW_CARD:1;
+ dt*=slow;G.t+=dt;
+ // NOTE: POWER cooldown ticks in realtime via setInterval (not scaled by card slow).
+ // spawn logic with rubber-band + bias
+ const p=G.progress;
+ let rivalInt=RIVAL_SPAWN_INTERVAL/RIVAL_SPAWN_BIAS;
+ if(p>65){const lead=Math.min(1,(p-65)/35);rivalInt/=(1+lead*RUBBER_MAX);} // up to +50%
+ if(G.lv===4)rivalInt*=0.9; // L5 keeps rival pressure HIGH + weaker player base-push (see below) so L5 lasts >=1.5x PAR_TIME_L1
+ let playerInt=PLAYER_SPAWN_INTERVAL;
+ if(p<35)playerInt*=0.9;
+ if(G.t-G.lastP>=playerInt){if(spawnUnit("P"))G.lastP=G.t;}
+ if(G.t-G.lastR>=rivalInt){if(spawnUnit("R"))G.lastR=G.t;}
+ // whale attacks L5
+ if(G.lv===4){
+  G.whaleJet-=dt;G.whalePull-=dt;G.whaleMin-=dt;
+  if(G.whaleJet<=0){G.whaleJet=WHALE_JET_EVERY;whaleJet();}
+  if(G.whalePull<=0){G.whalePull=WHALE_PULL_EVERY;whalePull();}
+  if(G.whaleMin<=0){G.whaleMin=14;if(G.units.filter(u=>u.side==="R").length<MAX_RIVAL_UNITS+2){spawnUnit("R");spawnUnit("R");banner("🐟 Fish minions splash in! Bump them twice!",2000);log("🐟 Minions block! Bump them twice!");}}
+ }
+ // move + fight
+ const swift=G.t<G.swiftUntil?SWIFT_MULT:1;
+ G.bumpLock-=dt;
+ for(const u of G.units){
+  if(u.state!=="field")continue;
+  if(u===G.grabbed)continue; // dragged, no self move
+  if(now<u.stunUntil)continue;
+  let sp=u.speed*(u.side==="P"?swift:1);
+  // fish aura slow
+  if(u.side==="P"){const near=G.units.some(v=>v.side==="R"&&v.cls==="minionfish"&&v.state==="field"&&Math.abs(v.x-u.x)<8);if(near)sp*=WHALE_SLOW_AURA;}
+  u.x+= (u.side==="P"?1:-1)*sp*dt*(100/960);
+  u.x=Math.max(1,Math.min(99,u.x));
+ }
+ // bump fights: pair P/R close
+ const P=G.units.filter(u=>u.side==="P"&&u.state==="field"&&u!==G.grabbed&&now>=u.stunUntil);
+ const R= G.units.filter(u=>u.side==="R"&&u.state==="field"&&now>=u.stunUntil);
+ for(const a of P){for(const b of R){
+  if(Math.abs(a.x-b.x)<3.2&&(a.bumpCD<=0&&b.bumpCD<=0)&&G.bumpLock<=0){
+   G.bumpLock=BUMP_COOLDOWN;
+   a.bumpCD=BUMP_COOLDOWN;b.bumpCD=BUMP_COOLDOWN;
+   const shielded=G.t<G.shieldUntil;
+   // player damage to rival
+   let dmgToR=BUMP_DMG+((store.hasSword&&a.side==="P")?SWORD_BONUS:0);
+   let dmgToP=(shielded||a.freeBlock>0)?0:BUMP_DMG;
+   if(a.freeBlock>0&&dmgToP===0&&!shielded){a.freeBlock--;banner("🧊 Shield blocked a hit!",1200);}
+   b.hp-=dmgToR;a.hp-=dmgToP;
+   flashPair(a,b);
+   if(b.hp<=0)defeat(b); if(a.hp<=0)defeat(a);
+   else {G.progress=Math.max(0,Math.min(100,G.progress+(Math.random()<0.55?PUSH_ON_BUMP_WIN:-PUSH_ON_BUMP_WIN*0.7)));beep(300+Math.random()*200,.07,"square");}
+   break;
+  }
+ }}
+ G.units.forEach(u=>{u.bumpCD=Math.max(0,(u.bumpCD||0)-dt);});
+ // base hits
+ for(const u of [...G.units]){
+  if(u.state!=="field"||u===G.grabbed)continue;
+  if(u.side==="P"&&u.x>=97){G.progress=Math.min(100,G.progress+PUSH_ON_BASE_HIT);u.state="done";removeUnit(u);log(`⚔ ${u.name} reached the ${G.L.goal}! Push!`);beep(600,.1);}
+  if(u.side==="R"&&u.x<=3){G.progress=Math.max(0,G.progress-PUSH_ON_BASE_HIT*(G.lv===4?0.7:1));u.state="done";removeUnit(u);log("😟 A rival reached YOUR base! Tap POWER!");beep(180,.15);}
+ }
+ // grabbed drag
+ if(G.grabbed){G.grabbed.x-=(14*(100/960))*dt*10*0.12;G.grabbed._t=(G.grabbed._t||0)+dt;if(G.grabbed._t>3){defeat(G.grabbed,true);G.grabbed=null;log("😢 The whale pulled a knight away… new one will come!");}}
+ // resting returns
+ for(const r of [...G.resting]){r._rest-=dt;if(r._rest<=0){G.resting.splice(G.resting.indexOf(r),1);r.hp=r.maxHp;r.x=4;r.state="field";r.freeBlock=(store.hasShield?1:0);G.units.push(r);log(`😊 ${r.name} woke up and ran back!`);}}
+ // auto cards: losing (meter<=35) + close-to-win (>=80)
+ if(!G.autoLow&&G.progress<=35){G.autoLow=true;openCard(true);banner("✨ Your knights need help! Answer to boost!",2500);log("✨ Auto-challenge: losing ground — answer to shield/charge!");}
+ if(!G.autoHigh&&G.progress>=80){G.autoHigh=true;openCard(true);banner("🏆 SO CLOSE! One answer to win!",2500);}
+ // glowing POWER when trailing
+ $("powerBtn").classList.toggle("glowing",G.progress<=35);
+ // power cooldown ring + realtime tick
+ // (track realtime separately)
+ updateTug();drawField();
+ if(G.progress>=100)endMatch(true);
+ if(G.progress<=0)endMatch(false);
+ // realtime cooldown decrement
+}
+function removeUnit(u){const i=G.units.indexOf(u);if(i>=0)G.units.splice(i,1);}
+function defeat(u,silent){
+ removeUnit(u);
+ if(u.side==="P"){u.state="resting";u._rest=REST_TIME;G.resting.push(u);if(!silent)log(`💤 ${u.name} is resting… back in ${REST_TIME}s!`);}
+ else {if(!silent){G.progress=Math.min(100,G.progress+PUSH_ON_BUMP_WIN);log("💥 A rival bumped away!");}beep(500,.08,"square");}
+ if(G.grabbed===u)G.grabbed=null;
+}
+function flashPair(a,b){/* visual via draw */}
+function whaleJet(){
+ banner("🌊 WATER JETS! Splash warning!",1800);beep(150,.4,"sawtooth");
+ const bf=$("battlefield");const t=document.createElement("div");t.className="telegraph";t.style.left="10%";t.style.right="10%";t.style.top="20%";t.style.bottom="20%";bf.appendChild(t);setTimeout(()=>t.remove(),900);
+ setTimeout(()=>{
+  G.units.forEach(u=>{if(u.side==="P"&&u.state==="field"){u.x=Math.max(2,u.x-8);u.stunUntil=performance.now()+2000;}});
+  log("🌊 Splash! Knights knocked back (2s stun) — they shake it off!");
+ },800);
+}
+function whalePull(){
+ const cands=G.units.filter(u=>u.side==="P"&&u.state==="field");
+ if(!cands.length){G.whalePull=6;return;}
+ G.grabbed=cands[Math.floor(Math.random()*cands.length)];G.grabbed._t=0;
+ banner("🆘 HELP! Answer ANY card to free your knight!",2600);log("🐳 Grabbed! Open POWER! and answer to free instantly!");
+ openCard(true);
+}
+// stash realtime cooldown
+setInterval(()=>{if(G&&!G.over&&G.powerCD>0)G.powerCD=Math.max(0,G.powerCD-0.25);const b=$("powerBtn");if(b){const f=G? (1-G.powerCD/POWER_COOLDOWN)*100:100;b.style.setProperty("--cd",f+"%");b.childNodes[0].textContent=G&&G.powerCD>0?`💪 POWER! (${Math.ceil(G.powerCD)}s)`:"💪 POWER!";}},250);
+function updateTug(){}
+// ---------- gestures on battlefield (mobile: swipe/pinch/long-press) ----------
+(function(){
+ const bf=$("battlefield");let sx=0,sy=0,st=0,pinch0=0,zoom0=1,moved=false;
+ bf.addEventListener("pointerdown",e=>{sx=e.clientX;sy=e.clientY;st=Date.now();moved=false;});
+ bf.addEventListener("pointermove",e=>{if(!sx)return;const dx=e.clientX-sx;if(Math.abs(dx)>8)moved=true;});
+ bf.addEventListener("pointerup",e=>{
+  if(!G||!sx)return;const dx=e.clientX-sx,dy=e.clientY-sy,dt=Date.now()-st;
+  const adx=Math.abs(dx),ady=Math.abs(dy);
+  if(Math.max(adx,ady)<12&&dt<400&&e.target===bf){rippleAt(e.clientX,e.clientY);doCheerTiny(e);} // tap empty = cheer ripple
+  else if(adx>50&&adx>ady*1.4){G.cam=Math.max(-120,Math.min(120,G.cam+dx*0.4));log("👀 You looked around (swipe ↔️)!");} // swipe pan
+  else if(dy<-50&&ady>adx){if(!$("mCard").classList.contains("on"))openCard(false);} // swipe up = POWER
+  else if(dy>50&&ady>adx){if($("mCard").classList.contains("on")){closeCard();banner("👋 Card closed — battle goes on!",1500);}} // swipe down dismiss
+  sx=0;
+ });
+ function doCheerTiny(e){rippleAt(e.clientX,e.clientY);beep(700,.08);}
+ // pinch zoom
+ bf.addEventListener("touchmove",e=>{
+  if(e.touches.length===2){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+   if(!pinch0){pinch0=d;zoom0=G?G.zoom:1;}
+   if(G)G.zoom=Math.max(0.9,Math.min(1.4,zoom0*d/pinch0));}
+ },{passive:false});
+ bf.addEventListener("touchend",e=>{if(e.touches.length<2)pinch0=0;});
+})();
+// ---------- wire buttons ----------
+$("btnStart").onclick=()=>{const i=Math.min(store.unlocked,5)-1;openIntro(Math.max(0,store.unlocked-1));};
+$("btnSeed").onclick=()=>{SEED=$("seedBox").value.trim();rng=mulberry(SEED?hashStr(SEED):(Date.now()%2147483647));banner(SEED?("🌱 Seed set: "+SEED):"🎲 Random seed",1600);};
+$("seedBox").value=SEED;
+$("btnGo").onclick=()=>startLevel($("mIntro")._lv||0);
+$("btnQuit").onclick=()=>{G=null;show("scr-start");renderLevels();};
+$("btnMenu2").onclick=()=>{G=null;$("mEnd").classList.remove("on");show("scr-start");renderLevels();};
+$("btnAgain").onclick=()=>startLevel($("mEnd")._lv||0);
+$("btnNext").onclick=()=>startLevel(Math.min(4,($("mEnd")._lv||0)+1));
+$("powerBtn").onclick=()=>{if(!G||G.over)return;if(G.powerCD>0){banner(`⏳ POWER! resting ${Math.ceil(G.powerCD)}s…`,1200);return;}openCard(false);};
+$("btnCheer").onclick=()=>doCheer();
+$("btnDismiss").onclick=()=>{closeCard();banner("👋 No worries — battle goes on!",1400);};
+$("btnShop").onclick=()=>$("mShop").classList.add("on");
+$("btnCloseShop").onclick=()=>$("mShop").classList.remove("on");
+$("btnCollection").onclick=()=>{renderShelf($("shelfCol"));$("mCol").classList.add("on");};
+$("btnCloseCol").onclick=()=>$("mCol").classList.remove("on");
+$("btnGrown").onclick=()=>$("mGrown").classList.add("on");
+$("btnCloseGrown").onclick=()=>$("mGrown").classList.remove("on");
+$("btnSound").onclick=e=>{soundOn=!soundOn;e.target.textContent=`🔊 Sound: ${soundOn?"ON":"OFF"}`;$("btnMute2").textContent=soundOn?"🔊":"🔇";};
+$("btnMute2").onclick=e=>{soundOn=!soundOn;e.target.textContent=soundOn?"🔊":"🔇";};
+$("btnStyle").onclick=e=>{blockStyle=!blockStyle;e.target.textContent=`🧱 Block style: ${blockStyle?"ON":"OFF"}`;banner(blockStyle?"🧱 Block-build art ON! Same rules!":"🏰 Storybook art ON!",1600);if(G){G.blockMode=blockStyle;}};
+document.querySelectorAll(".prize").forEach(p=>p.onclick=()=>{
+ document.querySelectorAll(".prize").forEach(x=>x.classList.remove("sel"));p.classList.add("sel");
+ const em=p.dataset.p;$("pickedLine").textContent=`You picked ${em} !`;
+ if(!store.collection.includes(em))store.collection.push(em);
+ const lv=$("mEnd")._lv;
+ if($("mEnd")._reward&&$("mEnd")._reward.includes("SWORD")&&!store.collection.includes("🗡️"))store.collection.push("🗡️");
+ if($("mEnd")._reward&&$("mEnd")._reward.includes("SHIELD")&&!store.collection.includes("🛡️"))store.collection.push("🛡️");
+ if(lv===4){if(!store.collection.includes("🏆"))store.collection.push("🏆");if(!store.collection.includes("🐳"))store.collection.push("🐳");}
+ save();renderShelf($("shelfEnd"));cheerSnd();for(let i=0;i<12;i++)setTimeout(()=>confetti(em),i*80);
+});
+// keyboard: Space=POWER, 1/2/3=answers, Enter=start/confirm
+document.addEventListener("keydown",e=>{
+ if(e.key==="Enter"){if($("mIntro").classList.contains("on"))$("btnGo").click();else if($("mEnd").classList.contains("on"))$("btnAgain").click();else if($("scr-start").classList.contains("on"))$("btnStart").click();}
+ if(e.code==="Space"){e.preventDefault();if($("scr-battle").classList.contains("on")&&!$("mCard").classList.contains("on"))$("powerBtn").click();}
+ if(["1","2","3"].includes(e.key)&&$("mCard").classList.contains("on")){const k=[...$("cardOpts").children][parseInt(e.key,10)-1];if(k)k.click();}
+ if(e.key==="Escape"){["mCard","mShop","mCol","mGrown"].forEach(m=>$(m).classList.remove("on"));if(G)G.cardOpen=false;}
+});
+renderLevels();
+$("signoff").textContent=BUILD_INFO;
+requestAnimationFrame(t=>{lastFrame=t;requestAnimationFrame(tick);});
+</script>
+</body>
+</html>

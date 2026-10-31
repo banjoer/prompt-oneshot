@@ -1,0 +1,188 @@
+<!-- Built 2026-10-31 00:00 UTC · Muse Spark 1.3 Contributor (muse-spark-1.3-contributor-mobile) · vanilla, no libraries -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11131a">
+<title>Echo Pads — Simon Tone Memory</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:#11131a;color:#f2f4f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+ min-height:100dvh;display:flex;justify-content:center;touch-action:manipulation;
+ padding:12px 12px calc(12px + env(safe-area-inset-bottom));}
+main{width:100%;max-width:460px;display:flex;flex-direction:column;gap:10px}
+h1{margin:6px 0 0;font-size:1.5rem;text-align:center}
+.sub{text-align:center;color:#9aa3b2;font-size:.85rem;margin:0}
+.stats{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
+.pill{background:#1c2130;border:1px solid #2c3450;border-radius:999px;padding:6px 14px;font-size:.95rem;min-height:44px;display:flex;align-items:center;gap:6px}
+#newBest{display:none;background:#ffd54a;color:#231a00;font-weight:700;border-radius:999px;padding:2px 10px;font-size:.8rem}
+#newBest.show{display:inline-block}
+#status{text-align:center;font-weight:700;background:#1c2130;border:1px solid #2c3450;border-radius:12px;padding:12px;min-height:48px;display:flex;align-items:center;justify-content:center}
+#board{display:grid;grid-template-columns:1fr 1fr;gap:12px;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad{border:none;border-radius:20px;min-height:132px;aspect-ratio:1/0.92;cursor:pointer;color:#fff;
+ font-size:1rem;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+ opacity:.55;transition:transform .08s,opacity .08s,box-shadow .08s,filter .08s;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad small{font-weight:400;opacity:.9;font-size:.75rem}
+.pad.g{background:#22a355}.pad.r{background:#d63a3a}.pad.y{background:#d9a91c;color:#241d00}.pad.b{background:#2f6fe0}
+.pad.lit{opacity:1;transform:scale(1.05);filter:brightness(1.25)}
+.pad.g.lit{box-shadow:0 0 28px 6px #22a355}.pad.r.lit{box-shadow:0 0 28px 6px #d63a3a}
+.pad.y.lit{box-shadow:0 0 28px 6px #d9a91c}.pad.b.lit{box-shadow:0 0 28px 6px #2f6fe0}
+.controls{display:flex;gap:10px}
+button.big{flex:1;min-height:52px;border-radius:14px;border:none;font-size:1.05rem;font-weight:700;cursor:pointer}
+#startBtn{background:#f2f4f8;color:#11131a}#againBtn{background:#2f6fe0;color:#fff;display:none}
+.modes{display:flex;background:#1c2130;border:1px solid #2c3450;border-radius:14px;padding:6px;gap:6px}
+.modes label{flex:1;text-align:center;padding:10px;border-radius:10px;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.modes input{position:absolute;opacity:0;pointer-events:none}
+.modes label:has(input:checked){background:#2f6fe0;color:#fff}
+.modes label:has(input:focus-visible){outline:2px solid #fff}
+.hint{color:#9aa3b2;font-size:.82rem;text-align:center;line-height:1.5}
+details.hint{background:#1c2130;border:1px solid #2c3450;border-radius:12px;padding:8px 12px;text-align:left}
+details.hint summary{cursor:pointer;font-weight:600;color:#cfd6e2;min-height:44px;display:flex;align-items:center}
+footer{text-align:center;color:#9aa3b2;font-size:.8rem;padding:8px 0}
+@media (max-height:600px){.pad{min-height:104px}}
+</style>
+</head>
+<body>
+<main>
+<h1>🟢 Echo Pads</h1>
+<p class="sub">Simon-style tone memory — tap, swipe, or press keys</p>
+<div class="stats">
+<span class="pill">Round <b id="round">0</b></span>
+<span class="pill">Best <b id="best">0</b> <span id="newBest">New best!</span></span>
+</div>
+<div id="status" role="status" aria-live="polite">Press Start</div>
+<div id="board" aria-label="Game pads. Swipe up right down left also plays pads.">
+<button class="pad g" data-i="0" aria-label="Green pad">● GREEN <small>↑ · 1 · swipe up</small></button>
+<button class="pad r" data-i="1" aria-label="Red pad">● RED <small>→ · 2 · swipe right</small></button>
+<button class="pad y" data-i="2" aria-label="Yellow pad">● YELLOW <small>↓ · 3 · swipe down</small></button>
+<button class="pad b" data-i="3" aria-label="Blue pad">● BLUE <small>← · 4 · swipe left</small></button>
+</div>
+<div class="controls">
+<button id="startBtn" class="big">▶ Start</button>
+<button id="againBtn" class="big">↻ Play Again</button>
+</div>
+<div class="modes" role="radiogroup" aria-label="Difficulty mode">
+<label><input type="radio" name="mode" value="normal" checked> Normal 😌</label>
+<label><input type="radio" name="mode" value="strict"> Strict 💀</label>
+</div>
+<p class="hint">Normal: mistake replays the sequence. Strict: one mistake ends the run.<br>Switching modes mid-game restarts the game.</p>
+<details class="hint">
+<summary>📱 Mobile gestures &amp; keys</summary>
+• <b>Tap / touch &amp; hold</b> a pad to play it (multi-touch OK).<br>
+• <b>Swipe</b> anywhere on the pads: ↑ green · → red · ↓ yellow · ← blue.<br>
+• <b>Two-finger tap</b> on the board = Start / Play Again.<br>
+• <b>Keys:</b> 1–4 or arrow keys play pads · Enter/Space starts.
+</details>
+<footer>Built 2026-10-31 00:00 UTC · Muse Spark 1.3 Contributor</footer>
+</main>
+<script>
+"use strict";
+const FREQS=[329.63,261.63,220,164.81];
+const pads=[...document.querySelectorAll(".pad")];
+const board=document.getElementById("board");
+const statusEl=document.getElementById("status");
+const roundEl=document.getElementById("round"),bestEl=document.getElementById("best");
+const newBestEl=document.getElementById("newBest");
+const startBtn=document.getElementById("startBtn"),againBtn=document.getElementById("againBtn");
+const modeInputs=[...document.querySelectorAll('input[name="mode"]')];
+let seq=[],pos=0,accepting=false,playing=false,started=false;
+let mode="normal";
+let best=parseInt(localStorage.getItem("echoPadsBest")||"0",10)||0;
+bestEl.textContent=best;
+let ctx=null;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const stepDur=()=>Math.max(250,420-20*Math.floor(seq.length/4));
+function ensureAudio(){try{
+ if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();
+ if(ctx.state==="suspended")ctx.resume();}catch(e){}}
+function tone(freq,durMs,type="sine",vol=0.25,when=0){
+ ensureAudio();if(!ctx)return;
+ const t=ctx.currentTime+when,o=ctx.createOscillator(),g=ctx.createGain();
+ o.type=type;o.frequency.value=freq;
+ g.gain.setValueAtTime(0.0001,t);
+ g.gain.exponentialRampToValueAtTime(vol,t+0.02);
+ g.gain.exponentialRampToValueAtTime(0.0001,t+durMs/1000);
+ o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+durMs/1000+0.05);}
+function buzz(){tone(110,400,"sawtooth",0.3);navigator.vibrate&&navigator.vibrate([90,40,90]);}
+function setStatus(s){statusEl.textContent=s;}
+function setRound(){roundEl.textContent=started?seq.length:0;}
+function bumpBest(){
+ if(started&&seq.length>best){best=seq.length;localStorage.setItem("echoPadsBest",String(best));
+  bestEl.textContent=best;newBestEl.classList.add("show");setTimeout(()=>newBestEl.classList.remove("show"),2200);}}
+function light(i,on){pads[i].classList.toggle("lit",on);}
+async function playStep(i,dur){
+ light(i,true);tone(FREQS[i],Math.min(dur,420));navigator.vibrate&&navigator.vibrate(15);
+ await sleep(dur);light(i,false);await sleep(180);}
+async function playback(){
+ playing=true;accepting=false;setStatus("Watch…");
+ const d=stepDur();
+ for(const s of seq){await playStep(s,d);}
+ playing=false;pos=0;accepting=true;setStatus("Your turn");}
+function startGame(){
+ ensureAudio();
+ seq=[Math.floor(Math.random()*4)];pos=0;started=true;
+ newBestEl.classList.remove("show");againBtn.style.display="none";startBtn.textContent="↻ Restart";
+ setRound();bumpBest();playback();}
+function roundClear(){
+ accepting=false;setStatus("Nice! 🎉");tone(FREQS[0],140,"sine",0.22,0);tone(FREQS[1],140,"sine",0.22,0.12);tone(FREQS[3],220,"sine",0.22,0.24);
+ if(seq.length%5===0){FREQS.forEach((f,k)=>tone(f*2,120,"triangle",0.18,0.35+k*0.11));} // arpeggio every 5
+ setTimeout(()=>{if(!started)return;seq.push(Math.floor(Math.random()*4));setRound();bumpBest();playback();},700);}
+function fail(i){
+ accepting=false;buzz();light(i,true);setTimeout(()=>light(i,false),450);
+ if(mode==="normal"){setStatus("Wrong — watch again");
+  setTimeout(()=>{if(started)playback();},900);}
+ else{started=false;setStatus(`Game over — ${seq.length-1} round${seq.length-1===1?"":"s"} completed`);
+  tone(330,180,"triangle",0.22,0.45);tone(220,300,"triangle",0.22,0.65); // descending game-over
+  againBtn.style.display="block";startBtn.textContent="▶ Start";}}
+function press(i){
+ if(!accepting||playing||!started)return;
+ ensureAudio();
+ light(i,true);tone(FREQS[i],220);navigator.vibrate&&navigator.vibrate(20);
+ if(i!==seq[pos]){fail(i);return;}
+ pos++;
+ if(pos>=seq.length){setTimeout(()=>light(i,false),160);roundClear();}
+ else setTimeout(()=>light(i,false),160);}
+// Unified tap / swipe / multi-touch: one gesture = exactly one pad press.
+// Tap a pad = that pad. Swipe anywhere on board: ↑0 →1 ↓2 ←3. Multi-touch OK.
+const gestures=new Map(); // pointerId -> {x,y,t,pad}
+let twoFingerUntil=0;
+board.addEventListener("pointerdown",e=>{
+ const padEl=e.target.closest?e.target.closest(".pad"):null;
+ gestures.set(e.pointerId,{x:e.clientX,y:e.clientY,t:performance.now(),
+  pad:padEl?+padEl.dataset.i:-1});
+ if(padEl){e.preventDefault();ensureAudio();light(+padEl.dataset.i,true);} // instant touch preview
+},{passive:false});
+function endGesture(e,cancelled){
+ const g=gestures.get(e.pointerId);gestures.delete(e.pointerId);
+ if(!g||cancelled)return;
+ if(Date.now()<twoFingerUntil)return; // part of two-finger start gesture
+ const dx=e.clientX-g.x,dy=e.clientY-g.y,dist=Math.hypot(dx,dy);
+ if(dist>=24&&performance.now()-g.t<=800){
+  const idx=Math.abs(dx)>=Math.abs(dy)?(dx>0?1:3):(dy>0?2:0);
+  press(idx);
+ }else if(g.pad>=0){press(g.pad);} // plain tap / touch-hold release
+ // light follows finger: clear all (press() already flashes)
+ pads.forEach((_,i)=>{if(!playing)light(i,false);});
+}
+addEventListener("pointerup",endGesture);
+addEventListener("pointercancel",e=>endGesture(e,true));
+board.addEventListener("contextmenu",e=>e.preventDefault());
+// --- two-finger tap = Start / restart (hand gesture) ---
+board.addEventListener("touchstart",e=>{
+ if(e.touches.length===2){e.preventDefault();twoFingerUntil=Date.now()+600;ensureAudio();startGame();}},{passive:false});
+startBtn.addEventListener("click",()=>startGame());
+againBtn.addEventListener("click",()=>startGame());
+modeInputs.forEach(r=>r.addEventListener("change",()=>{
+ mode=document.querySelector('input[name="mode"]:checked').value;
+ if(started&&(accepting||playing))startGame(); // switching mid-game restarts
+}));
+// keyboard: 1-4 + arrows (mirror swipes), Enter/Space starts
+const keyMap={"1":0,"2":1,"3":2,"4":3,"ArrowUp":0,"ArrowRight":1,"ArrowDown":2,"ArrowLeft":3};
+addEventListener("keydown",e=>{
+ if(e.key==="Enter"||e.key===" "){if(document.activeElement.tagName!=="INPUT"){e.preventDefault();startGame();}return;}
+ const i=keyMap[e.key];if(i!==undefined){e.preventDefault();press(i);}});
+</script>
+</body>
+</html>

@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Conveyor Lab — Factory Automation Sim</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1e2632;--acc:#ffb300;--acc2:#00e676;--txt:#e6edf3;--dim:#8b949e;--danger:#ff5252;--touch:56px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;height:100%;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#top-hud{background:var(--panel);border-bottom:1px solid #30363d;padding:6px 8px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12px;z-index:20}
+#top-hud .brand{font-weight:800;color:var(--acc);font-size:13px;white-space:nowrap}
+#top-hud .stat{white-space:nowrap}
+#top-hud .stat b{color:#fff}
+#signoff{color:var(--dim);font-size:10px;white-space:nowrap}
+#hud-btns{margin-left:auto;display:flex;gap:4px}
+button{font-family:inherit}
+.hbtn{background:var(--panel2);color:var(--txt);border:1px solid #30363d;border-radius:8px;padding:8px 10px;font-size:13px;min-height:40px;cursor:pointer}
+.hbtn:active{transform:scale(.96)}
+.hbtn.on{border-color:var(--acc);color:var(--acc)}
+#hintbar{background:#231f0a;color:#ffd54f;font-size:12px;padding:6px 10px;text-align:center;border-bottom:1px solid #4a3f00;min-height:28px}
+#mid{flex:1;display:flex;min-height:0;position:relative}
+#canvas-wrap{flex:1;position:relative;min-width:0;background:#0a0d12}
+#game{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#side{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:8px;z-index:10}
+.sbtn{width:52px;height:52px;border-radius:12px;background:rgba(30,38,50,.92);border:1px solid #30363d;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.sbtn small{font-size:8px;color:var(--dim)}
+.sbtn.on{border-color:var(--acc);color:var(--acc)}
+#sel-info{position:absolute;left:8px;top:8px;background:rgba(22,27,34,.92);border:1px solid #30363d;border-radius:10px;padding:8px 10px;font-size:12px;max-width:230px;z-index:10}
+#minimap-box{position:absolute;left:8px;bottom:8px;z-index:10;background:rgba(22,27,34,.92);border:1px solid #30363d;border-radius:10px;padding:6px}
+#minimap{display:block;width:120px;height:120px;border-radius:6px;touch-action:none}
+#minimap-box .row{display:flex;gap:4px;margin-top:4px}
+#minimap-box button{font-size:10px;padding:4px 6px;min-height:28px}
+#toolbar{background:var(--panel);border-top:1px solid #30363d;padding:8px 6px calc(8px + env(safe-area-inset-bottom));display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;z-index:20;scrollbar-width:thin}
+.tool{flex:0 0 auto;width:68px;min-height:64px;border-radius:12px;background:var(--panel2);border:2px solid #30363d;color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;cursor:pointer;padding:6px 2px}
+.tool .ico{font-size:22px;line-height:1}
+.tool.on{border-color:var(--acc);background:#2b2408}
+.tool small{font-size:9px;color:var(--dim)}
+#bottom-sub{background:var(--panel);border-top:1px solid #222;font-size:11px;color:var(--dim);padding:4px 10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--panel);border:1px solid #30363d;border-radius:16px;padding:20px;max-width:560px;width:100%;max-height:92dvh;overflow-y:auto;text-align:center}
+.card h1{margin:0 0 4px;color:var(--acc);font-size:26px}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--txt);font-weight:400}
+.card p{font-size:13px;color:#c9d1d9;text-align:left;line-height:1.5}
+.card .big{font-size:17px;padding:14px 22px;border-radius:12px;border:none;background:var(--acc2);color:#04140a;font-weight:800;cursor:pointer;margin:8px 4px;min-height:52px}
+.card .sec{font-size:14px;padding:12px 16px;border-radius:12px;background:var(--panel2);color:var(--txt);border:1px solid #30363d;cursor:pointer;margin:8px 4px;min-height:48px}
+.badge{display:inline-block;background:#0a2a12;color:var(--acc2);border:1px solid var(--acc2);border-radius:8px;padding:4px 10px;font-size:11px;margin:4px}
+.gest{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+.gest span{background:var(--panel2);border:1px solid #30363d;border-radius:8px;padding:6px 8px;font-size:11px}
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#000;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
+.slot{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid #30363d;border-radius:10px;padding:8px;margin:6px 0;text-align:left}
+.slot img{width:56px;height:56px;border-radius:6px;background:#000;flex:0 0 auto}
+.slot .meta{flex:1;font-size:12px}
+.slot button{padding:8px;font-size:12px;min-height:40px}
+#research-bar{height:8px;background:#222;border-radius:4px;overflow:hidden;margin-top:4px}
+#research-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.kbd{background:#222;border:1px solid #444;border-radius:4px;padding:0 5px;font-size:11px}
+@media (max-width:640px){#top-hud{font-size:11px;gap:2px 8px}#signoff{display:none}#sel-info{max-width:170px;font-size:11px}#minimap{width:88px;height:88px}}
+</style>
+</head>
+<body>
+<div id="top-hud">
+  <span class="brand">🏭 Conveyor Lab</span>
+  <span class="stat">⚡ <b id="h-power">0/0 MW</b></span>
+  <span class="stat">🧪 <b id="h-res">T1 0/20</b></span>
+  <span class="stat">❤️ <b id="h-hq">1500</b></span>
+  <span class="stat">☠️ <b id="h-kills">0</b></span>
+  <span class="stat">🌫️ <b id="h-pol">0</b></span>
+  <span class="stat">⏱️ <b id="h-time">0:00</b> <b id="h-speed">1x</b></span>
+  <span id="signoff">built 2026-10-31 • Muse Spark 1.3 Contributor</span>
+  <span id="hud-btns">
+    <button class="hbtn" id="b-pause" title="Pause">⏸</button>
+    <button class="hbtn" id="b-speed" title="Speed">1x</button>
+    <button class="hbtn" id="b-mute" title="Mute">🔊</button>
+    <button class="hbtn" id="b-save" title="Save/Load">💾</button>
+    <button class="hbtn" id="b-help" title="Help">❓</button>
+  </span>
+</div>
+<div id="hintbar">👋 Tap a tool below, then TAP grid to build. Drag to pan • Pinch to zoom • Double-tap rotates.</div>
+<div id="mid">
+  <div id="canvas-wrap">
+    <canvas id="game"></canvas>
+    <div id="side">
+      <button class="sbtn" id="s-rot" title="Rotate (R) / double-tap">🔄<small>ROT</small></button>
+      <button class="sbtn" id="s-bull" title="Bulldoze (long-press)">🧨<small>DOZE</small></button>
+      <button class="sbtn" id="s-sel" title="Select area">⬚<small>SEL</small></button>
+      <button class="sbtn" id="s-copy" title="Copy">📋<small>COPY</small></button>
+      <button class="sbtn" id="s-paste" title="Paste">📌<small>PASTE</small></button>
+      <button class="sbtn" id="s-pan" title="Pan/select">✋<small>PAN</small></button>
+    </div>
+    <div id="sel-info">…</div>
+    <div id="minimap-box">
+      <canvas id="minimap" width="120" height="120"></canvas>
+      <div class="row">
+        <button class="hbtn" id="b-pol">🌫️:ON</button>
+        <button class="hbtn" id="b-pow">⚡:ON</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toolbar" role="toolbar" aria-label="Build palette"></div>
+<div id="bottom-sub">
+  <span id="stats-line">…</span>
+  <span style="margin-left:auto" id="pos-line"></span>
+</div>
+
+<div class="overlay" id="title-screen">
+  <div class="card">
+    <h1>🏭 CONVEYOR LAB</h1>
+    <h2>Factorio-lite factory automation sim — 40×40 grid, live belts, power, pollution &amp; biters</h2>
+    <div><span class="badge">🗓️ Built: 2026-10-31 12:00 UTC</span><span class="badge">✍️ Author: Muse Spark 1.3 Contributor</span><span class="badge">📱 Mobile-ready: tap • drag • pinch</span></div>
+    <p><b>Goal:</b> mine ore → smelt <b>plates</b> → assemble <b>gears</b> → craft <b>science packs</b> → feed the <b>HQ Lab</b> through research <b>T1(20) → T2(40) → T3(80) → T4(150)</b>. Each tier +10% craft speed. Defend HQ (❤️1500) from pollution-spawned biters with walls + turrets. Win at T4, lose if HQ falls.</p>
+    <p><b>Quick start:</b> 1) place <b>Miner</b> on orange ore + <b>Boiler</b> + <b>Pole</b> near machines 2) <b>Belt</b> ore→<b>Furnace</b>(2s/plate) 3) belt plates→<b>Assembler</b> (tap assembler to switch gear/science) 4) <b>Inserter</b> feeds HQ. Chain auto-ejects forward — point machine arrows at next belt.</p>
+    <div class="gest"><span>👆 tap = build</span><span>👆👆 double-tap = rotate</span><span>🤏 pinch = zoom</span><span>✋ drag = pan</span><span>⏱️ long-press = bulldoze</span><span>⬚ select→copy→paste</span></div>
+    <button class="big" id="b-play">▶ PLAY FACTORY</button>
+    <button class="sec" id="b-cont">Continue (load slot 1)</button>
+    <button class="sec" id="b-how">How to play</button>
+    <p style="font-size:11px;color:#8b949e">Solution produced <b>2026-10-31 12:00 UTC</b> by <b>Muse Spark 1.3 Contributor</b> • single-file vanilla HTML/CSS/JS • 20 ticks/s fixed sim • WebAudio only.</p>
+  </div>
+</div>
+
+<div class="overlay" id="help-screen" style="display:none">
+  <div class="card">
+    <h1 style="font-size:20px">How to play</h1>
+    <p>🧰 <b>Palette (9+):</b> belt ➡️, inserter ↘️ (picks BEHIND, drops AHEAD), miner ⛏️ (on ore), furnace 🔥 (2 ore→1 plate, 2s), assembler ⚙️ (tap to toggle gear: 2 plate→1 gear 4s / science: 2 plate+1 gear→1 pack 5s), pole ⚡ (radius 6), chest 📦, wall 🧱, turret 🔫, boiler ♨️ (power).<br><br>
+    ⚡ <b>Power:</b> boilers (4 MW each) → poles chain (≤6 tiles apart) → machines within 6 of a connected pole. Unpowered = ⚡ icon + stall. Watch MW readout.<br><br>
+    🌫️ <b>Pollution:</b> furnaces/boilers/miners emit. Cloud diffuses, attracts biters from corner nests. Turrets (range 7) auto-fire when powered. Walls block. Minimap toggles overlays.<br><br>
+    📱 <b>Mobile gestures:</b> tap build • drag pan • pinch zoom • double-tap rotate • long-press bulldoze • two-finger drag also pans. Toolbar swipes horizontally. <span class="kbd">R</span> rotate, <span class="kbd">B</span> bulldoze on desktop; wheel zooms, right-drag pans.<br><br>
+    ⬚ <b>Select:</b> SEL tool → drag box → COPY → PASTE tool tap to stamp. CUT deletes. Export gives base64 blueprint via clipboard.<br><br>
+    💾 3 save slots with thumbnails • ⏸ pause • 1x/2x/4x speed • 🔊 mute • hints for 5 min.</p>
+    <button class="big" id="b-close-help">Close</button>
+  </div>
+</div>
+
+<div class="overlay" id="save-screen" style="display:none">
+  <div class="card"><h1 style="font-size:20px">💾 Save / Load (3 slots)</h1><div id="slots"></div>
+  <div><button class="sec" id="b-export">⤴ Export blueprint</button><button class="sec" id="b-import">⤵ Import blueprint</button></div>
+  <button class="big" id="b-close-save">Close</button></div>
+</div>
+
+<div class="overlay" id="end-screen" style="display:none">
+  <div class="card"><h1 id="end-title">🏆</h1><p id="end-text" style="text-align:center"></p><button class="big" id="b-restart">↻ Restart</button></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* Conveyor Lab — single-file factory sim. Built 2026-10-31 by Muse Spark 1.3 Contributor */
+const BUILT_AT="2026-10-31 12:00 UTC", AUTHOR="Muse Spark 1.3 Contributor";
+const RECIPES={plate:{in:{ore:2},out:{plate:1},t:2},gear:{in:{plate:2},out:{gear:1},t:4},sci1:{in:{gear:1,plate:2},out:{sci1:1},t:5}};
+const TIER_NEED=[20,40,80,150];
+const GW=40,GH=40,TILE=32,TICK_MS=50;
+const DIRS=[[1,0],[0,1],[-1,0],[0,-1]]; // E S W N
+const ARROW=["➡️","⬇️","⬅️","⬆️"];
+const POWER_USE={miner:.3,furnace:.4,assembler:.5,inserter:.05,turret:.4,hq:.5,chest:0,belt:0,wall:0,pole:0,boiler:0};
+const BOILER_MW=4, POLE_R=6;
+
+let grid, oreMap, pollMap, biters, bullets, parts;
+let cam={x:GW*TILE/2,y:GH*TILE/2,z:1};
+let tool="belt", ghostDir=0, bullMode=false, panMode=false, selMode=false, pasteMode=false;
+let selRect=null, selStart=null, copyBuf=null, copyWH=null;
+let showPoll=true, showPow=true, muted=false, paused=false, speedIdx=0, speeds=[1,2,4];
+let tier=0, tierProg=0, sciStock=0, kills=0, gameTime=0, tickCount=0, hqHP=1500, over=false;
+let produced={ore:0,plate:0,gear:0,sci1:0}, prodLog=[];
+let poweredSet=new Set(), mwUse=0, mwCap=0;
+let hints=["👆 Tap a tool, then TAP grid to build. DRAG to pan, PINCH to zoom.","⛏️ Miners go ON orange ore. Add Boiler + Pole nearby for power.","🔥 Furnace: 2 ore → 1 plate (2s). Point its arrow into a belt.","⚙️ Tap a placed Assembler to switch GEAR ↔ SCIENCE recipe.","↘️ Inserters pick BEHIND, drop AHEAD. Use them to feed HQ.","⚡ Unpowered machines show ⚡. Chain poles ≤6 tiles from a boiler.","🔫 Build walls + turrets before pollution spikes — biters come!","⬚ SEL drag → COPY → PASTE stamps blocks. Long-press bulldozes."];
+let hintIdx=0;
+const HQ={x:19,y:19,w:2,h:2};
+const NESTS=[{x:2,y:2},{x:37,y:2},{x:2,y:37},{x:37,y:37}];
+const ITEM_C={ore:"#ff9f1c",plate:"#cfd8dc",gear:"#ffd54f",sci1:"#00e676"};
+
+const cv=document.getElementById("game"), ctx=cv.getContext("2d");
+const mm=document.getElementById("minimap"), mmx=mm.getContext("2d");
+const wrap=document.getElementById("canvas-wrap");
+const TOOLS=[
+ {id:"belt",ico:"➡️",n:"Belt"},{id:"inserter",ico:"↘️",n:"Inserter"},
+ {id:"miner",ico:"⛏️",n:"Miner"},{id:"furnace",ico:"🔥",n:"Furnace"},
+ {id:"assembler",ico:"⚙️",n:"Assemb."},{id:"boiler",ico:"♨️",n:"Boiler"},
+ {id:"pole",ico:"⚡",n:"Pole"},{id:"chest",ico:"📦",n:"Chest"},
+ {id:"wall",ico:"🧱",n:"Wall"},{id:"turret",ico:"🔫",n:"Turret"}];
+
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity=0,2200);}
+function key(x,y){return y*GW+x;}
+function inB(x,y){return x>=0&&y>=0&&x<GW&&y<GH;}
+function isHQ(x,y){return x>=HQ.x&&y>=HQ.x&&false;} // unused
+function cellIsHQ(x,y){return x>=HQ.x&&x<HQ.x+HQ.w&&y>=HQ.y&&y<HQ.y+HQ.h;}
+function isNest(x,y){return NESTS.some(n=>n.x===x&&n.y===y);}
+function cellAt(x,y){if(!inB(x,y))return null;if(cellIsHQ(x,y))return grid[HQ.y][HQ.x];return grid[y][x];}
+
+/* ---------- init ---------- */
+function genOre(){
+ oreMap=Array.from({length:GH},()=>Array(GW).fill(0));
+ function patch(cx,cy,r){for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++){if(!inB(x,y))continue;if(cellIsHQ(x,y))continue;const d=Math.hypot(x-cx,y-cy);if(d<=r&&(d+r*0.3)>Math.random()*r*1.4)oreMap[y][x]=1;}}
+ patch(12,14,5);patch(27,13,5);patch(13,27,5);patch(28,28,5);patch(20,8,3);patch(8,20,3);patch(32,21,3);
+}
+function newGrid(){
+ grid=Array.from({length:GH},()=>Array(GW).fill(null));
+ pollMap=Array.from({length:GH},()=>Array(GW).fill(0));
+ biters=[];bullets=[];parts=[];
+ tier=0;tierProg=0;sciStock=0;kills=0;gameTime=0;tickCount=0;hqHP=1500;over=false;
+ produced={ore:0,plate:0,gear:0,sci1:0};prodLog=[];poweredSet=new Set();mwUse=0;mwCap=0;
+ // HQ 2x2 anchor at HQ.x,HQ.y
+ grid[HQ.y][HQ.x]={t:"hq",d:0,hp:1500,inv:{sci1:0},prog:0};
+ for(const n of NESTS)grid[n.y][n.x]={t:"nest",d:0,hp:1e9};
+}
+function speedBonus(){return 1+tier*0.10;}
+
+/* ---------- power ---------- */
+function computePower(){
+ poweredSet=new Set();mwCap=0;mwUse=0;
+ let boilers=[];
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=grid[y][x];if(c&&c.t==="boiler"){boilers.push([x,y]);mwCap+=BOILER_MW;}}
+ if(!boilers.length)return;
+ // connected poles: BFS where edge if dist<=POLE_R+1 (use chebyshev approx via euclid)
+ let poles=[];
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=grid[y][x];if(c&&c.t==="pole")poles.push([x,y]);}
+ let conn=new Set();
+ let changed=true;
+ // seed: poles near boiler
+ let bset=new Set(boilers.map(p=>key(p[0],p[1])));
+ function nearConn(px,py){
+   for(const b of boilers)if(Math.hypot(b[0]-px,b[1]-py)<=POLE_R+0.5)return true;
+   for(const k of conn){const cx=k%GW,cy=(k-cx)/GW;if(Math.hypot(cx-px,cy-py)<=POLE_R+0.5)return true;}
+   return false;
+ }
+ for(let it=0;it<20;it++){changed=false;
+   for(const [px,py] of poles){const k=key(px,py);if(!conn.has(k)&&nearConn(px,py)){conn.add(k);changed=true;}}
+   if(!changed)break;
+ }
+ if(!boilers.length)conn.clear();
+ // powered sources: boilers + connected poles
+ let src=[...boilers,...[...conn].map(k=>{const x=k%GW,y=(k-x)/GW;return[x,y];})];
+ // demand
+ let dem=0;
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=grid[y][x];if(!c)continue;dem+=(POWER_USE[c.t]||0);}
+ // hq demand
+ dem+=0; // included
+ mwUse=Math.min(dem,mwCap);
+ if(dem>mwCap&&mwCap>0){ /* brownout: nothing powered */ poweredSet=new Set(); return; }
+ if(mwCap<=0)return;
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+   const c=grid[y][x];if(!c)continue;
+   if(c.t==="boiler"||c.t==="pole"){poweredSet.add(key(x,y));continue;}
+   if(c.t==="belt"||c.t==="wall"||c.t==="chest"||c.t==="nest")continue;
+   let ok=false;
+   // HQ anchor covers its 2x2
+   const px=(c.t==="hq")?HQ.x+0.5:x, py=(c.t==="hq")?HQ.y+0.5:y;
+   for(const s of src)if(Math.hypot(s[0]-px,s[1]-py)<=POLE_R+0.5){ok=true;break;}
+   if(ok)poweredSet.add(key(x,y));
+ }
+ // HQ single key
+}
+function isPowered(x,y){
+ if(!mwCap)return false;
+ const c=cellAt(x,y);
+ if(!c)return false;
+ if(c.t==="belt"||c.t==="wall"||c.t==="chest"||c.t==="nest"||c.t==="boiler"||c.t==="pole")return true;
+ if(cellIsHQ(x,y))return poweredSet.has(key(HQ.x,HQ.y));
+ return poweredSet.has(key(x,y));
+}
+
+/* ---------- build ---------- */
+function placeAt(x,y){
+ if(!inB(x,y)||over)return;
+ if(cellIsHQ(x,y)||isNest(x,y)){toast("Can't build there");return;}
+ if(bullMode){grid[y][x]=null;ping(200,0.05);return;}
+ if(panMode)return;
+ if(pasteMode&&copyBuf){stampBuf(x,y);return;}
+ if(selMode)return; // drag handled separately
+ const c=grid[y][x];
+ if(c){ // tap existing: cycle assembler recipe or show info
+   if(c.t==="assembler"){c.recipe=c.recipe==="gear"?"sci1":"gear";toast("Assembler → "+(c.recipe==="gear"?"GEAR":"SCIENCE"));ping(700,0.08);}
+   selectCell(x,y);return;
+ }
+ let nc=null;
+ switch(tool){
+  case "belt":nc={t:"belt",d:ghostDir,items:[]};break;
+  case "inserter":nc={t:"inserter",d:ghostDir,hold:null,phase:0,anim:0};break;
+  case "miner":nc={t:"miner",d:ghostDir,buf:0,cool:0};break;
+  case "furnace":nc={t:"furnace",d:ghostDir,inv:{ore:0,plate:0},prog:0};break;
+  case "assembler":nc={t:"assembler",d:ghostDir,recipe:"gear",inv:{plate:0,gear:0,sci1:0},prog:0};break;
+  case "boiler":nc={t:"boiler",d:0};break;
+  case "pole":nc={t:"pole",d:0};break;
+  case "chest":nc={t:"chest",d:0,inv:{ore:0,plate:0,gear:0,sci1:0}};break;
+  case "wall":nc={t:"wall",d:0,hp:300};break;
+  case "turret":nc={t:"turret",d:0,hp:200,cool:0};break;
+ }
+ if(nc){grid[y][x]=nc;ping(440+Math.random()*80,0.05);}
+ selectCell(x,y);
+}
+function bulldozeAt(x,y){if(inB(x,y)&&!cellIsHQ(x,y)&&!isNest(x,y))grid[y][x]=null;}
+function selectCell(x,y){
+ const el=document.getElementById("sel-info");
+ const c=cellAt(x,y);
+ let s=`📍 ${x},${y} `;
+ if(cellIsHQ(x,y))s+=`<b>HQ LAB ❤️${Math.ceil(hqHP)}</b> T${Math.min(tier+1,4)} ${tierProg}/${TIER_NEED[Math.min(tier,3)]} sci`;
+ else if(!c)s+=oreMap[y][x]?`ore patch ⛏️ ${showPow?"":''}`:"empty";
+ else{
+  s+=`<b>${c.t}</b> ${ARROW[c.d]||""} `;
+  if(c.t==="assembler")s+=`[${c.recipe}] p:${c.inv.plate||0} g:${c.inv.gear||0}`;
+  if(c.t==="furnace")s+=`ore:${c.inv.ore} plate:${c.inv.plate}`;
+  if(c.t==="chest")s+=JSON.stringify(c.inv);
+  if(c.t==="belt")s+=`${c.items.length} items`;
+  if(!isPowered(x,y)&&POWER_USE[c.t])s+=` ⚡NO PWR`;
+ }
+ s+=`<br><span style="color:#8b949e">ghost:${tool} ${ARROW[ghostDir]} • dbl-tap rotates</span>`;
+ el.innerHTML=s;
+ document.getElementById("pos-line").textContent=`${x},${y} • z${cam.z.toFixed(2)} • ${tier>=4?"🏆WON":`T${tier+1}/${TIER_NEED[tier]||"—"}`}`;
+}
+function stampBuf(x,y){
+ for(let j=0;j<copyBuf.length;j++)for(let i=0;i<copyBuf[0].length;i++){
+  const s=copyBuf[j][i];const nx=x+i,ny=y+j;
+  if(!inB(nx,ny)||cellIsHQ(nx,ny)||isNest(nx,ny))continue;
+  grid[ny][nx]=s?JSON.parse(JSON.stringify(s)):null;
+ }
+ toast("Pasted "+copyBuf[0].length+"×"+copyBuf.length);ping(600,0.07);
+}
+
+/* ---------- simulation tick (20/s) ---------- */
+function canAccept(cell,item){
+ if(!cell)return false;
+ if(cell.t==="belt")return cell.items.length<3;
+ if(cell.t==="chest")return (cell.inv[item]||0)<100;
+ if(cell.t==="hq")return item==="sci1";
+ if(cell.t==="furnace")return item==="ore"&&cell.inv.ore<20;
+ if(cell.t==="assembler")return (item==="plate"||item==="gear")&&(cell.inv[item]||0)<20;
+ return false;
+}
+function acceptItem(cell,item){
+ if(cell.t==="belt"){cell.items.push({k:item,p:0});return true;}
+ if(cell.t==="chest"){cell.inv[item]=(cell.inv[item]||0)+1;return true;}
+ if(cell.t==="hq"){sciStock++;producedQueue("sci1feed");return true;}
+ if(cell.t==="furnace"){cell.inv.ore++;return true;}
+ if(cell.t==="assembler"){cell.inv[item]=(cell.inv[item]||0)+1;return true;}
+ return false;
+}
+function producedQueue(){} // feed counts on consumption instead
+function logProd(k){produced[k]++;prodLog.push({k,t:gameTime});}
+function autoEject(x,y,item){
+ const c=grid[y][x];if(!c)return false;
+ const nx=x+DIRS[c.d][0],ny=y+DIRS[c.d][1];
+ if(!inB(nx,ny))return false;
+ if(cellIsHQ(nx,ny)){const hq=grid[HQ.y][HQ.x];if(item==="sci1"){sciStock++;return true;}return false;}
+ const n=grid[ny][nx];
+ if(n&&canAccept(n,item)){acceptItem(n,item);return true;}
+ return false;
+}
+function simTick(){
+ tickCount++;gameTime+=1/20;
+ const sb=speedBonus();
+ // --- miners
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c)continue;
+  if(c.t==="miner"){
+   if(!isPowered(x,y))continue;
+   // pollution
+   pollMap[y][x]=Math.min(200,pollMap[y][x]+0.02);
+   c.cool--;
+   if(c.cool<=0){
+    c.cool=20; // 1s
+    if(oreMap[y][x]||neighborOre(x,y)){
+     if(c.buf<5){c.buf++;logProd("ore");}
+     // try eject
+     if(c.buf>0){if(autoEject(x,y,"ore"))c.buf--;}
+    }
+   } else if(c.buf>0){if(autoEject(x,y,"ore"))c.buf--;}
+  }
+ }
+ // --- belts move
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c||c.t!=="belt")continue;
+  for(const it of c.items)it.p+=0.28;
+  // eject front items
+  while(c.items.length&&c.items[0].p>=1){
+   const it=c.items[0];
+   const nx=x+DIRS[c.d][0],ny=y+DIRS[c.d][1];
+   let moved=false;
+   if(inB(nx,ny)){
+    if(cellIsHQ(nx,ny)){if(it.k==="sci1"){sciStock++;moved=true;}else moved=false;}
+    else{const n=grid[ny][nx];
+     if(n&&canAccept(n,it.k)){acceptItem(n,it.k);moved=true;}
+     else if(!n){moved=false;}
+    }
+   }
+   if(moved)c.items.shift();
+   else{c.items[0].p=1;break;}
+  }
+ }
+ // --- inserters
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c||c.t!=="inserter")continue;
+  if(!isPowered(x,y)){c.anim=0;continue;}
+  const bx=x-DIRS[c.d][0],by=y-DIRS[c.d][1];
+  const fx=x+DIRS[c.d][0],fy=y+DIRS[c.d][1];
+  c.phase--;
+  if(c.phase>0){c.anim+=0.12;continue;}
+  if(!c.hold){
+   // pick from behind
+   let got=null;
+   if(inB(bx,by)){
+    if(cellIsHQ(bx,by)){const hq=grid[HQ.y][HQ.x];/* hq doesn't give */}
+    else{const s=grid[by][bx];
+     if(s){
+      if(s.t==="belt"&&s.items.length){const it=s.items.find(i=>i.p>0.4)||s.items[0];if(it){s.items.splice(s.items.indexOf(it),1);got=it.k;}}
+      else if(s.t==="chest"){for(const k of["sci1","gear","plate","ore"])if((s.inv[k]||0)>0){s.inv[k]--;got=k;break;}}
+      else if(s.t==="miner"){if(s.buf>0){s.buf--;got="ore";}}
+      else if(s.t==="furnace"){if(s.inv.plate>0){s.inv.plate--;got="plate";}}
+      else if(s.t==="assembler"){if(s.recipe==="gear"&&s.inv.gear>0){s.inv.gear--;got="gear";}else if(s.recipe==="sci1"&&s.inv.sci1>0){s.inv.sci1--;got="sci1";}else if((s.inv.plate||0)>0&&false){}}
+     } else if(oreMap[by][bx]){/* ground pickup? no */}
+    }
+   }
+   if(got){c.hold=got;c.phase=6;c.anim=0;}
+   else c.phase=4;
+  } else {
+   // drop ahead
+   let ok=false;
+   if(inB(fx,fy)){
+    if(cellIsHQ(fx,fy)){if(c.hold==="sci1"){sciStock++;ok=true;}}
+    else{const t2=grid[fy][fx];
+     if(t2&&canAccept(t2,c.hold)){acceptItem(t2,c.hold);ok=true;}
+    }
+   }
+   if(ok){c.hold=null;c.phase=8;c.anim=1;}
+   else c.phase=6;
+  }
+ }
+ // --- furnaces
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c||c.t!=="furnace")continue;
+  if(!isPowered(x,y))continue;
+  pollMap[y][x]=Math.min(300,pollMap[y][x]+0.05);
+  if(c.inv.ore>=2){
+   c.prog+=(1/20)*sb/RECIPES.plate.t;
+   if(c.prog>=1){c.prog=0;c.inv.ore-=2;
+    if(!autoEject(x,y,"plate")){c.inv.plate=Math.min(20,c.inv.plate+1);}
+    logProd("plate");ping(880,0.03);
+   }
+  } else c.prog=Math.max(0,c.prog-0.01);
+  // pull ore from behind? auto-intake from adjacent belt rear? Inserters handle; also suck from belt behind directly:
+  const bx=x-DIRS[(c.d+2)%4][0]*0; // intake from any neighbor belt head? keep simple: pull from opposite of output (behind)
+  const ix=x-DIRS[c.d][0],iy=y-DIRS[c.d][1];
+  // actually pull from ALL neighbors if they are belts facing us
+  for(let d=0;d<4;d++){
+   const nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+   if(!inB(nx,ny)||cellIsHQ(nx,ny))continue;
+   const n=grid[ny][nx];
+   if(n&&n.t==="belt"&&n.d===(d+2)%4&&false){} // belts eject themselves
+  }
+ }
+ // --- assemblers
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c||c.t!=="assembler")continue;
+  if(!isPowered(x,y))continue;
+  pollMap[y][x]=Math.min(300,pollMap[y][x]+0.03);
+  const r=c.recipe||"gear";
+  if(r==="gear"){
+   if((c.inv.plate||0)>=2){
+    c.prog+=(1/20)*sb/RECIPES.gear.t;
+    if(c.prog>=1){c.prog=0;c.inv.plate-=2;
+     if(!autoEject(x,y,"gear"))c.inv.gear=Math.min(20,(c.inv.gear||0)+1);
+     logProd("gear");ping(660,0.04);}
+   } else c.prog=Math.max(0,c.prog-0.01);
+  } else {
+   if((c.inv.plate||0)>=2&&(c.inv.gear||0)>=1){
+    c.prog+=(1/20)*sb/RECIPES.sci1.t;
+    if(c.prog>=1){c.prog=0;c.inv.plate-=2;c.inv.gear-=1;
+     if(!autoEject(x,y,"sci1"))c.inv.sci1=Math.min(20,(c.inv.sci1||0)+1);
+     logProd("sci1");ping(990,0.05);}
+   } else c.prog=Math.max(0,c.prog-0.01);
+  }
+ }
+ // --- HQ research consumption
+ if(tier<4){
+  const need=TIER_NEED[tier];
+  if(sciStock>0){
+   // consume 1 per 20 ticks (1s)
+   if(tickCount%20===0){sciStock--;tierProg++;}
+   if(tierProg>=need){tierProg=0;tier++;toast(tier>=4?"🏆 T4 COMPLETE — YOU WIN!":`🧪 Research T${tier} done! +10% speed`);alarm(2);if(tier>=4)endGame(true);}
+  }
+  // HQ auto-suck sci from neighbors
+  for(let d=0;d<4;d++)for(let k=0;k<2;k++){
+   // check perimeter of 2x2
+  }
+  suckHQ();
+ }
+ // --- boilers pollute
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=grid[y][x];if(c&&c.t==="boiler")pollMap[y][x]=Math.min(400,pollMap[y][x]+0.08);}
+ // --- pollution diffuse every 20 ticks
+ if(tickCount%20===0)diffuse();
+ // --- power recompute every 30 ticks
+ if(tickCount%30===0)computePower();
+ // --- turrets
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  const c=grid[y][x];if(!c||c.t!=="turret")continue;
+  if(!isPowered(x,y))continue;
+  if(c.cool>0){c.cool--;continue;}
+  // find nearest biter in range 7
+  let best=null,bd=7*7;
+  for(const b of biters){const d=(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y);if(d<bd){bd=d;best=b;}}
+  if(best){c.cool=14;c.d=Math.abs(best.x-x)>Math.abs(best.y-y)?(best.x>x?0:2):(best.y>y?1:3);
+   best.hp-=14;bullets.push({x:x+0.5,y:y+0.5,tx:best.x,ty:best.y,life:4});
+   if(best.hp<=0){best.dead=true;kills++;}
+   shootSound();
+  }
+ }
+ biters=biters.filter(b=>!b.dead);
+ // --- biter movement every tick
+ moveBiters();
+ // --- spawn waves
+ if(tickCount%100===0)maybeSpawn();
+ // --- bullets decay
+ for(const b of bullets)b.life--;
+ bullets=bullets.filter(b=>b.life>0);
+ // --- prune prodLog
+ while(prodLog.length&&prodLog[0].t<gameTime-60)prodLog.shift();
+}
+function neighborOre(x,y){for(let d=0;d<4;d++){const nx=x+DIRS[d][0],ny=y+DIRS[d][1];if(inB(nx,ny)&&oreMap[ny][nx])return true;}return oreMap[y][x]?true:false;}
+function suckHQ(){
+ const cells=[];
+ for(let dx=-1;dx<=2;dx++)for(let dy=-1;dy<=2;dy++){
+  const nx=HQ.x+dx,ny=HQ.y+dy;if(!inB(nx,ny))continue;
+  if(cellIsHQ(nx,ny))continue;
+  const onEdge=(nx===HQ.x-1||nx===HQ.x+2||ny===HQ.y-1||ny===HQ.y+2);
+  if(!onEdge)continue;
+  const c=grid[ny][nx];if(!c)continue;
+  if(c.t==="belt"&&c.items.length){
+   const idx=c.items.findIndex(i=>i.k==="sci1");
+   if(idx>=0){c.items.splice(idx,1);sciStock++;}
+  } else if(c.t==="chest"&&(c.inv.sci1||0)>0){c.inv.sci1--;sciStock++;}
+ }
+}
+function diffuse(){
+ const n2=pollMap.map(r=>r.slice());
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  let s=pollMap[y][x],c=1;
+  for(let d=0;d<4;d++){const nx=x+DIRS[d][0],ny=y+DIRS[d][1];if(inB(nx,ny)){s+=pollMap[ny][nx]*0.12;c+=0.12;}}
+  n2[y][x]=s/c*0.995;
+ }
+ pollMap=n2;
+}
+function totalPoll(){let s=0;for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)s+=pollMap[y][x];return s;}
+function maybeSpawn(){
+ if(over||tier>=4)return;
+ const p=totalPoll();
+ let n=0;
+ if(p>1200)n=6+Math.floor((gameTime/60));
+ else if(p>500)n=4;
+ else if(p>150)n=2;
+ else if(gameTime>120)n=1;
+ if(n<=0)return;
+ n=Math.min(n,10);
+ for(let i=0;i<n;i++){
+  const nest=NESTS[Math.floor(Math.random()*NESTS.length)];
+  biters.push({x:nest.x+0.5,y:nest.y+0.5,hp:50+tier*25+gameTime/60*2,dmg:8+tier*2,speed:0.03+Math.random()*0.02,cd:0});
+ }
+ if(n>0){toast(`⚠️ Biter wave (${n}) inbound!`);alarm(1);}
+}
+function moveBiters(){
+ const hxc=HQ.x+1,hyc=HQ.y+1;
+ for(const b of biters){
+  if(b.dead)continue;
+  const dx=hxc-b.x,dy=hyc-b.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist<1.6){
+   // attack HQ
+   if(b.cd<=0){b.cd=20;hqHP-=b.dmg;grid[HQ.y][HQ.x].hp=hqHP;hitSound();spawnHit(hxc,hyc);
+    if(hqHP<=0){hqHP=0;endGame(false);return;}}
+   else b.cd--;
+   continue;
+  }
+  // check building at current/next tile
+  const tx=Math.floor(b.x+dx/dist*0.4),ty=Math.floor(b.y+dy/dist*0.4);
+  if(inB(tx,ty)&&!cellIsHQ(tx,ty)){
+   const c=grid[ty][tx];
+   if(c&&(c.t==="wall"||c.t==="turret"||c.t==="furnace"||c.t==="assembler"||c.t==="miner"||c.t==="chest"||c.t==="boiler"||c.t==="pole")){
+    if(b.cd<=0){b.cd=25;
+     if(c.hp===undefined)c.hp=150;
+     c.hp-=b.dmg;spawnHit(tx+0.5,ty+0.5);
+     if(c.hp<=0)grid[ty][tx]=null;
+    } else b.cd--;
+    continue;
+   }
+  }
+  b.x+=dx/dist*b.speed*2;b.y+=dy/dist*b.speed*2;
+  if(b.cd>0)b.cd--;
+ }
+}
+function spawnHit(x,y){for(let i=0;i<4;i++)parts.push({x,y,vx:(Math.random()-0.5)*0.1,vy:(Math.random()-0.5)*0.1,life:12,c:"#ff5252"});}
+function endGame(win){
+ if(over)return;over=true;paused=true;
+ const t=document.getElementById("end-screen");
+ document.getElementById("end-title").textContent=win?"🏆 RESEARCH COMPLETE!":"💀 HQ DESTROYED";
+ const mm2=Math.floor(gameTime/60),ss=Math.floor(gameTime%60);
+ document.getElementById("end-text").innerHTML=(win?`All 4 research tiers done in <b>${mm2}:${String(ss).padStart(2,"0")}</b>! Factory output: ${produced.plate} plates, ${produced.gear} gears, ${produced.sci1} science. Kills: ${kills}.`:`HQ fell after <b>${mm2}:${String(ss).padStart(2,"0")}</b> at T${tier+1}. Kills: ${kills}. Try more walls + turrets early!`)+`<br><span style="color:#8b949e;font-size:11px">built ${BUILT_AT} • ${AUTHOR}</span>`;
+ t.style.display="flex";alarm(3);
+ // leaderboard
+ try{const k="clab_best";const prev=JSON.parse(localStorage.getItem(k)||"[]");if(win){prev.push({t:gameTime,d:BUILT_AT});prev.sort((a,b)=>a.t-b.t);localStorage.setItem(k,JSON.stringify(prev.slice(0,5)));}}catch(e){}
+}
+
+/* ---------- render ---------- */
+function resize(){
+ const r=wrap.getBoundingClientRect();
+ cv.width=Math.max(200,r.width*devicePixelRatio);cv.height=Math.max(200,r.height*devicePixelRatio);
+ cv.style.width=r.width+"px";cv.style.height=r.height+"px";
+}
+window.addEventListener("resize",resize);
+function w2s(x,y){ // world tile -> screen px (css)
+ const z=cam.z,ts=TILE*z;
+ const cx=cv.clientWidth/2,cy=cv.clientHeight/2;
+ return [cx+(x*TILE-cam.x)*z, cy+(y*TILE-cam.y)*z, ts];
+}
+function s2w(px,py){
+ const r=cv.getBoundingClientRect();
+ const cx=(px-r.left),cy=(py-r.top);
+ const wx=cam.x+(cx-cv.clientWidth/2)/cam.z;
+ const wy=cam.y+(cy-cv.clientHeight/2)/cam.z;
+ return [wx/TILE,wy/TILE];
+}
+const BUILD_C={belt:"#8d6e63",inserter:"#4dd0e1",miner:"#ff9f1c",furnace:"#ff7043",assembler:"#ba68c8",boiler:"#ef5350",pole:"#ffee58",chest:"#90a4ae",wall:"#78909c",turret:"#64b5f6",hq:"#00e676",nest:"#d50000"};
+const BUILD_I={belt:"➡️",inserter:"↘",miner:"⛏",furnace:"🔥",assembler:"⚙",boiler:"♨",pole:"⚡",chest:"📦",wall:"🧱",turret:"🔫",hq:"🧬",nest:"👹"};
+function render(){
+ const dpr=devicePixelRatio||1;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ const W=cv.clientWidth,H=cv.clientHeight;
+ ctx.fillStyle="#0a0d12";ctx.fillRect(0,0,W,H);
+ const z=cam.z,ts=TILE*z;
+ // visible range
+ const [vx0,vy0]=s2w(0,0),[vx1,vy1]=s2w(W,H);
+ const x0=Math.max(0,Math.floor(vx0)-1),y0=Math.max(0,Math.floor(vy0)-1);
+ const x1=Math.min(GW-1,Math.ceil(vx1)+1),y1=Math.min(GH-1,Math.ceil(vy1)+1);
+ // ground
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const [sx,sy]=w2s(x,y);
+  ctx.fillStyle=((x+y)%2===0)?"#11161d":"#0f141b";
+  ctx.fillRect(sx,sy,ts+1,ts+1);
+  if(oreMap[y][x]){ctx.fillStyle="#4a2f00";ctx.fillRect(sx,sy,ts+1,ts+1);ctx.fillStyle="#ff9f1c";
+   ctx.fillRect(sx+ts*0.2,sy+ts*0.2,ts*0.25,ts*0.25);ctx.fillRect(sx+ts*0.55,sy+ts*0.5,ts*0.25,ts*0.25);ctx.fillRect(sx+ts*0.3,sy+ts*0.6,ts*0.2,ts*0.2);}
+  if(showPoll&&pollMap[y][x]>2){const a=Math.min(0.55,pollMap[y][x]/250);ctx.fillStyle=`rgba(156,39,176,${a})`;ctx.fillRect(sx,sy,ts+1,ts+1);}
+ }
+ // grid lines (skip when tiny)
+ if(ts>14){ctx.strokeStyle="rgba(255,255,255,0.05)";ctx.lineWidth=1;ctx.beginPath();
+  for(let x=x0;x<=x1+1;x++){const [sx,sy]=w2s(x,y0);ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+(y1-y0+1)*ts);}
+  for(let y=y0;y<=y1+1;y++){const [sx,sy]=w2s(x0,y);ctx.moveTo(sx,sy);ctx.lineTo(sx+(x1-x0+1)*ts,sy);}
+  ctx.stroke();}
+ // power radius preview
+ if(showPow){ctx.strokeStyle="rgba(255,238,88,0.12)";ctx.lineWidth=1;
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const c=grid[y][x];if(c&&(c.t==="pole"||c.t==="boiler")){const [sx,sy]=w2s(x,y);ctx.beginPath();ctx.arc(sx+ts/2,sy+ts/2,POLE_R*TILE*z,0,7);ctx.stroke();}}}
+ // buildings
+ ctx.textAlign="center";ctx.textBaseline="middle";
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const c=grid[y][x];if(!c)continue;
+  if(c.t==="hq"&&(x!==HQ.x||y!==HQ.y))continue;
+  const [sx,sy]=w2s(c.t==="hq"?HQ.x: x,c.t==="hq"?HQ.y:y);
+  const w=(c.t==="hq"?2*ts:ts);
+  const h=(c.t==="hq"?2*ts:ts);
+  ctx.fillStyle=BUILD_C[c.t]||"#333";
+  ctx.globalAlpha=c.t==="nest"?0.9:1;
+  roundRect(sx+1,sy+1,w-2,h-2,ts*0.15);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.fillStyle=c.t==="pole"||c.t==="wall"?"#111":"#0b0e13";
+  const fs=Math.min(w,h)*0.55;
+  ctx.font=`${Math.max(8,fs)}px sans-serif`;
+  let ico=BUILD_I[c.t]||"?";
+  if(c.t==="belt")ico=["➡","⬇","⬅","⬆"][c.d];
+  if(c.t==="inserter")ico=["➡","⬇","⬅","⬆"][c.d];
+  ctx.fillText(ico,sx+w/2,sy+h/2);
+  if(c.t==="belt"&&ts>18){ctx.fillStyle="rgba(0,0,0,.45)";ctx.font=`${Math.max(7,ts*0.3)}px sans-serif`;ctx.fillText(["→","↓","←","↑"][c.d],sx+w/2,sy+h/2+ts*0.28);}
+  // progress bars
+  if((c.t==="furnace"||c.t==="assembler")&&c.prog>0){ctx.fillStyle="#000";ctx.fillRect(sx+3,sy+h-7,w-6,4);ctx.fillStyle="#00e676";ctx.fillRect(sx+3,sy+h-7,(w-6)*c.prog,4);}
+  if(c.t==="assembler"&&ts>20){ctx.fillStyle="#000";ctx.font=`${Math.max(8,ts*0.28)}px sans-serif`;ctx.fillText(c.recipe==="gear"?"G":"S",sx+w-8,sy+9);}
+  if(c.t==="miner"&&c.buf>0){ctx.fillStyle="#000";ctx.fillRect(sx+3,sy+3,10,10);ctx.fillStyle="#ff9f1c";ctx.font="9px sans-serif";ctx.fillText(c.buf,sx+8,sy+8);}
+  if(c.t==="chest"&&ts>16){let n=0;for(const k in c.inv)n+=c.inv[k]||0;if(n>0){ctx.fillStyle="#000";ctx.font=`${Math.max(8,ts*0.3)}px sans-serif`;ctx.fillText(n,sx+w/2,sy+h-8);}}
+  if(c.t==="hq"){ctx.fillStyle="#04140a";ctx.font=`bold ${Math.max(9,ts*0.32)}px sans-serif`;ctx.fillText(`T${Math.min(tier+1,4)} ${tierProg}/${TIER_NEED[Math.min(tier,3)]??"—"}`,sx+w/2,sy+h/2+ts*0.45);
+   // hp bar
+   ctx.fillStyle="#300";ctx.fillRect(sx+4,sy+4,w-8,6);ctx.fillStyle="#0e0";ctx.fillRect(sx+4,sy+4,(w-8)*hqHP/1500,6);}
+  if(c.t==="wall"||c.t==="turret"){if(c.hp!==undefined&&c.hp<300){ctx.fillStyle="#000";ctx.fillRect(sx+2,sy+2,w-4,3);ctx.fillStyle="#f00";ctx.fillRect(sx+2,sy+2,(w-4)*(c.hp/300),3);}}
+  if(POWER_USE[c.t]&&!isPowered(x,y)&&ts>12){ctx.font=`${Math.max(9,ts*0.4)}px sans-serif`;ctx.fillText("⚡",sx+w-9,sy+10);}
+ }
+ // belt items
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const c=grid[y][x];if(!c||c.t!=="belt")continue;
+  for(const it of c.items){
+   const px=x+DIRS[c.d][0]*it.p,py=y+DIRS[c.d][1]*it.p;
+   const [sx,sy]=w2s(px,py);
+   const s=Math.max(4,ts*0.28);
+   ctx.fillStyle=ITEM_C[it.k]||"#fff";
+   ctx.fillRect(sx+ts/2-s/2,sy+ts/2-s/2,s,s);
+   ctx.strokeStyle="rgba(0,0,0,.6)";ctx.lineWidth=1;ctx.strokeRect(sx+ts/2-s/2,sy+ts/2-s/2,s,s);
+  }
+ }
+ // inserter arms + held
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const c=grid[y][x];if(!c||c.t!=="inserter")continue;
+  const [sx,sy]=w2s(x,y);
+  const ang=[0,Math.PI/2,Math.PI,-Math.PI/2][c.d]+Math.sin((c.anim||0)*6)*0.5;
+  ctx.strokeStyle="#fff";ctx.lineWidth=Math.max(2,ts*0.08);ctx.beginPath();ctx.moveTo(sx+ts/2,sy+ts/2);ctx.lineTo(sx+ts/2+Math.cos(ang)*ts*0.4,sy+ts/2+Math.sin(ang)*ts*0.4);ctx.stroke();
+  if(c.hold){ctx.fillStyle=ITEM_C[c.hold];ctx.beginPath();ctx.arc(sx+ts/2+Math.cos(ang)*ts*0.4,sy+ts/2+Math.sin(ang)*ts*0.4,Math.max(3,ts*0.14),0,7);ctx.fill();}
+ }
+ // biters
+ for(const b of biters){
+  const [sx,sy]=w2s(b.x-0.5,b.y-0.5);
+  ctx.fillStyle="#d50000";ctx.beginPath();ctx.arc(sx+ts/2,sy+ts/2,Math.max(4,ts*0.3),0,7);ctx.fill();
+  ctx.fillStyle="#ff8a80";ctx.beginPath();ctx.arc(sx+ts/2-2,sy+ts/2-2,Math.max(1.5,ts*0.1),0,7);ctx.fill();
+  if(b.hp<60){ctx.fillStyle="#000";ctx.fillRect(sx+ts*0.2,sy,ts*0.6,3);ctx.fillStyle="#0f0";ctx.fillRect(sx+ts*0.2,sy,ts*0.6*Math.max(0,b.hp/60),3);}
+ }
+ // bullets
+ ctx.strokeStyle="#ffeb3b";ctx.lineWidth=2;
+ for(const b of bullets){const [sx,sy]=w2s(b.x-0.5,b.y-0.5);const [ex,ey]=w2s(b.tx-0.5,b.ty-0.5);ctx.beginPath();ctx.moveTo(sx+ts/2,sy+ts/2);ctx.lineTo(ex+ts/2,ey+ts/2);ctx.stroke();}
+ // particles
+ for(const p of parts){const [sx,sy]=w2s(p.x-0.5,p.y-0.5);ctx.fillStyle=p.c;ctx.fillRect(sx,sy- p.life,3,3);}
+ for(const p of parts){p.x+=p.vx;p.y+=p.vy;p.life--;}
+ parts=parts.filter(p=>p.life>0);
+ // ghost preview
+ const hov=lastHover;
+ if(hov&&!over){
+  const [sx,sy]=w2s(hov.x,hov.y);
+  ctx.strokeStyle=bullMode?"#ff5252":"#00e676";ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.strokeRect(sx,sy,ts,ts);ctx.setLineDash([]);
+  if(!bullMode&&!panMode&&!selMode){ctx.globalAlpha=0.5;ctx.fillStyle=BUILD_C[tool]||"#fff";roundRect(sx+2,sy+2,ts-4,ts-4,4);ctx.fill();ctx.globalAlpha=1;
+   ctx.fillStyle="#000";ctx.font=`${Math.max(10,ts*0.5)}px sans-serif`;ctx.fillText((BUILD_I[tool]||"?"),sx+ts/2,sy+ts/2);}
+ }
+ // selection rect
+ if(selRect){const [a,b2]=[selRect.a,selRect.b];const [sx,sy]=w2s(Math.min(a.x,b2.x),Math.min(a.y,b2.y));const w=(Math.abs(a.x-b2.x)+1)*ts,h=(Math.abs(a.y-b2.y)+1)*ts;
+  ctx.strokeStyle="#ffb300";ctx.lineWidth=2;ctx.setLineDash([8,4]);ctx.strokeRect(sx,sy,w,h);ctx.setLineDash([]);}
+ drawMinimap();
+ requestAnimationFrame(render);
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+let lastHover=null;
+
+/* ---------- minimap ---------- */
+function drawMinimap(){
+ const S=120,sc=S/GW;
+ mmx.fillStyle="#0a0d12";mmx.fillRect(0,0,S,S);
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+  if(showPoll&&pollMap[y][x]>3){mmx.fillStyle=`rgba(156,39,176,${Math.min(0.8,pollMap[y][x]/200)})`;mmx.fillRect(x*sc,y*sc,sc,sc);}
+  else if(oreMap[y][x]){mmx.fillStyle="#7a5200";mmx.fillRect(x*sc,y*sc,sc,sc);}
+ }
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=grid[y][x];if(!c)continue;mmx.fillStyle=BUILD_C[c.t]||"#fff";mmx.fillRect(x*sc,y*sc,sc,sc);}
+ mmx.fillStyle="#00e676";mmx.fillRect(HQ.x*sc,HQ.y*sc,2*sc,2*sc);
+ mmx.fillStyle="#f00";for(const b of biters)mmx.fillRect(b.x*sc-1,b.y*sc-1,2,2);
+ // viewport
+ const [vx0,vy0]=s2w(0,0),[vx1,vy1]=s2w(cv.clientWidth,cv.clientHeight);
+ mmx.strokeStyle="#fff";mmx.strokeRect(vx0*sc,vy0*sc,(vx1-vx0)*sc,(vy1-vy0)*sc);
+}
+
+/* ---------- input: mouse + touch gestures ---------- */
+let pointers=new Map(), pinchD0=0, pinchZ0=1, panMoved=false, downPos=null, downTime=0, lastTap=0, longTimer=null, panning=false;
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+cv.addEventListener("pointerdown",e=>{
+ cv.setPointerCapture(e.pointerId);
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(pointers.size===1){
+  panMoved=false;panning=false;downPos={x:e.clientX,y:e.clientY};downTime=Date.now();
+  const [wx,wy]=s2w(e.clientX,e.clientY);
+  const tx=Math.floor(wx),ty=Math.floor(wy);
+  if(selMode){selStart={x:tx,y:ty};selRect={a:{x:tx,y:ty},b:{x:tx,y:ty}};}
+  clearTimeout(longTimer);
+  longTimer=setTimeout(()=>{
+   if(!panMoved&&pointers.size===1){
+    const [w2x,w2y]=s2w(downPos.x,downPos.y);
+    const lx=Math.floor(w2x),ly=Math.floor(w2y);
+    bulldozeAt(lx,ly);toast("🧨 bulldozed");ping(180,0.08);
+    if(navigator.vibrate)navigator.vibrate(30);
+   }
+  },550);
+ } else if(pointers.size===2){
+  clearTimeout(longTimer);
+  const p=[...pointers.values()];
+  pinchD0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);pinchZ0=cam.z;panning=true;
+ }
+});
+cv.addEventListener("pointermove",e=>{
+ const r=cv.getBoundingClientRect();
+ lastHover=(()=>{const [wx,wy]=s2w(e.clientX,e.clientY);return {x:Math.floor(wx),y:Math.floor(wy)};})();
+ if(!pointers.has(e.pointerId))return;
+ const prev=pointers.get(e.pointerId);
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(pointers.size===1){
+  const dx=e.clientX-downPos.x,dy=e.clientY-downPos.y;
+  if(Math.hypot(dx,dy)>12){panMoved=true;panning=true;clearTimeout(longTimer);}
+  if(panning&&(panMode||panMoved&&(selMode?false:(isBuildDragPan())))){
+   // pan
+   cam.x-= (e.clientX-prev.x)/cam.z;cam.y-=(e.clientY-prev.y)/cam.z;
+   clampCam();
+  } else if(selMode&&selStart){
+   const [wx,wy]=s2w(e.clientX,e.clientY);
+   selRect={a:selStart,b:{x:Math.floor(wx),y:Math.floor(wy)}};
+  }
+ } else if(pointers.size===2){
+  const p=[...pointers.values()];
+  const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+  const mx=(p[0].x+p[1].x)/2,my=(p[0].y+p[1].y)/2;
+  // pinch zoom centered on midpoint
+  const [wxb,wyb]=s2w(mx,my);
+  cam.z=Math.min(3,Math.max(0.35,pinchZ0*d/Math.max(20,pinchD0)));
+  const [wxa,wya]=s2w(mx,my);
+  // keep world point under fingers: adjust cam
+  const r2=cv.getBoundingClientRect();
+  cam.x-= (0); // simplified
+  // pan by midpoint delta
+  cam.x-=(e.clientX-prev.x)/cam.z*0.5;cam.y-=(e.clientY-prev.y)/cam.z*0.5;
+  clampCam();
+ }
+});
+function isBuildDragPan(){
+ // single-finger drag pans unless select/paste with intent; tap places on release
+ return true; // drag always pans; tap (no move) places. This gives mobile pan+tap coexistence.
+}
+cv.addEventListener("pointerup",e=>{
+ pointers.delete(e.pointerId);
+ clearTimeout(longTimer);
+ if(pointers.size===0){
+  const dt=Date.now()-downTime;
+  if(selMode&&selRect&&panMoved){
+   normalizeSel();toast(`⬚ selected ${selRect.b.x-selRect.a.x+1}×${selRect.b.y-selRect.a.y+1} — COPY it`);
+  } else if(!panMoved&&dt<600){
+   // TAP
+   const now=Date.now();
+   const [wx,wy]=s2w(e.clientX,e.clientY);
+   const tx=Math.floor(wx),ty=Math.floor(wy);
+   if(now-lastTap<320){
+    ghostDir=(ghostDir+1)%4;toast("🔄 rotated "+ARROW[ghostDir]);lastTap=0;
+   } else {
+    lastTap=now;
+    setTimeout(()=>{
+     if(lastTap&&Date.now()-lastTap>=300){lastTap=0;
+      if(inB(tx,ty)){
+       if(e.button===2){bulldozeAt(tx,ty);}
+       else placeAt(tx,ty);
+      }
+     }
+    },320);
+   }
+  }
+  panning=false;panMoved=false;
+  if(selMode)selStart=null;
+ }
+});
+cv.addEventListener("pointercancel",e=>{pointers.delete(e.pointerId);clearTimeout(longTimer);});
+cv.addEventListener("wheel",e=>{e.preventDefault();
+ const [wx,wy]=s2w(e.clientX,e.clientY);
+ cam.z=Math.min(3,Math.max(0.35,cam.z*(e.deltaY<0?1.12:0.89)));
+ clampCam();
+},{passive:false});
+function normalizeSel(){
+ if(!selRect)return;
+ const a=selRect.a,b=selRect.b;
+ selRect={a:{x:Math.max(0,Math.min(a.x,b.x)),y:Math.max(0,Math.min(a.y,b.y))},b:{x:Math.min(GW-1,Math.max(a.x,b.x)),y:Math.min(GH-1,Math.max(a.y,b.y))}};
+}
+function clampCam(){cam.x=Math.max(-5,Math.min(GW*TILE+5,cam.x));cam.y=Math.max(-5,Math.min(GH*TILE+5,cam.y));}
+window.addEventListener("keydown",e=>{
+ if(e.key==="r"||e.key==="R"){ghostDir=(ghostDir+1)%4;toast("🔄 "+ARROW[ghostDir]);}
+ if(e.key==="b"||e.key==="B")toggleBull();
+ if(e.key==="Escape"){selMode=false;pasteMode=false;bullMode=false;panMode=false;syncSide();}
+});
+
+/* ---------- toolbar / side ---------- */
+function buildToolbar(){
+ const tb=document.getElementById("toolbar");tb.innerHTML="";
+ for(const t of TOOLS){
+  const b=document.createElement("button");b.className="tool"+(tool===t.id?" on":"");
+  b.innerHTML=`<span class="ico">${t.ico}</span>${t.n}<small>${t.id==="belt"?"move":t.id==="inserter"?"swing":t.id==="miner"?"ore":t.id==="furnace"?"2s":t.id==="assembler"?"tap↔":t.id==="boiler"?"4MW":t.id==="pole"?"r6":t.id==="turret"?"r7":""}</small>`;
+  b.onclick=()=>{tool=t.id;bullMode=false;panMode=false;selMode=false;pasteMode=false;syncAll();ping(520,0.04);};
+  tb.appendChild(b);
+ }
+}
+function syncAll(){document.querySelectorAll(".tool").forEach((el,i)=>el.classList.toggle("on",TOOLS[i].id===tool&&!bullMode&&!panMode&&!selMode&&!pasteMode));syncSide();}
+function syncSide(){
+ document.getElementById("s-bull").classList.toggle("on",bullMode);
+ document.getElementById("s-pan").classList.toggle("on",panMode);
+ document.getElementById("s-sel").classList.toggle("on",selMode);
+ document.getElementById("s-paste").classList.toggle("on",pasteMode);
+}
+function toggleBull(){bullMode=!bullMode;if(bullMode){panMode=selMode=pasteMode=false;}syncAll();}
+document.getElementById("s-rot").onclick=()=>{ghostDir=(ghostDir+1)%4;toast("🔄 rotate "+ARROW[ghostDir]);ping(500,0.04);};
+document.getElementById("s-bull").onclick=toggleBull;
+document.getElementById("s-pan").onclick=()=>{panMode=!panMode;if(panMode){bullMode=selMode=pasteMode=false;}syncAll();toast(panMode?"✋ pan mode":"🔨 build mode");};
+document.getElementById("s-sel").onclick=()=>{selMode=!selMode;pasteMode=false;if(selMode){bullMode=panMode=false;}syncAll();toast(selMode?"⬚ drag a box on grid":"sel off");};
+document.getElementById("s-copy").onclick=()=>{
+ if(!selRect){toast("⬚ select an area first (SEL tool)");return;}
+ normalizeSel();
+ const w=selRect.b.x-selRect.a.x+1,h=selRect.b.y-selRect.a.y+1;
+ copyBuf=[];for(let y=0;y<h;y++){const row=[];for(let x=0;x<w;x++){const c=grid[selRect.a.y+y][selRect.a.x+x];row.push(c?JSON.parse(JSON.stringify(c)):null);}copyBuf.push(row);}
+ copyWH={w,h};toast(`📋 copied ${w}×${h} — use PASTE`);ping(700,0.06);
+};
+document.getElementById("s-paste").onclick=()=>{
+ if(!copyBuf){toast("📋 nothing copied yet");return;}
+ pasteMode=!pasteMode;selMode=false;bullMode=panMode=false;syncAll();toast(pasteMode?"📌 TAP grid to stamp":"paste off");
+};
+
+/* ---------- HUD buttons ---------- */
+document.getElementById("b-pause").onclick=e=>{paused=!paused;e.target.textContent=paused?"▶":"⏸";toast(paused?"⏸ paused":"▶ running");};
+document.getElementById("b-speed").onclick=e=>{speedIdx=(speedIdx+1)%3;e.target.textContent=speeds[speedIdx]+"x";document.getElementById("h-speed").textContent=speeds[speedIdx]+"x";};
+document.getElementById("b-mute").onclick=e=>{muted=!muted;e.target.textContent=muted?"🔇":"🔊";if(muted)stopHum();};
+document.getElementById("b-pol").onclick=e=>{showPoll=!showPoll;e.target.textContent=showPoll?"🌫️:ON":"🌫️:OFF";};
+document.getElementById("b-pow").onclick=e=>{showPow=!showPow;e.target.textContent=showPow?"⚡:ON":"⚡:OFF";};
+document.getElementById("b-help").onclick=()=>document.getElementById("help-screen").style.display="flex";
+document.getElementById("b-close-help").onclick=()=>document.getElementById("help-screen").style.display="none";
+document.getElementById("b-save").onclick=()=>{renderSlots();document.getElementById("save-screen").style.display="flex";};
+document.getElementById("b-close-save").onclick=()=>document.getElementById("save-screen").style.display="none";
+document.getElementById("b-play").onclick=()=>{document.getElementById("title-screen").style.display="none";ensureAudio();startHum();toast("⛏️ Place miners on ore!");};
+document.getElementById("b-how").onclick=()=>document.getElementById("help-screen").style.display="flex";
+document.getElementById("b-cont").onclick=()=>{if(loadSlot(1)){document.getElementById("title-screen").style.display="none";toast("💾 loaded slot 1");}else toast("empty slot 1");};
+document.getElementById("b-restart").onclick=()=>location.reload();
+document.getElementById("b-export").onclick=()=>{
+ if(!copyBuf){toast("select+COPY first");return;}
+ try{const s=btoa(JSON.stringify(copyBuf));navigator.clipboard.writeText("CLAB1:"+s);toast("⤴ blueprint copied ("+s.length+" chars)");}catch(e){toast("export failed");}
+};
+document.getElementById("b-import").onclick=()=>{
+ const s=prompt("Paste CLAB1: blueprint string:");if(!s)return;
+ try{const j=s.replace(/^CLAB1:/,"");copyBuf=JSON.parse(atob(j));pasteMode=true;syncAll();toast("⤵ imported — TAP to stamp");}catch(e){toast("bad blueprint");}
+};
+
+/* ---------- save/load ---------- */
+function saveSlot(n){
+ try{
+  drawMinimap();
+  const thumb=mm.toDataURL("image/png");
+  const data={grid,poll:0,tier,tierProg,sciStock,kills,gameTime,hqHP,produced,oreMap,tool,ghostDir,at:Date.now(),thumb};
+  // slim poll: skip full map
+  localStorage.setItem("clab_save_"+n,JSON.stringify(data));
+  toast("💾 saved slot "+n);renderSlots();
+ }catch(e){toast("save failed: "+e.message);}
+}
+function loadSlot(n){
+ try{
+  const s=localStorage.getItem("clab_save_"+n);if(!s)return false;
+  const d=JSON.parse(s);
+  grid=d.grid;oreMap=d.oreMap;tier=d.tier;tierProg=d.tierProg;sciStock=d.sciStock;kills=d.kills;gameTime=d.gameTime;hqHP=d.hqHP;produced=d.produced;tool=d.tool||"belt";
+  biters=[];bullets=[];parts=[];over=false;paused=false;
+  computePower();syncAll();
+  return true;
+ }catch(e){return false;}
+}
+function renderSlots(){
+ const box=document.getElementById("slots");box.innerHTML="";
+ for(let n=1;n<=3;n++){
+  const s=localStorage.getItem("clab_save_"+n);
+  let meta="empty",thumb="";
+  if(s){try{const d=JSON.parse(s);const dt=new Date(d.at);meta=`T${d.tier+1} • ${Math.floor(d.gameTime/60)}:${String(Math.floor(d.gameTime%60)).padStart(2,"0")} • ${dt.toLocaleString()}`;thumb=d.thumb||"";}catch(e){}}
+  const div=document.createElement("div");div.className="slot";
+  div.innerHTML=`<img src="${thumb||""}"><div class="meta"><b>Slot ${n}</b><br>${meta}</div>`;
+  const bs=document.createElement("button");bs.className="hbtn";bs.textContent="💾 Save";
+  bs.onclick=()=>saveSlot(n);
+  const bl=document.createElement("button");bl.className="hbtn";bl.textContent="📂 Load";
+  bl.onclick=()=>{if(loadSlot(n)){document.getElementById("save-screen").style.display="none";document.getElementById("title-screen").style.display="none";toast("📂 loaded slot "+n);}else toast("empty");};
+  div.appendChild(bs);div.appendChild(bl);box.appendChild(div);
+ }
+}
+
+/* ---------- audio (osc/noise only) ---------- */
+let AC=null,humOsc=null,humGain=null;
+function ensureAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function ping(f,d){if(muted||!AC)return;try{const o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.06,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function shootSound(){if(muted||!AC)return;try{const o=AC.createOscillator(),g=AC.createGain();o.type="square";o.frequency.value=220+Math.random()*120;g.gain.setValueAtTime(0.03,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+0.08);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+0.08);}catch(e){}}
+function hitSound(){if(muted||!AC)return;try{const b=AC.createBuffer(1,1200,22050),d=b.getChannelData(0);for(let i=0;i<1200;i++)d[i]=(Math.random()*2-1)*0.2;const s=AC.createBufferSource();s.buffer=b;const g=AC.createGain();g.gain.value=0.15;s.connect(g).connect(AC.destination);s.start();}catch(e){}}
+function alarm(n){if(muted||!AC)return;for(let i=0;i<n;i++)setTimeout(()=>ping(180,0.25),i*300);}
+function startHum(){if(!AC||humOsc||muted)return;try{humOsc=AC.createOscillator();humGain=AC.createGain();humOsc.type="sawtooth";humOsc.frequency.value=55;humGain.gain.value=0.012;humOsc.connect(humGain).connect(AC.destination);humOsc.start();}catch(e){}}
+function stopHum(){if(humOsc){try{humOsc.stop();}catch(e){}humOsc=null;}}
+document.addEventListener("pointerdown",()=>{ensureAudio();if(!muted)startHum();},{once:false});
+
+/* ---------- HUD update + hints ---------- */
+function perMin(k){const cut=gameTime-60;let n=0;for(const e of prodLog)if(e.k===k&&e.t>=cut)n++;return n;}
+setInterval(()=>{
+ if(!paused&&document.getElementById("title-screen").style.display==="none"&&!over){
+  const n=speeds[speedIdx];
+  for(let i=0;i<n;i++)simTick();
+ }
+ // HUD
+ const mm2=Math.floor(gameTime/60),ss=String(Math.floor(gameTime%60)).padStart(2,"0");
+ document.getElementById("h-time").textContent=`${mm2}:${ss}`;
+ document.getElementById("h-power").textContent=`${mwUse.toFixed(1)}/${mwCap.toFixed(1)} MW`;
+ document.getElementById("h-res").textContent=tier>=4?"🏆 T4 DONE":`T${tier+1} ${tierProg}/${TIER_NEED[tier]}`;
+ document.getElementById("h-hq").textContent=Math.ceil(hqHP);
+ document.getElementById("h-kills").textContent=kills;
+ document.getElementById("h-pol").textContent=Math.floor(totalPoll());
+ document.getElementById("stats-line").textContent=`🔶${perMin("ore")}/m ⬜${perMin("plate")}/m ⚙️${perMin("gear")}/m 🧪${perMin("sci1")}/m • +${tier*10}% speed • 👹${biters.length}`;
+},TICK_MS);
+setInterval(()=>{
+ if(gameTime<300){hintIdx=(hintIdx+1)%hints.length;document.getElementById("hintbar").textContent=hints[hintIdx];}
+ else document.getElementById("hintbar").style.display="none";
+},12000);
+
+/* ---------- boot ---------- */
+genOre();newGrid();computePower();buildToolbar();syncAll();resize();
+cam.x=GW*TILE/2;cam.y=GH*TILE/2;cam.z=Math.min(1.1,Math.max(0.5,(Math.min(cv.clientWidth,cv.clientHeight))/(22*TILE)));
+// starter kit: pre-place demo line so game is instantly alive
+(function demo(){
+ const put=(x,y,o)=>{if(inB(x,y)&&!cellIsHQ(x,y))grid[y][x]=o;};
+ put(15,12,{t:"boiler",d:0});put(16,14,{t:"pole",d:0});put(18,14,{t:"pole",d:0});
+ put(12,15,{t:"miner",d:0,buf:0,cool:0});
+ put(13,15,{t:"belt",d:0,items:[]});put(14,15,{t:"belt",d:0,items:[]});
+ put(15,15,{t:"furnace",d:0,inv:{ore:0,plate:0},prog:0});
+ put(16,15,{t:"belt",d:0,items:[]});put(17,15,{t:"belt",d:0,items:[]});
+ put(18,15,{t:"assembler",d:0,recipe:"gear",inv:{plate:0,gear:0,sci1:0},prog:0});
+ computePower();
+})();
+selectCell(20,20);
+requestAnimationFrame(render);
+setTimeout(resize,100);
+</script>
+</body>
+</html>

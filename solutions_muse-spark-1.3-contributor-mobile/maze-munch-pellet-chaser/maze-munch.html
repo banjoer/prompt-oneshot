@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Maze Munch — Pellet Maze Chaser</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body { margin:0; padding:0; background:#050510; color:#eee; font-family:system-ui,-apple-system,Roboto,"Segoe UI",Arial,sans-serif; overscroll-behavior:none; }
+  body { display:flex; flex-direction:column; align-items:center; min-height:100vh; min-height:100dvh; touch-action:manipulation; }
+  header { width:100%; max-width:520px; padding:10px 12px 4px; text-align:center; }
+  h1 { font-size:20px; margin:4px 0 6px; letter-spacing:.5px; color:#ffe23f; text-shadow:0 0 8px #a80; }
+  h1 small { display:block; font-size:11px; color:#9ab; font-weight:400; }
+  #hud { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; width:100%; max-width:520px; padding:6px 10px; font-size:13px; }
+  .hud-card { background:#11132a; border:1px solid #2a2f5a; border-radius:10px; padding:6px 8px; text-align:center; }
+  .hud-card b { display:block; font-size:16px; color:#fff; }
+  .hud-card span { font-size:11px; color:#8ea0c8; text-transform:uppercase; letter-spacing:.5px; }
+  #modeLine { font-size:12px; color:#8ea0c8; margin-top:4px; }
+  #modeLine b { color:#ff9; }
+  #gameWrap { position:relative; width:min(94vw,440px); margin:4px auto 0; touch-action:none; user-select:none; -webkit-user-select:none; }
+  canvas { width:100%; height:auto; display:block; background:#000; border:3px solid #2233aa; border-radius:12px; touch-action:none; }
+  #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; background:rgba(0,0,10,.82); border-radius:12px; text-align:center; padding:18px; z-index:5; }
+  #overlay.hidden { display:none; }
+  #overlay h2 { margin:0 0 8px; color:#ffe23f; font-size:26px; }
+  #overlay p { margin:6px 0; font-size:14px; line-height:1.5; color:#dfe6ff; }
+  #overlay button { font-size:18px; padding:12px 26px; border-radius:999px; border:0; background:#ffe23f; color:#111; font-weight:700; margin-top:10px; cursor:pointer; min-height:48px; }
+  #overlay button:active { transform:scale(.97); }
+  .ghost-legend { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; font-size:12px; margin-top:8px; }
+  .ghost-legend span { background:#151838; padding:4px 8px; border-radius:999px; border:1px solid #333; }
+  /* Controls */
+  #controls { width:100%; max-width:520px; padding:8px 10px 2px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  #btnRow { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; width:100%; }
+  .cbtn { flex:1 1 auto; min-width:72px; min-height:44px; font-size:14px; font-weight:600; border-radius:12px; border:1px solid #3a4480; background:#1a1f45; color:#fff; cursor:pointer; padding:8px 10px; touch-action:manipulation; }
+  .cbtn.active { background:#2e7d32; border-color:#66bb6a; }
+  .cbtn:active { transform:scale(.97); }
+  #touchLayout { display:flex; gap:12px; align-items:center; justify-content:center; width:100%; margin-top:2px; }
+  #dpad { display:grid; grid-template-columns:64px 64px 64px; grid-template-rows:56px 56px 56px; gap:4px; touch-action:none; user-select:none; }
+  #dpad button { font-size:24px; border-radius:14px; border:1px solid #3a4480; background:#22285a; color:#fff; min-width:64px; min-height:56px; cursor:pointer; touch-action:none; }
+  #dpad button:active, #dpad button.pressed { background:#3949c9; }
+  #dpad .empty { background:transparent; border:0; }
+  #sideInfo { font-size:12px; color:#9fb0d8; max-width:200px; line-height:1.5; }
+  #sideInfo kbd { background:#222; padding:1px 5px; border-radius:4px; border:1px solid #444; font-size:11px; }
+  #gestureBox { width:100%; max-width:520px; padding:6px 10px; display:none; align-items:center; gap:10px; background:#0e1226; border:1px solid #2a3560; border-radius:10px; margin-top:6px; }
+  #gestureBox.show { display:flex; }
+  #camPreview { width:96px; height:72px; background:#000; border-radius:8px; border:1px solid #444; object-fit:cover; transform:scaleX(-1); }
+  #gestureStatus { font-size:13px; line-height:1.4; }
+  #gestureArrow { font-size:28px; }
+  footer { width:100%; max-width:520px; text-align:center; font-size:12px; color:#7f8db3; padding:10px 12px 24px; line-height:1.5; }
+  footer a { color:#7f8db3; }
+  @media (max-width:420px){
+    h1{font-size:18px}
+    #dpad{grid-template-columns:60px 60px 60px; grid-template-rows:52px 52px 52px;}
+    #sideInfo{display:none}
+  }
+  @media (min-width:700px){
+    #gameWrap{width:440px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🟡 MAZE MUNCH — Pellet Chaser <small>swipe • tap • touch D-pad • tilt • ✋ camera gestures</small></h1>
+</header>
+
+<div id="hud">
+  <div class="hud-card"><span>Score</span><b id="score">0</b></div>
+  <div class="hud-card"><span>High</span><b id="high">0</b></div>
+  <div class="hud-card"><span>Level</span><b id="level">1 / 3</b></div>
+  <div class="hud-card"><span>Lives</span><b id="lives">●●●</b></div>
+  <div class="hud-card"><span>Pellets left</span><b id="pellets">0</b></div>
+  <div class="hud-card"><span>Mode</span><b id="gmode">Scatter</b></div>
+</div>
+<div id="modeLine">Chaser targets you • Ambusher cuts you off • Shy keeps distance • Wanderer roams • <b id="frightLine"></b></div>
+
+<div id="gameWrap">
+  <canvas id="game" width="456" height="552"></canvas>
+  <div id="overlay">
+    <h2 id="ovTitle">MAZE MUNCH</h2>
+    <p id="ovText">Eat all pellets. Avoid ghosts — unless powered!<br>Tap / Swipe / D-pad to move.</p>
+    <div class="ghost-legend">
+      <span>🔴 Chaser</span><span>🩷 Ambusher</span><span>🩵 Shy</span><span>🟠 Wanderer</span>
+    </div>
+    <p style="font-size:12px;color:#9fb0d8">📱 Swipe on maze to steer • Tap START to play<br>✌️ two-finger tap = pause • three-finger tap = mute<br>📷 button = hand-gesture control • 📳 tilt control</p>
+    <button id="startBtn">▶ TAP TO START</button>
+  </div>
+</div>
+
+<div id="controls">
+  <div id="btnRow">
+    <button class="cbtn" id="pauseBtn">⏸ Pause</button>
+    <button class="cbtn" id="muteBtn">🔊 Sound</button>
+    <button class="cbtn" id="tiltBtn">📳 Tilt: off</button>
+    <button class="cbtn" id="camBtn">📷 Gestures: off</button>
+  </div>
+  <div id="touchLayout">
+    <div id="dpad" aria-label="D-pad">
+      <div class="empty"></div>
+      <button data-dir="up" aria-label="Up">▲</button>
+      <div class="empty"></div>
+      <button data-dir="left" aria-label="Left">◀</button>
+      <button data-dir="down" aria-label="Down">▼</button>
+      <button data-dir="right" aria-label="Right">▶</button>
+    </div>
+    <div id="sideInfo">
+      <b>Mobile play:</b><br>
+      • <b>Swipe</b> anywhere on maze to turn<br>
+      • <b>Tap D-pad</b> for precise corners<br>
+      • <b>Tap &amp; hold</b> D-pad to keep queuing<br>
+      • <kbd>Arrows</kbd>/<kbd>WASD</kbd> on desktop<br>
+      • <kbd>P</kbd> pause • <kbd>M</kbd> mute • <kbd>R</kbd> restart<br>
+      • Fruit 🍒 at 70 pellets = +300
+    </div>
+  </div>
+  <div id="gestureBox">
+    <video id="camPreview" muted playsinline></video>
+    <div id="gestureStatus">Hand-gesture: wave hand ← → ↑ ↓ in front of camera.<br><span id="gestureArrow">✋ …</span><br><small id="camMsg">starting…</small></div>
+  </div>
+</div>
+
+<footer>
+  Maze Munch — single-file vanilla HTML/CSS/JS, no dependencies, no network.<br>
+  <span id="signoff">Produced …</span><br>
+  High score stored in localStorage • WebAudio oscillators • Greedy ghost AI
+</footer>
+
+<script>
+"use strict";
+/* ================= MAZE (19 x 23, middle row 11 = tunnel) =================
+   # wall, . pellet, o power, - door, ' ' empty, P player start */
+const RAW_MAZE = [
+"###################",
+"#........#........#",
+"#.##.###.#.###.##.#",
+"#o##.###.#.###.##o#",
+"#.................#",
+"#.##.#.#####.#.##.#",
+"#....#...#...#....#",
+"####.###...###.####",
+"####.#.##-##.#.####",
+"####.#.#   #.#.####",
+"#####.#.###.#.#####",
+"...................",
+"####.#.......#.####",
+"####.#.#####.#.####",
+"#........#........#",
+"#.##.###.#.###.##.#",
+"#o##.....P.....##o#",
+"#.##.#.#####.#.##.#",
+"#....#...#...#....#",
+"#.##.###.#.###.##.#",
+"#....#.......#....#",
+"#.................#",
+"###################",
+];
+const COLS = 19, ROWS = 23;
+const TUNNEL_ROW = 11;
+const DOOR = {x:9, y:8};
+const HOUSE_INSIDE = [{x:8,y:9},{x:9,y:9},{x:10,y:9}];
+const PLAYER_START = {x:9, y:16};
+const FRUIT_POS = {x:9, y:11};
+const FRUIT_AT = 70, FRUIT_SCORE = 300, FRUIT_TIME = 10;
+const SCATTER_TIME = 7, CHASE_TIME = 20, FRIGHT_TIME = 7;
+const CHAIN = [200,400,800,1600];
+const MAX_LEVEL = 3;
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const TILE = 24;
+canvas.width = COLS*TILE; canvas.height = ROWS*TILE;
+
+const elScore=document.getElementById('score'), elHigh=document.getElementById('high'),
+ elLevel=document.getElementById('level'), elLives=document.getElementById('lives'),
+ elPellets=document.getElementById('pellets'), elGmode=document.getElementById('gmode'),
+ elFright=document.getElementById('frightLine'),
+ overlay=document.getElementById('overlay'), ovTitle=document.getElementById('ovTitle'),
+ ovText=document.getElementById('ovText'), startBtn=document.getElementById('startBtn');
+
+document.getElementById('signoff').textContent =
+  "Solution produced: " + new Date().toLocaleString() + " • Author/Model: Muse Spark 1.3 Contributor (OpenCode) • mobile-friendly build";
+
+// ---------- Audio (WebAudio oscillators, vanilla) ----------
+let AC=null, muted=false, sirenOsc=null, sirenGain=null, sirenLFO=null, wakaHigh=false;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended')AC.resume(); return AC; }
+function beep(f0,f1,dur,type,vol){ if(muted)return; const ac=audio(); if(!ac)return;
+  const o=ac.createOscillator(), g=ac.createGain(); o.type=type||'square';
+  o.frequency.setValueAtTime(f0,ac.currentTime); o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),ac.currentTime+dur);
+  g.gain.setValueAtTime(vol||0.12,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+dur+0.02);
+}
+function waka(){ wakaHigh=!wakaHigh; if(wakaHigh)beep(520,260,0.09,'square',0.10); else beep(260,520,0.09,'square',0.10); }
+function powerSnd(){ beep(150,900,0.35,'sawtooth',0.12); }
+function eatGhostSnd(){ beep(900,150,0.3,'square',0.14); setTimeout(()=>beep(200,1200,0.25,'square',0.10),80); }
+function deathSnd(){ if(muted)return; const ac=audio(); if(!ac)return;
+  const o=ac.createOscillator(),g=ac.createGain(); o.type='sawtooth';
+  o.frequency.setValueAtTime(600,ac.currentTime);
+  o.frequency.exponentialRampToValueAtTime(80,ac.currentTime+1.1);
+  g.gain.setValueAtTime(0.15,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+1.2);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+1.25);
+}
+function fruitSnd(){ beep(700,1400,0.2,'sine',0.14); }
+function startSiren(){ if(sirenOsc||muted)return; const ac=audio(); if(!ac)return;
+  sirenOsc=ac.createOscillator(); sirenGain=ac.createGain(); sirenLFO=ac.createOscillator(); const lg=ac.createGain();
+  sirenOsc.type='sine'; sirenOsc.frequency.value=220; sirenGain.gain.value=0.025;
+  sirenLFO.type='sine'; sirenLFO.frequency.value=1.2; lg.gain.value=60;
+  sirenLFO.connect(lg).connect(sirenOsc.frequency); sirenOsc.connect(sirenGain).connect(ac.destination);
+  sirenOsc.start(); sirenLFO.start();
+}
+function stopSiren(){ if(sirenOsc){ try{sirenOsc.stop();sirenLFO.stop();}catch(e){} sirenOsc=null; } }
+function updateSiren(){ if(!sirenOsc||!AC)return; const t=AC.currentTime;
+  if(state.fright>0) sirenOsc.frequency.setTargetAtTime(520,t,0.2);
+  else if(state.mode==='chase') sirenOsc.frequency.setTargetAtTime(280,t,0.3);
+  else sirenOsc.frequency.setTargetAtTime(190,t,0.3);
+}
+
+// ---------- Game state ----------
+let grid=[], pellets=new Set(), totalPellets=0;
+let state;
+let high = parseInt(localStorage.getItem('mazeMunchHigh')||'0',10)||0;
+elHigh.textContent = high;
+
+function key(x,y){ return y*COLS+x; }
+function buildLevel(){
+  grid=[]; pellets=new Set();
+  for(let y=0;y<ROWS;y++){
+    let rowStr = RAW_MAZE[y]||"";
+    while(rowStr.length<COLS) rowStr+=" ";
+    const row=[];
+    for(let x=0;x<COLS;x++){
+      let ch=rowStr[x];
+      if(ch==='P'){ row.push(' '); }
+      else row.push(ch);
+      if(ch==='.'||ch==='o') pellets.add(key(x,y));
+    }
+    grid.push(row);
+  }
+  totalPellets=pellets.size;
+}
+function tileAt(x,y){
+  if(y===TUNNEL_ROW){ // wrap row: horizontal wrap
+    if(x<0||x>=COLS) return '.';
+  }
+  if(x<0||x>=COLS||y<0||y>=ROWS) return '#';
+  return grid[y][x];
+}
+function walkableFor(x,y,who){ // who: 'player'|'ghost'|'eyes'
+  const t=tileAt(x,y);
+  if(t==='#') return false;
+  if(t==='-'){ return (who!=='player'); } // door: ghosts+eyes only
+  return true;
+}
+const DIRS={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+const DIRLIST=['up','left','down','right'];
+
+function newGhost(name,color,corner,startIdx,exitDelay){
+  return {name,color,corner,start:{...HOUSE_INSIDE[startIdx%HOUSE_INSIDE.length]},
+    x:HOUSE_INSIDE[startIdx%HOUSE_INSIDE.length].x+0.5, y:HOUSE_INSIDE[startIdx%HOUSE_INSIDE.length].y+0.5,
+    dir:{...DIRS.up}, exitTimer:exitDelay, inHouse:true, state:'active', reverseFlag:false};
+}
+function resetPositions(){
+  state.player={x:PLAYER_START.x+0.5,y:PLAYER_START.y+0.5,dir:{...DIRS.left},want:{...DIRS.left},mouth:0};
+  state.ghosts=[
+    newGhost('Chaser','red',{x:17,y:1},1,0),
+    newGhost('Ambusher','#ffb8ff',{x:1,y:1},0,1.2),
+    newGhost('Shy','#00ffff',{x:17,y:20},2,2.6),
+    newGhost('Wanderer','#ffb847',{x:1,y:20},1,4.0),
+  ];
+  // Chaser starts just outside to be immediately visible
+  state.ghosts[0].x=DOOR.x+0.5; state.ghosts[0].y=(DOOR.y+1)+0.5; state.ghosts[0].inHouse=false; state.ghosts[0].dir={...DIRS.left};
+}
+function newGame(){
+  buildLevel();
+  state={score:0,lives:3,level:1,pelletsEaten:0,mode:'scatter',modeT:0,fright:0,chain:0,
+    fruit:null,fruitT:0,running:false,paused:false,over:false,win:false,time:0};
+  resetPositions();
+  updateHUD();
+}
+function nextLevel(){
+  state.level++;
+  if(state.level>MAX_LEVEL){ state.win=true; state.running=false; showOverlay("🏆 VICTORY!","You cleared all "+MAX_LEVEL+" levels! Final score: "+state.score+"<br>Tap to play again."); stopSiren(); saveHigh(); return; }
+  buildLevel();
+  state.pelletsEaten=0; state.fruit=null; state.fright=0; state.mode='scatter'; state.modeT=0;
+  resetPositions();
+  updateHUD();
+}
+function levelSpeed(){ return [1,1,1.08,1.1664][state.level]||1; }
+
+function saveHigh(){ if(state.score>high){ high=state.score; localStorage.setItem('mazeMunchHigh',String(high)); } elHigh.textContent=high; }
+function updateHUD(){
+  elScore.textContent=state.score; elLevel.textContent=state.level+" / "+MAX_LEVEL;
+  elLives.textContent="●".repeat(state.lives)+"○".repeat(Math.max(0,3-state.lives));
+  elPellets.textContent=pellets.size;
+  elGmode.textContent = state.fright>0 ? ("FRIGHT "+state.fright.toFixed(1)+"s") : (state.mode==="scatter"?"Scatter":"Chase");
+  elFright.textContent = state.fright>0 ? ("👻 edible x"+(state.chain+1)) : "";
+}
+
+// ---------- Ghost targeting ----------
+function ghostTarget(g){
+  const p=state.player;
+  const ptx=Math.floor(p.x), pty=Math.floor(p.y);
+  if(g.state==='eyes') return {x:DOOR.x,y:DOOR.y};
+  if(state.fright>0) return null; // flee handled as max-dist
+  if(state.mode==='scatter') return g.corner;
+  // chase with personality
+  if(g.name==='Chaser') return {x:ptx,y:pty};
+  if(g.name==='Ambusher'){
+    const d=p.dir; return {x:ptx+d.x*4, y:pty+d.y*4};
+  }
+  if(g.name==='Shy'){
+    const gx=Math.floor(g.x),gy=Math.floor(g.y);
+    const dist=Math.hypot(gx-ptx,gy-pty);
+    if(dist>8) return {x:ptx,y:pty};
+    return g.corner;
+  }
+  return null; // Wanderer random
+}
+function atCenter(e){ const cx=Math.floor(e.x)+0.5, cy=Math.floor(e.y)+0.5; return Math.hypot(e.x-cx,e.y-cy)<0.12; }
+function snap(e){ e.x=Math.floor(e.x)+0.5; e.y=Math.floor(e.y)+0.5; }
+
+function ghostStep(g,dt){
+  const spdMul=levelSpeed();
+  let speed = g.state==='eyes' ? 10 : (state.fright>0 ? 3.6*spdMul : 6.1*spdMul);
+  // house exit
+  if(g.inHouse && g.state!=='eyes'){
+    if(g.exitTimer>0){ g.exitTimer-=dt; return; }
+    // move toward door x then up
+    const tx=DOOR.x+0.5, ty=DOOR.y+0.5;
+    const dx=tx-g.x, dy=(ty-1)-g.y+1; // target just above door? use door then out
+    // simple steering: horizontal first
+    if(Math.abs(g.x-tx)>0.08){ g.x += Math.sign(tx-g.x)*4*dt; g.dir = g.x<tx?{...DIRS.right}:{...DIRS.left}; }
+    else { g.x=tx; g.y -= 4*dt; g.dir={...DIRS.up};
+      if(g.y<=DOOR.y+0.5){ g.y=DOOR.y+0.5; g.inHouse=false; g.dir={...DIRS.left}; } }
+    wrapEntity(g);
+    return;
+  }
+  if(g.state==='eyes' && g.inHouse){ // respawn
+    g.state='active'; g.inHouse=false; g.x=DOOR.x+0.5; g.y=DOOR.y+0.5; g.dir={...DIRS.left}; g.exitTimer=0; return;
+  }
+  // continuous move
+  // decision at centers
+  if(atCenter(g)){
+    snap(g);
+    const cx=Math.floor(g.x), cy=Math.floor(g.y);
+    // eyes arrived home?
+    if(g.state==='eyes' && cx===DOOR.x && cy===DOOR.y){ g.inHouse=true; g.x=HOUSE_INSIDE[1].x+0.5; g.y=HOUSE_INSIDE[1].y+0.5; return; }
+    const who = g.state==='eyes' ? 'eyes':'ghost';
+    const opts=[];
+    for(const dn of DIRLIST){
+      const d=DIRS[dn];
+      // never reverse except flag or dead-end
+      if(!g.reverseFlag && d.x===-g.dir.x && d.y===-g.dir.y) continue;
+      if(walkableFor(cx+d.x,cy+d.y,who)) opts.push({dn,d});
+    }
+    if(opts.length===0){ // dead end: allow reverse
+      for(const dn of DIRLIST){ const d=DIRS[dn]; if(walkableFor(cx+d.x,cy+d.y,who)) opts.push({dn,d}); }
+    }
+    if(opts.length>0){
+      let pick=opts[0];
+      const tgt=ghostTarget(g);
+      if(g.name==='Wanderer' && g.state!=='eyes' && state.fright<=0 && state.mode!=='scatter'){
+        pick=opts[(Math.random()*opts.length)|0];
+      } else if(state.fright>0 && g.state!=='eyes'){
+        // flee: maximize distance from player
+        const px=state.player.x, py=state.player.y;
+        let best=-1e9;
+        for(const o of opts){ const nx=cx+0.5+o.d.x, ny=cy+0.5+o.d.y; const dd=Math.hypot(nx-px,ny-py); if(dd>best){best=dd;pick=o;} }
+      } else if(tgt){
+        let best=1e9;
+        for(const o of opts){ const nx=cx+o.d.x, ny=cy+o.d.y; const dd=Math.hypot(nx-tgt.x,ny-tgt.y); if(dd<best){best=dd;pick=o;} }
+      } else if(g.name==='Wanderer'){
+        pick=opts[(Math.random()*opts.length)|0];
+      }
+      g.dir={...pick.d};
+    }
+    g.reverseFlag=false;
+  }
+  g.x+=g.dir.x*speed*dt; g.y+=g.dir.y*speed*dt;
+  wrapEntity(g);
+}
+function wrapEntity(e){
+  if(Math.floor(e.y+0.0)===TUNNEL_ROW || Math.round(e.y-0.5)===TUNNEL_ROW){
+    if(e.x<-0.5) e.x+=COLS;
+    if(e.x>=COLS-0.5+1) e.x-=COLS;
+    if(e.x<0) e.x+=COLS; if(e.x>=COLS) e.x-=COLS;
+  }
+}
+function playerStep(dt){
+  const p=state.player;
+  const spd=7.2*levelSpeed();
+  // try to adopt wanted dir when near center & walkable
+  const cx=Math.floor(p.x), cy=Math.floor(p.y);
+  const ccx=cx+0.5, ccy=cy+0.5;
+  const near=Math.hypot(p.x-ccx,p.y-ccy)<0.28;
+  if(near){
+    if((p.want.x!==p.dir.x||p.want.y!==p.dir.y) && walkableFor(cx+p.want.x,cy+p.want.y,'player')){
+      // snap to center line for clean cornering
+      p.x=ccx; p.y=ccy; p.dir={...p.want};
+    }
+    // stop at wall
+    if(!walkableFor(cx+p.dir.x,cy+p.dir.y,'player')){
+      // snap & hold
+      p.x=ccx; p.y=ccy;
+      // still allow mouth anim
+    } else {
+      p.x+=p.dir.x*spd*dt; p.y+=p.dir.y*spd*dt;
+    }
+  } else {
+    p.x+=p.dir.x*spd*dt; p.y+=p.dir.y*spd*dt;
+  }
+  wrapEntity(p);
+  p.mouth+=dt*10;
+  // eat
+  const tx=Math.floor(p.x), ty=Math.floor(p.y);
+  if(Math.hypot(p.x-(tx+0.5),p.y-(ty+0.5))<0.4){
+    const k=key(tx,ty);
+    if(pellets.has(k)){
+      const ch=grid[ty][tx];
+      pellets.delete(k); state.pelletsEaten++;
+      if(ch==='o'){ state.score+=50; state.fright=FRIGHT_TIME; state.chain=0; powerSnd();
+        for(const g of state.ghosts) if(g.state==='active') g.reverseFlag=true;
+      } else { state.score+=10; waka(); }
+      if(state.pelletsEaten===FRUIT_AT){ state.fruit={...FRUIT_POS,x:FRUIT_POS.x+0.5,y:FRUIT_POS.y+0.5}; state.fruitT=FRUIT_TIME; fruitSnd(); }
+      if(pellets.size===0){ saveHigh(); nextLevel(); return; }
+    }
+    // fruit
+    if(state.fruit && Math.hypot(p.x-state.fruit.x,p.y-state.fruit.y)<0.6){
+      state.score+=FRUIT_SCORE; state.fruit=null; fruitSnd();
+    }
+  }
+  if(state.fruit){ state.fruitT-=dt; if(state.fruitT<=0) state.fruit=null; }
+}
+
+// ---------- update ----------
+let lastT=0;
+function update(dt){
+  if(!state.running||state.paused||state.over||state.win) return;
+  state.time+=dt;
+  // mode cycle (pause during fright)
+  if(state.fright>0){ state.fright-=dt; if(state.fright<=0){ state.fright=0; state.chain=0; } }
+  else { state.modeT+=dt; if(state.mode==='scatter'&&state.modeT>=SCATTER_TIME){state.mode='chase';state.modeT=0;for(const g of state.ghosts)g.reverseFlag=true;}
+    else if(state.mode==='chase'&&state.modeT>=CHASE_TIME){state.mode='scatter';state.modeT=0;for(const g of state.ghosts)g.reverseFlag=true;} }
+  playerStep(dt);
+  if(state.win||!state.running) return;
+  for(const g of state.ghosts) ghostStep(g,dt);
+  // collisions
+  for(const g of state.ghosts){
+    if(g.inHouse) continue;
+    const d=Math.hypot(g.x-state.player.x,g.y-state.player.y);
+    if(d<0.62){
+      if(g.state==='eyes') continue;
+      if(state.fright>0){
+        const pts=CHAIN[Math.min(state.chain,3)]; state.score+=pts; state.chain++;
+        g.state='eyes'; eatGhostSnd();
+      } else {
+        // death
+        state.lives--; deathSnd(); saveHigh(); updateHUD();
+        if(state.lives<=0){ state.over=true; state.running=false; stopSiren();
+          showOverlay("💀 GAME OVER","Score: "+state.score+" • High: "+high+"<br>Level reached: "+state.level+"<br>Tap to try again."); return; }
+        else { resetPositions(); state.fright=0; state.mode='scatter'; state.modeT=0; }
+        break;
+      }
+    }
+  }
+  saveHigh();
+  updateHUD(); updateSiren();
+}
+
+// ---------- render ----------
+function draw(){
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  // pellets & walls
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const ch=grid[y]?grid[y][x]:'#';
+    const px=x*TILE, py=y*TILE;
+    if(ch==='#'){
+      ctx.fillStyle='#1b2fd6';
+      const m=1;
+      // rounded wall block, connect look: fill + inner highlight
+      ctx.fillRect(px+m,py+m,TILE-2*m,TILE-2*m);
+      ctx.fillStyle='#3f66ff';
+      ctx.fillRect(px+5,py+5,TILE-10,TILE-10);
+    } else if(ch==='-'){
+      ctx.fillStyle='#ffb8de'; ctx.fillRect(px+2,py+TILE/2-2,TILE-4,4);
+    }
+    const k=key(x,y);
+    if(pellets.has(k)){
+      if(ch==='o'){
+        const pulse=4+Math.sin(performance.now()/200)*1.5;
+        ctx.fillStyle='#ffd9ec'; ctx.beginPath(); ctx.arc(px+TILE/2,py+TILE/2,pulse,0,7); ctx.fill();
+      } else {
+        ctx.fillStyle='#ffd9a0'; ctx.beginPath(); ctx.arc(px+TILE/2,py+TILE/2,2.4,0,7); ctx.fill();
+      }
+    }
+  }
+  // fruit
+  if(state.fruit){
+    const fx=(state.fruit.x-0.5)*TILE+TILE/2, fy=(state.fruit.y-0.5)*TILE+TILE/2;
+    const blink = state.fruitT<3 ? (Math.sin(performance.now()/150)>0?1:0.3):1;
+    ctx.globalAlpha=blink; ctx.font=(TILE-2)+"px serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🍒',fx,fy); ctx.globalAlpha=1;
+  }
+  // player
+  const p=state.player;
+  const ppx=p.x*TILE, ppy=p.y*TILE;
+  const ang=Math.atan2(p.dir.y,p.dir.x);
+  const mOpen=(Math.sin(p.mouth)*0.28+0.30);
+  ctx.fillStyle='#ffe23f'; ctx.beginPath(); ctx.moveTo(ppx,ppy);
+  ctx.arc(ppx,ppy,TILE*0.44,ang+mOpen,ang+Math.PI*2-mOpen); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(ppx+Math.cos(ang-0.5)*4,ppy+Math.sin(ang-0.5)*4-3,2,0,7); ctx.fill();
+  // ghosts
+  for(const g of state.ghosts){
+    if(g.inHouse && !state.running){ /* still draw */ }
+    drawGhost(g);
+  }
+  // fright vignette?
+}
+function drawGhost(g){
+  const gx=g.x*TILE, gy=g.y*TILE;
+  const r=TILE*0.42;
+  if(g.state==='eyes'){
+    drawEyesOnly(gx,gy,g.dir);
+    return;
+  }
+  let body=g.color;
+  let face='#fff';
+  if(state.fright>0){
+    const flash=state.fright<2 && Math.sin(performance.now()/150)>0;
+    body=flash?'#fff':'#2430ff';
+  }
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.arc(gx,gy-r*0.15,r,Math.PI,0);
+  ctx.lineTo(gx+r,gy+r*0.7);
+  // skirt zigzag
+  const n=4;
+  for(let i=0;i<n;i++){ const x1=gx+r-(i+0.5)*(2*r/n), y1=gy+r*0.7; const x0=gx+r-(i+1)*(2*r/n);
+    ctx.lineTo(x1,y1-4); ctx.lineTo(x0,y1); }
+  ctx.lineTo(gx-r,gy-r*0.15);
+  ctx.closePath(); ctx.fill();
+  if(state.fright>0){
+    ctx.fillStyle=body==='#fff'?'#f00':'#ffb8ae';
+    // scared face
+    ctx.beginPath(); ctx.arc(gx-5,gy-2,2.2,0,7); ctx.arc(gx+5,gy-2,2.2,0,7); ctx.fill();
+    ctx.strokeStyle=ctx.fillStyle; ctx.lineWidth=1.5; ctx.beginPath();
+    ctx.moveTo(gx-7,gy+6); ctx.lineTo(gx-3,gy+3); ctx.lineTo(gx,gy+6); ctx.lineTo(gx+3,gy+3); ctx.lineTo(gx+7,gy+6); ctx.stroke();
+  } else {
+    // eyes
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(gx-5,gy-4,4.2,0,7); ctx.arc(gx+5,gy-4,4.2,0,7); ctx.fill();
+    ctx.fillStyle='#2430ff'; const ex=g.dir.x*2, ey=g.dir.y*2;
+    ctx.beginPath(); ctx.arc(gx-5+ex,gy-4+ey,2.2,0,7); ctx.arc(gx+5+ex,gy-4+ey,2.2,0,7); ctx.fill();
+  }
+  // name initial for distinctness (mobile clarity)
+  ctx.fillStyle='rgba(0,0,0,.55)'; ctx.font='bold 9px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const initial={Chaser:'C',Ambusher:'A',Shy:'S',Wanderer:'W'}[g.name]||'?';
+  if(state.fright<=0) ctx.fillText(initial,gx,gy+7);
+}
+function drawEyesOnly(x,y,dir){
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-5,y-2,4.5,0,7); ctx.arc(x+5,y-2,4.5,0,7); ctx.fill();
+  ctx.fillStyle='#33f'; const ex=dir.x*2, ey=dir.y*2;
+  ctx.beginPath(); ctx.arc(x-5+ex,y-2+ey,2.3,0,7); ctx.arc(x+5+ex,y-2+ey,2.3,0,7); ctx.fill();
+}
+function loop(t){
+  const dt=Math.min(0.05,(t-lastT)/1000||0.016); lastT=t;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+
+// ---------- overlays / input ----------
+function showOverlay(title,html){ ovTitle.innerHTML=title; ovText.innerHTML=html; overlay.classList.remove('hidden'); startBtn.textContent = state.over||state.win ? "↻ TAP TO RESTART" : "▶ TAP TO START"; }
+function hideOverlay(){ overlay.classList.add('hidden'); }
+function startGame(){
+  audio(); startSiren();
+  if(state.over||state.win||!state.running&&!state.paused&&overlayVisibleForRestart()){
+    newGame(); state.running=true; state.paused=false; hideOverlay();
+  } else if(!state.running){ state.running=true; hideOverlay(); }
+  else if(state.paused){ state.paused=false; hideOverlay(); }
+  document.getElementById('pauseBtn').textContent='⏸ Pause';
+  updateHUD();
+}
+function overlayVisibleForRestart(){ return !overlay.classList.contains('hidden'); }
+startBtn.addEventListener('click',startGame);
+overlay.addEventListener('click',(e)=>{ if(e.target!==startBtn) startGame(); });
+
+function setWant(dirName){ if(!state||!state.player) return; state.player.want={...DIRS[dirName]};
+  // immediate feedback: resume if paused? no
+  if(!state.running&&overlayVisibleForRestart()) startGame();
+}
+window.addEventListener('keydown',(e)=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='w') setWant('up');
+  else if(k==='arrowdown'||k==='s') setWant('down');
+  else if(k==='arrowleft'||k==='a') setWant('left');
+  else if(k==='arrowright'||k==='d') setWant('right');
+  else if(k==='p') togglePause();
+  else if(k==='m') toggleMute();
+  else if(k==='r'){ newGame(); state.running=true; hideOverlay(); }
+  else if(k===' '||k==='enter'){ startGame(); }
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k.toLowerCase())) e.preventDefault();
+});
+document.getElementById('pauseBtn').addEventListener('click',togglePause);
+function togglePause(){ if(!state.running||state.over||state.win) return;
+  state.paused=!state.paused;
+  document.getElementById('pauseBtn').textContent=state.paused?'▶ Resume':'⏸ Pause';
+  if(state.paused) showOverlay("⏸ PAUSED","Tap Resume to continue.<br>Score: "+state.score);
+  else hideOverlay();
+}
+function toggleMute(){ muted=!muted; document.getElementById('muteBtn').textContent=muted?'🔇 Muted':'🔊 Sound';
+  if(muted) stopSiren(); else if(state.running&&!state.paused) startSiren(); }
+document.getElementById('muteBtn').addEventListener('click',toggleMute);
+
+// ---------- D-pad (taps + touch-hold) ----------
+document.querySelectorAll('#dpad button').forEach(b=>{
+  const d=b.dataset.dir;
+  const h=(e)=>{ e.preventDefault(); audio(); b.classList.add('pressed'); setWant(d); setTimeout(()=>b.classList.remove('pressed'),120); };
+  b.addEventListener('pointerdown',h);
+  b.addEventListener('touchstart',h,{passive:false});
+});
+
+// ---------- Swipe / taps / multi-touch on game area ----------
+const wrap=document.getElementById('gameWrap');
+let tStart=null, tLast=null, pinchT=0;
+wrap.addEventListener('touchstart',(e)=>{
+  audio();
+  if(e.touches.length===2){ togglePause(); e.preventDefault(); return; }
+  if(e.touches.length===3){ toggleMute(); e.preventDefault(); return; }
+  const t=e.touches[0];
+  tStart={x:t.clientX,y:t.clientY,time:Date.now()};
+  tLast={...tStart};
+  if(e.cancelable) e.preventDefault();
+},{passive:false});
+wrap.addEventListener('touchmove',(e)=>{
+  if(!tLast) return;
+  const t=e.touches[0];
+  const dx=t.clientX-tLast.x, dy=t.clientY-tLast.y;
+  if(Math.hypot(dx,dy)>18){
+    if(Math.abs(dx)>Math.abs(dy)) setWant(dx>0?'right':'left');
+    else setWant(dy>0?'down':'up');
+    tLast={x:t.clientX,y:t.clientY,time:Date.now()};
+  }
+  if(e.cancelable) e.preventDefault();
+},{passive:false});
+wrap.addEventListener('touchend',(e)=>{
+  if(!tStart) return;
+  const dur=Date.now()-tStart.time;
+  // single quick tap: start/restart if overlay, else nothing (avoid accidental pause)
+  if(overlayVisibleForRestart() && dur<500){ startGame(); }
+  tStart=null; tLast=null;
+},{passive:true});
+// mouse swipe for desktop testing
+let mDown=null;
+canvas.addEventListener('mousedown',(e)=>{ mDown={x:e.clientX,y:e.clientY}; });
+window.addEventListener('mouseup',(e)=>{ if(!mDown) return; const dx=e.clientX-mDown.x, dy=e.clientY-mDown.y;
+  if(Math.hypot(dx,dy)>24){ if(Math.abs(dx)>Math.abs(dy)) setWant(dx>0?'right':'left'); else setWant(dy>0?'down':'up'); }
+  mDown=null; });
+// double-tap to pause (mobile)
+let lastTap=0;
+wrap.addEventListener('click',()=>{ const n=Date.now(); if(n-lastTap<320 && state.running){ togglePause(); } lastTap=n; });
+
+// ---------- Tilt control ----------
+let tiltOn=false;
+document.getElementById('tiltBtn').addEventListener('click',async function(){
+  tiltOn=!tiltOn; this.textContent=tiltOn?'📳 Tilt: on':'📳 Tilt: off'; this.classList.toggle('active',tiltOn);
+  if(tiltOn && typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
+    try{ await DeviceOrientationEvent.requestPermission(); }catch(e){}
+  }
+});
+window.addEventListener('deviceorientation',(e)=>{
+  if(!tiltOn||!state||!state.running||state.paused) return;
+  const g=e.gamma||0, b=(e.beta||50)-45;
+  if(Math.abs(g)<12&&Math.abs(b)<12) return;
+  if(Math.abs(g)>Math.abs(b)) setWant(g>0?'right':'left');
+  else setWant(b>0?'down':'up');
+});
+
+// ---------- Camera hand-gesture control (vanilla, no libs) ----------
+let camOn=false, camStream=null, camVideo=document.getElementById('camPreview'),
+    camBox=document.getElementById('gestureBox'), camMsg=document.getElementById('camMsg'),
+    camArrow=document.getElementById('gestureArrow'),
+    procCanvas=document.createElement('canvas'), procCtx=procCanvas.getContext('2d',{willReadFrequently:true}),
+    prevFrame=null, lastGesture=0, camTimer=null;
+procCanvas.width=48; procCanvas.height=36;
+document.getElementById('camBtn').addEventListener('click',async function(){
+  camOn=!camOn; this.textContent=camOn?'📷 Gestures: on':'📷 Gestures: off'; this.classList.toggle('active',camOn);
+  camBox.classList.toggle('show',camOn);
+  if(camOn) startCam(); else stopCam();
+});
+async function startCam(){
+  camMsg.textContent='requesting camera… (needs https/localhost)';
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ camMsg.textContent='camera API unavailable on this browser/file:// — use Swipe/D-pad.'; return; }
+    camStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:160},height:{ideal:120},facingMode:'user'},audio:false});
+    camVideo.srcObject=camStream; await camVideo.play();
+    camMsg.textContent='show hand, wave ← → ↑ ↓. Motion steers Pac.';
+    prevFrame=null;
+    camTimer=setInterval(processCam,160);
+  }catch(err){ camMsg.textContent='camera blocked/denied: '+err.name+' — Swipe/D-pad still work.'; }
+}
+function stopCam(){ if(camTimer)clearInterval(camTimer); camTimer=null; if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;} camVideo.srcObject=null; }
+function processCam(){
+  if(!camOn||!camVideo.videoWidth) return;
+  try{
+    procCtx.drawImage(camVideo,0,0,48,36);
+    const d=procCtx.getImageData(0,0,48,36).data;
+    // grayscale current
+    const cur=new Uint8Array(48*36);
+    for(let i=0;i<48*36;i++){ cur[i]=(d[i*4]+d[i*4+1]+d[i*4+2])/3; }
+    if(prevFrame){
+      let sx=0,sy=0,n=0;
+      let minX=48,maxX=0,minY=36,maxY=0;
+      for(let y=0;y<36;y++)for(let x=0;x<48;x++){
+        const idx=y*48+x, diff=Math.abs(cur[idx]-prevFrame[idx]);
+        if(diff>28){ sx+=x; sy+=y; n++; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+      }
+      if(n>60){ // significant motion
+        const cxp=sx/n, cyp=sy/n;
+        if(!processCam.last){ processCam.last={x:cxp,y:cyp,t:Date.now()}; }
+        else{
+          const dx=cxp-processCam.last.x, dy=cyp-processCam.last.y, dt=Date.now()-processCam.last.t;
+          if(dt>250 && Math.hypot(dx,dy)>4 && Date.now()-lastGesture>700){
+            let dir=null, arrow='';
+            if(Math.abs(dx)>Math.abs(dy)){ dir=dx>0?'right':'left'; arrow=dx>0?'👉':'👈'; }
+            else{ dir=dy>0?'down':'up'; arrow=dy>0?'👇':'👆'; }
+            setWant(dir); audio();
+            camArrow.textContent=arrow+' '+dir.toUpperCase();
+            camMsg.textContent='gesture detected: '+dir+' ('+n+' motion px)';
+            lastGesture=Date.now();
+            processCam.last={x:cxp,y:cyp,t:Date.now()};
+          } else if(dt>900){ processCam.last={x:cxp,y:cyp,t:Date.now()}; }
+        }
+      }
+    }
+    prevFrame=cur;
+  }catch(e){ /* ignore */ }
+}
+
+// ---------- boot ----------
+newGame();
+showOverlay("🟡 MAZE MUNCH","Eat all pellets • 4 ghosts with personalities<br>Power pellets = hunt them! 🍒 at 70 pellets = +300<br><b>Swipe, D-pad, tilt, or ✋ camera</b> to move.");
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

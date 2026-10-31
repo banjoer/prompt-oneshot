@@ -1,0 +1,846 @@
+<!--
+  Saucer Siege — single-file Space Invaders homage
+  Produced: 2026-10-31 12:50 UTC
+  Model/Author: Muse Spark 1.3 Contributor (via OpenCode)
+  Mobile-ready: taps, drag, swipes, two-finger gestures + on-screen buttons.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05070f">
+<title>Saucer Siege</title>
+<style>
+  :root{ color-scheme: dark; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; background:#05070f; color:#d7ffe0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overscroll-behavior:none; }
+  body{ min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
+    touch-action:none; user-select:none; -webkit-user-select:none; }
+  #wrap{ width:100%; max-width:560px; padding:8px 8px calc(10px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; align-items:center; gap:8px; }
+  #topbtns{ width:100%; max-width:520px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  #topbtns .title-mini{ font-size:12px; letter-spacing:2px; opacity:.85; white-space:nowrap; }
+  #topbtns .btns{ display:flex; gap:8px; }
+  .hbtn{ appearance:none; border:1px solid #2aff5d55; background:#0b1a12; color:#c8ffd6;
+    border-radius:10px; font:inherit; font-size:14px; padding:8px 12px; min-width:48px; min-height:40px;
+    touch-action:none; cursor:pointer; }
+  .hbtn:active{ background:#1a3a24; }
+  #stage{ width:min(calc(100vw - 16px), calc((100dvh - 230px) * 0.75), 520px); min-width:280px; }
+  canvas{ width:100%; height:auto; aspect-ratio:480/640; display:block; background:#05070f;
+    border:2px solid #1d3a28; border-radius:12px; box-shadow:0 0 24px #00ff6622, inset 0 0 60px #000;
+    touch-action:none; image-rendering:pixelated; }
+  #touchControls{ display:none; width:100%; max-width:520px; justify-content:space-between; align-items:center; gap:8px; }
+  body.touch #touchControls{ display:flex; }
+  .cluster{ display:flex; gap:10px; }
+  .tbtn{ appearance:none; border:1px solid #2aff5d66; background:#0d2015ee; color:#eaffef;
+    border-radius:16px; font:inherit; font-weight:700; touch-action:none; user-select:none;
+    width:68px; height:64px; font-size:22px; line-height:1; cursor:pointer; }
+  .tbtn.small{ width:60px; height:56px; font-size:18px; }
+  .tbtn.fire{ width:84px; height:68px; font-size:15px; background:#3a0d0dee; border-color:#ff555577; }
+  .tbtn:active, .tbtn.held{ background:#1e4a2b; transform:scale(.96); }
+  .tbtn.fire:active, .tbtn.fire.held{ background:#5a1515; }
+  #hint{ font-size:11px; line-height:1.5; opacity:.75; text-align:center; max-width:520px; }
+  body.touch #hint-desktop{ display:none; }
+  #hint-touch{ display:none; }
+  body.touch #hint-touch{ display:block; }
+  #footer{ font-size:11px; opacity:.6; text-align:center; }
+  #footer b{ color:#8fffab; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbtns">
+    <div class="title-mini">🛸 SAUCER SIEGE</div>
+    <div class="btns">
+      <button id="btnMute" class="hbtn" aria-label="mute">🔊</button>
+      <button id="btnPause" class="hbtn" aria-label="pause">⏸</button>
+    </div>
+  </div>
+  <div id="stage">
+    <canvas id="game" width="480" height="640" aria-label="Saucer Siege game"></canvas>
+  </div>
+  <div id="touchControls" aria-hidden="false">
+    <div class="cluster">
+      <button id="tLeft" class="tbtn" aria-label="move left">◀</button>
+      <button id="tRight" class="tbtn" aria-label="move right">▶</button>
+    </div>
+    <div class="cluster">
+      <button id="tPause" class="tbtn small" aria-label="pause">⏸</button>
+      <button id="tFire" class="tbtn fire" aria-label="fire">🔥<br>FIRE</button>
+    </div>
+  </div>
+  <div id="hint">
+    <div id="hint-desktop">← → / A D move · SPACE fire (one at a time) · P pause · M mute · tap canvas = fire, drag = move</div>
+    <div id="hint-touch">DRAG on playfield = move · TAP = fire · SWIPE UP = fire · TWO-FINGER TAP = pause · or use ◀ ▶ + 🔥 buttons</div>
+  </div>
+  <div id="footer">Saucer Siege · Built <b>2026-10-31 12:50 UTC</b> · <b>Muse Spark 1.3 Contributor</b> via OpenCode · single-file canvas · hi-score in localStorage</div>
+</div>
+<script>
+"use strict";
+/* Saucer Siege — see header comment for sign-off. No external assets. Works from file:// */
+// ---------- constants ----------
+const W = 480, H = 640;
+const HUD_H = 46;
+const UFO_Y = 58;
+const BUNKER_Y = 468;
+const CANNON_Y = 566;
+const GROUND_Y = 598;
+const MARCH_MS_FULL = 700;
+const MARCH_MS_LAST = 70;
+const UFO_MIN_MS = 15000, UFO_MAX_MS = 25000;
+const UFO_BONUS = [50,100,150,200,300];
+const COLS = 11, ROWS = 5, TOTAL = COLS*ROWS;
+const COL_GAP = 34, ROW_GAP = 30;
+const STEP_X = 10, STEP_Y = 18;
+const PIX = 2; // alien pixel scale
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// ---------- sprites (X = filled) ----------
+const SQUID_A = ["...XX...","..XXXX..",".XXXXXX.","XX.XX.XX","XXXXXXXX","..X..X..",".X.XX.X.","X.X..X.X"];
+const SQUID_B = ["...XX...","..XXXX..",".XXXXXX.","XX.XX.XX","XXXXXXXX",".X.XX.X.","X......X",".X....X."];
+const CRAB_A = ["..X.....X..","...X...X...","..XXXXXXX..",".XX.XXX.XX.","XXXXXXXXXXX","X.XXXXXXX.X","X.X.....X.X","...XX.XX..."];
+const CRAB_B = ["..X.....X..","...X...X...","..XXXXXXX..",".XX.XXX.XX.","XXXXXXXXXXX","X.XXXXXXX.X",".X.......X.","..XXX.XXX.."];
+const OCTO_A = ["....XXXX....",".XXXXXXXXXX.","XXXXXXXXXXXX","XXX..XX..XXX","XXXXXXXXXXXX","...XX..XX...","..XX.XX.XX..","XX........XX"];
+const OCTO_B = ["....XXXX....",".XXXXXXXXXX.","XXXXXXXXXXXX","XXX..XX..XXX","XXXXXXXXXXXX","..XXX..XXX..",".XX..XX..XX.","..XX....XX.."];
+const CANNON_SPR = [".....X.....",".....X.....","....XXX....","....XXX....",".XXXXXXXXX.","XXXXXXXXXXX","XXXXXXXXXXX","XXXXXXXXXXX"];
+const UFO_SPR = [".....XXXXXX.....","...XXXXXXXXXX...","..XXXXXXXXXXXX..",".XX.XX.XX.XX.XX.","XXXXXXXXXXXXXXXX","..XXX..XX..XXX..","...X........X..."];
+
+function sprW(s){ return s[0].length; }
+function sprH(s){ return s.length; }
+function drawSprite(spr, x, y, px, color){
+  ctx.fillStyle = color;
+  for(let r=0;r<spr.length;r++){
+    const row = spr[r];
+    for(let c=0;c<row.length;c++){
+      if(row[c]==='X') ctx.fillRect(Math.round(x+c*px), Math.round(y+r*px), px, px);
+    }
+  }
+}
+function spriteSize(spr, px){ return {w: sprW(spr)*px, h: sprH(spr)*px}; }
+
+// ---------- state ----------
+let state = 'title'; // title | playing | interstitial | gameover
+let paused = false;
+let muted = false;
+let score = 0, hi = 0, lives = 3, wave = 1;
+let aliens = [];
+let alienDir = 1, alienFrame = 0, marchAcc = 0, marchNote = 0;
+let cannon = { x: W/2, w: 26, h: 16 };
+let bullet = { active:false, x:0, y:0, w:3, h:10, vy:-470 };
+let bombs = [];
+let bombTimer = 1.2;
+let bunkers = [];
+let ufo = { active:false, x:0, dir:1, w:32, h:14, timer: 16 };
+let floaters = []; // {x,y,text,ttl}
+let parts = [];    // particles {x,y,vx,vy,ttl,color,size}
+let stars = [];
+let interstitialT = 0, interstitialNext = 2;
+let deathT = 0; // >0 means cannon exploding pause
+let gameoverReason = '';
+let gameoverT = 0;
+let playerShots = 0;
+let shake = 0;
+
+try{ hi = parseInt(localStorage.getItem('saucerSiegeHiScore')||'0',10)||0; }catch(e){ hi=0; }
+function saveHi(){ try{ localStorage.setItem('saucerSiegeHiScore', String(hi)); }catch(e){} }
+
+// ---------- audio (WebAudio synth, offline-safe) ----------
+let AC=null, master=null, noiseBuf=null;
+function audio(){ 
+  if(AC) { if(AC.state==='suspended') AC.resume(); return AC; }
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = muted?0:0.5; master.connect(AC.destination);
+    const len = AC.sampleRate*0.4; noiseBuf = AC.createBuffer(1,len,AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  }catch(e){ AC=null; }
+  return AC;
+}
+function beep(f0,f1,dur,type,vol){
+  if(!audio()||muted) return;
+  try{
+    const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.setValueAtTime(f0,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+    g.gain.setValueAtTime(vol||0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function noise(dur,vol,filterF){
+  if(!audio()||muted) return;
+  try{
+    const t=AC.currentTime, s=AC.createBufferSource(); s.buffer=noiseBuf;
+    const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filterF||1200;
+    const g=AC.createGain(); g.gain.setValueAtTime(vol||0.4,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t+dur+0.02);
+  }catch(e){}
+}
+const SFX = {
+  shoot(){ beep(880,180,0.13,'square',0.18); },
+  alien(){ beep(420,60,0.2,'sawtooth',0.28); noise(0.18,0.25,1800); },
+  cannon(){ beep(300,40,0.6,'sawtooth',0.35); noise(0.5,0.4,900); },
+  ufoHit(){ beep(1200,2000,0.25,'square',0.25); beep(600,1800,0.3,'sine',0.2); },
+  bunker(){ noise(0.12,0.18,1000); },
+  ufo(){ beep(400,900,0.18,'sine',0.12); },
+  thump(i){ const f=[98,92.5,87.3,82.4][i%4]; beep(f,f*0.9,0.14,'triangle',0.4); },
+  wave(){ beep(440,880,0.3,'square',0.2); },
+};
+let ufoBeepT=0;
+
+// ---------- bunkers ----------
+const BK_COLS=22, BK_ROWS=16, BK_CELL=3;
+const BK_W=BK_COLS*BK_CELL, BK_H=BK_ROWS*BK_CELL;
+function buildBunkers(){
+  bunkers=[];
+  const centers=[60,180,300,420];
+  for(const cx of centers){
+    const data=new Uint8Array(BK_COLS*BK_ROWS).fill(1);
+    // tapered top corners
+    for(let r=0;r<3;r++) for(let c=0;c<BK_COLS;c++){
+      if(c<(3-r)||c>=BK_COLS-(3-r)) data[r*BK_COLS+c]=0;
+    }
+    // arch cutout (open bottom)
+    const mid=(BK_COLS-1)/2;
+    for(let r=10;r<BK_ROWS;r++){
+      const half=2.2+(r-10)*0.9;
+      for(let c=0;c<BK_COLS;c++){
+        if(Math.abs(c-mid)<=half) data[r*BK_COLS+c]=0;
+      }
+    }
+    bunkers.push({x:Math.round(cx-BK_W/2), y:BUNKER_Y, data});
+  }
+}
+function bunkerSolid(b, wx, wy){
+  const lx=Math.floor((wx-b.x)/BK_CELL), ly=Math.floor((wy-b.y)/BK_CELL);
+  if(lx<0||ly<0||lx>=BK_COLS||ly>=BK_ROWS) return false;
+  return b.data[ly*BK_COLS+lx]===1;
+}
+function erode(b, wx, wy, radiusCells){
+  const cx=(wx-b.x)/BK_CELL, cy=(wy-b.y)/BK_CELL;
+  const R=radiusCells||3.2;
+  for(let r=0;r<BK_ROWS;r++) for(let c=0;c<BK_COLS;c++){
+    const dx=c-cx, dy=r-cy, d=Math.sqrt(dx*dx+dy*dy);
+    if(d<=R+Math.random()*1.4) b.data[r*BK_COLS+c]=0;
+  }
+  // small vertical funnel (classic crater tail)
+  for(let k=0;k<4;k++){
+    const rr=Math.floor(cy)-4-k, cc=Math.floor(cx)+(Math.random()<0.5?-1:1)*Math.floor(Math.random()*2);
+    if(rr>=0&&rr<BK_ROWS&&cc>=0&&cc<BK_COLS) b.data[rr*BK_COLS+cc]=0;
+  }
+}
+function drawBunkers(){
+  ctx.fillStyle='#3dff5a';
+  for(const b of bunkers){
+    for(let r=0;r<BK_ROWS;r++) for(let c=0;c<BK_COLS;c++){
+      if(b.data[r*BK_COLS+c]) ctx.fillRect(b.x+c*BK_CELL, b.y+r*BK_CELL, BK_CELL, BK_CELL);
+    }
+  }
+}
+function bulletHitsBunker(x,y){
+  for(const b of bunkers){
+    if(x>=b.x&&x<=b.x+BK_W&&y>=b.y&&y<=b.y+BK_H){
+      if(bunkerSolid(b,x,y)) return b;
+    }
+  }
+  return null;
+}
+
+// ---------- waves / formation ----------
+function alienTypeForRow(r){
+  if(r===0) return {spr:[SQUID_A,SQUID_B], pts:30, color:'#4de1ff'};
+  if(r<=2) return {spr:[CRAB_A,CRAB_B], pts:20, color:'#7dff5e'};
+  return {spr:[OCTO_A,OCTO_B], pts:10, color:'#ff9f43'};
+}
+function startWave(n){
+  wave=n; playerShots=0; alienDir=1; alienFrame=0; marchAcc=0;
+  bullet.active=false; bombs=[]; bombTimer=1.0;
+  ufo.active=false; ufo.timer=rand(UFO_MIN_MS,UFO_MAX_MS)/1000;
+  floaters=[]; // keep particles? clear
+  const dropBonus=Math.min((n-1)*16,64);
+  const topY=112+dropBonus;
+  const totalW=(COLS-1)*COL_GAP;
+  const startX=(W-totalW)/2;
+  aliens=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const t=alienTypeForRow(r);
+    aliens.push({c,r,x:startX+c*COL_GAP, y:topY+r*ROW_GAP, alive:true, pts:t.pts, color:t.color, spr:t.spr});
+  }
+}
+function resetRun(){
+  score=0; lives=3; wave=1; deathT=0; shake=0;
+  buildBunkers(); // fresh bunkers each run; damage carries across waves within run
+  startWave(1);
+  state='playing'; paused=false;
+}
+function aliveCount(){ let n=0; for(const a of aliens) if(a.alive) n++; return n; }
+function marchIntervalMs(){
+  const alive=aliveCount();
+  const base=MARCH_MS_LAST+(MARCH_MS_FULL-MARCH_MS_LAST)*(alive/TOTAL);
+  const waveScale=1+(wave-1)*0.16;
+  return Math.max(28, base/waveScale);
+}
+function rand(a,b){ return a+Math.random()*(b-a); }
+function doMarchStep(){
+  // edge check
+  let minX=1e9,maxX=-1e9;
+  for(const a of aliens){ if(!a.alive) continue;
+    const sz=spriteSize(a.spr[0],PIX);
+    minX=Math.min(minX,a.x); maxX=Math.max(maxX,a.x+sz.w);
+  }
+  if(minX>maxX) return;
+  const willHit = alienDir>0 ? (maxX+STEP_X > W-8) : (minX-STEP_X < 8);
+  if(willHit){
+    for(const a of aliens) if(a.alive) a.y+=STEP_Y;
+    alienDir*=-1;
+  } else {
+    for(const a of aliens) if(a.alive) a.x+=alienDir*STEP_X;
+  }
+  alienFrame^=1;
+  SFX.thump(marchNote++%4);
+}
+
+// ---------- bombs ----------
+function bombInterval(){
+  const mn=Math.max(170, 700-(wave-1)*80);
+  const mx=Math.max(350, 1400-(wave-1)*160);
+  return rand(mn,mx)/1000;
+}
+function spawnBomb(){
+  const alive=aliens.filter(a=>a.alive);
+  if(!alive.length) return;
+  // pick lowest per random column
+  const byCol={};
+  for(const a of alive){ (byCol[a.c]=byCol[a.c]||[]).push(a); }
+  const cols=Object.keys(byCol);
+  const col=cols[(Math.random()*cols.length)|0];
+  const stack=byCol[col];
+  stack.sort((p,q)=>q.y-p.y);
+  const src=stack[0];
+  const sz=spriteSize(src.spr[0],PIX);
+  const type=Math.random()<0.5?0:1;
+  bombs.push({x:src.x+sz.w/2, y:src.y+sz.h+2, vy:(type===0?205:170)+(wave-1)*14, type, ph:Math.random()*6.28, w:4, h:10});
+}
+
+// ---------- firing ----------
+function tryFire(){
+  audio();
+  if(state!=='playing'||paused) return;
+  if(deathT>0) return;
+  if(bullet.active) return;
+  bullet.active=true; bullet.x=cannon.x; bullet.y=CANNON_Y-14;
+  playerShots++;
+  SFX.shoot();
+}
+
+// ---------- input: keyboard ----------
+const keys={left:false,right:false};
+window.addEventListener('keydown', e=>{
+  if(e.repeat){ if(['ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); return; }
+  const k=e.key;
+  if(k==='ArrowLeft'||k==='a'||k==='A') keys.left=true;
+  else if(k==='ArrowRight'||k==='d'||k==='D') keys.right=true;
+  else if(k===' '||k==='Enter'){
+    e.preventDefault(); audio();
+    if(state==='title') resetRun();
+    else if(state==='gameover'&&gameoverT>0.8) resetRun();
+    else if(state==='playing') tryFire();
+  }
+  else if(k==='p'||k==='P'||k==='Escape'){
+    if(state==='playing') togglePause();
+    else if(state==='title'&&k==='Escape'){} 
+  }
+  else if(k==='m'||k==='M') toggleMute();
+  else if(k==='t'||k==='T'){ if(state==='gameover'||state==='playing'){ state='title'; paused=false; } }
+});
+window.addEventListener('keyup', e=>{
+  const k=e.key;
+  if(k==='ArrowLeft'||k==='a'||k==='A') keys.left=false;
+  if(k==='ArrowRight'||k==='d'||k==='D') keys.right=false;
+});
+function togglePause(){
+  audio();
+  if(state!=='playing') return;
+  paused=!paused;
+  syncPauseBtn();
+}
+function toggleMute(){
+  muted=!muted;
+  if(master) master.gain.value=muted?0:0.5;
+  document.getElementById('btnMute').textContent=muted?'🔇':'🔊';
+}
+function syncPauseBtn(){ document.getElementById('btnPause').textContent=paused?'▶':'⏸'; }
+document.getElementById('btnMute').addEventListener('click', ()=>{ audio(); toggleMute(); });
+document.getElementById('btnPause').addEventListener('click', ()=>{ togglePause(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden&&state==='playing'&&!paused) togglePause(); });
+window.addEventListener('blur', ()=>{ if(state==='playing'&&!paused&&deathT<=0){ /* soft pause on blur only if keyboard? keep */ } });
+
+// ---------- input: on-screen buttons ----------
+function bindHold(el, on, off){
+  const start=e=>{ e.preventDefault(); audio(); el.classList.add('held'); on(); };
+  const end=e=>{ e.preventDefault(); el.classList.remove('held'); off&&off(); };
+  el.addEventListener('touchstart',start,{passive:false});
+  el.addEventListener('touchend',end,{passive:false});
+  el.addEventListener('touchcancel',end,{passive:false});
+  el.addEventListener('mousedown',start); el.addEventListener('mouseup',end); el.addEventListener('mouseleave',()=>el.classList.remove('held'));
+}
+bindHold(document.getElementById('tLeft'), ()=>keys.left=true, ()=>keys.left=false);
+bindHold(document.getElementById('tRight'), ()=>keys.right=true, ()=>keys.right=false);
+bindHold(document.getElementById('tFire'), ()=>{ 
+  if(state==='title') resetRun();
+  else if(state==='gameover'&&gameoverT>0.8) resetRun();
+  else tryFire();
+}, null);
+document.getElementById('tPause').addEventListener('touchstart', e=>{ e.preventDefault(); togglePause(); },{passive:false});
+document.getElementById('tPause').addEventListener('click', e=>{ e.preventDefault(); togglePause(); });
+
+// touch detection -> show controls
+if(('ontouchstart' in window)||navigator.maxTouchPoints>0) document.body.classList.add('touch');
+window.addEventListener('touchstart', function once(){ document.body.classList.add('touch'); audio(); },{once:false, passive:true});
+
+// ---------- input: canvas gestures (drag=move, tap=fire, swipe up=fire, 2-finger=pause) ----------
+let gest={id:null,sx:0,sy:0,t:0,moved:false,lx:0};
+function toLogical(clientX,clientY){
+  const r=canvas.getBoundingClientRect();
+  return {x:(clientX-r.left)/r.width*W, y:(clientY-r.top)/r.height*H};
+}
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault(); audio();
+  if(e.touches.length>=2){ togglePause(); return; }
+  const t=e.touches[0], p=toLogical(t.clientX,t.clientY);
+  gest.id=t.identifier; gest.sx=p.x; gest.sy=p.y; gest.t=performance.now(); gest.moved=false; gest.lx=p.x;
+  if(state==='playing'&&!paused){
+    // jump cannon toward finger (drag offset handled on move)
+    cannon.x=clamp(p.x, 16, W-16);
+  }
+},{passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(gest.id===null) return;
+  for(const t of e.touches){
+    if(t.identifier===gest.id){
+      const p=toLogical(t.clientX,t.clientY);
+      if(Math.hypot(p.x-gest.sx,p.y-gest.sy)>14) gest.moved=true;
+      gest.lx=p.x;
+      if(state==='playing'&&!paused) cannon.x=clamp(p.x,16,W-16);
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchend', e=>{
+  e.preventDefault();
+  let ended=false, ex=gest.lx, ey=0;
+  for(const t of e.changedTouches){ if(t.identifier===gest.id){ ended=true; const p=toLogical(t.clientX,t.clientY); ex=p.x; ey=p.y; } }
+  if(!ended) return;
+  const dt=performance.now()-gest.t, dx=ex-gest.sx;
+  const isTap=!gest.moved&&dt<450;
+  const swipeUp=(ey&&gest.sy-ey>45);
+  const swipeDown=(ey&&ey-gest.sy>60&&Math.abs(dx)<60);
+  const fastSwipe=Math.abs(dx)>70&&Math.abs(dx)/Math.max(1,dt)>0.35;
+  if(swipeDown&&state==='playing'){ togglePause(); }
+  else if(isTap||swipeUp||fastSwipe){
+    if(state==='title') resetRun();
+    else if(state==='gameover'&&gameoverT>0.8) resetRun();
+    else if(state==='playing'){
+      if(fastSwipe) cannon.x=clamp(ex,16,W-16);
+      tryFire();
+    }
+  } else if(!gest.moved){
+    // fallback tap without ey (some browsers)
+    if(state==='title') resetRun();
+    else if(state==='gameover'&&gameoverT>0.8) resetRun();
+  }
+  gest.id=null;
+},{passive:false});
+canvas.addEventListener('touchcancel', ()=>{ gest.id=null; },{passive:false});
+// mouse: click=fire/start, drag=move
+let mouseDown=false;
+canvas.addEventListener('mousedown', e=>{ audio(); mouseDown=true;
+  const r=canvas.getBoundingClientRect();
+  const lx=(e.clientX-r.left)/r.width*W;
+  if(state==='playing'&&!paused) cannon.x=clamp(lx,16,W-16);
+});
+canvas.addEventListener('mousemove', e=>{
+  if(!mouseDown||state!=='playing'||paused) return;
+  const r=canvas.getBoundingClientRect();
+  cannon.x=clamp((e.clientX-r.left)/r.width*W,16,W-16);
+});
+canvas.addEventListener('mouseup', e=>{
+  mouseDown=false; audio();
+  if(state==='title') resetRun();
+  else if(state==='gameover'&&gameoverT>0.8) resetRun();
+  else if(state==='playing') tryFire();
+});
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+
+// ---------- stars ----------
+for(let i=0;i<90;i++) stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()<0.8?1:2,tw:Math.random()*6.28});
+
+// ---------- update ----------
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  let dt=(now-last)/1000; last=now;
+  if(dt>0.05) dt=0.05; // clamp hiccups
+  if(!paused) update(dt);
+  render();
+}
+function update(dt){
+  // twinkle always
+  for(const s of stars) s.tw+=dt*3;
+  for(const f of floaters) { f.y-=28*dt; f.ttl-=dt; }
+  floaters=floaters.filter(f=>f.ttl>0);
+  for(const p of parts){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=320*dt; p.ttl-=dt; }
+  parts=parts.filter(p=>p.ttl>0);
+  if(shake>0) shake=Math.max(0,shake-dt*3);
+
+  if(state==='title'||state==='gameover'){
+    gameoverT+=dt;
+    // idle alien wiggle on title? keep marching demo? no
+    return;
+  }
+  if(state==='interstitial'){
+    interstitialT-=dt;
+    if(interstitialT<=0){ startWave(interstitialNext); state='playing'; SFX.wave(); }
+    return;
+  }
+  // playing
+  if(deathT>0){
+    deathT-=dt;
+    if(deathT<=0){
+      if(lives<=0){ enterGameover(''); }
+      else { cannon.x=W/2; bullet.active=false; bombs=[]; }
+    }
+    // still update particles/floaters, skip rest
+    return;
+  }
+  // cannon movement (keyboard/buttons)
+  const SPD=270;
+  if(keys.left) cannon.x-=SPD*dt;
+  if(keys.right) cannon.x+=SPD*dt;
+  cannon.x=clamp(cannon.x,16,W-16);
+
+  // march
+  marchAcc+=dt*1000;
+  const iv=marchIntervalMs();
+  let guard=0;
+  while(marchAcc>=iv&&guard<4){ marchAcc-=iv; doMarchStep(); guard++;
+    if(checkInvasion()){ enterGameover('invasion'); return; }
+  }
+
+  // bullet
+  if(bullet.active){
+    bullet.y+=bullet.vy*dt;
+    if(bullet.y<HUD_H-10){ bullet.active=false; }
+    else {
+      // bunker?
+      const b=bulletHitsBunker(bullet.x, bullet.y);
+      if(b){ erode(b,bullet.x,bullet.y,3.4); bullet.active=false; SFX.bunker(); burst(bullet.x,bullet.y,'#3dff5a',10); }
+      else {
+        // UFO?
+        if(ufo.active&&bullet.x>ufo.x&&bullet.x<ufo.x+ufo.w&&bullet.y>ufo.y&&bullet.y<ufo.y+ufo.h){
+          bullet.active=false;
+          let bonus=UFO_BONUS[(Math.random()*UFO_BONUS.length)|0];
+          if(playerShots===23) bonus=300; // arcade trick
+          score+=bonus; if(score>hi){hi=score;saveHi();}
+          floaters.push({x:ufo.x+ufo.w/2,y:ufo.y-6,text:'+'+bonus,ttl:1.4});
+          burst(ufo.x+ufo.w/2,ufo.y+ufo.h/2,'#ff3b30',22);
+          SFX.ufoHit(); ufo.active=false; ufo.timer=rand(UFO_MIN_MS,UFO_MAX_MS)/1000;
+        } else {
+          // aliens (top-most first since bullet goes up)
+          let hit=null;
+          for(const a of aliens){ if(!a.alive) continue;
+            const sz=spriteSize(a.spr[0],PIX);
+            if(bullet.x>=a.x-2&&bullet.x<=a.x+sz.w+2&&bullet.y>=a.y&&bullet.y<=a.y+sz.h){ hit=a; break; }
+          }
+          if(hit){
+            hit.alive=false; bullet.active=false;
+            score+=hit.pts; if(score>hi){hi=score;saveHi();}
+            const sz=spriteSize(hit.spr[0],PIX);
+            burst(hit.x+sz.w/2,hit.y+sz.h/2,hit.color,14);
+            SFX.alien(); shake=Math.min(1,shake+0.25);
+            if(aliveCount()===0){
+              // wave clear
+              state='interstitial'; interstitialT=2.4; interstitialNext=wave+1;
+              floaters.push({x:W/2,y:H/2-40,text:'WAVE CLEAR!',ttl:2.2});
+              SFX.wave();
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // bombs spawn
+  bombTimer-=dt;
+  if(bombTimer<=0){ spawnBomb(); bombTimer=bombInterval(); if(bombs.length>4+wave) bombs.shift(); }
+
+  // bombs update
+  for(const bm of bombs){
+    bm.y+=bm.vy*dt; bm.ph+=dt*8;
+    if(bm.type===1) bm.x+=Math.sin(bm.ph)*60*dt;
+  }
+  // bombs collisions
+  const cannonBox={x:cannon.x-13,y:CANNON_Y-8,w:26,h:16};
+  for(let i=bombs.length-1;i>=0;i--){
+    const bm=bombs[i];
+    const bb=bulletHitsBunker(bm.x,bm.y+5);
+    if(bb){ erode(bb,bm.x,bm.y+5,3.6); burst(bm.x,bm.y,'#ffb347',10); SFX.bunker(); bombs.splice(i,1); continue; }
+    if(bm.x>=cannonBox.x&&bm.x<=cannonBox.x+cannonBox.w&&bm.y>=cannonBox.y&&bm.y<=cannonBox.y+cannonBox.h){
+      bombs.splice(i,1);
+      lives--; bullet.active=false;
+      burst(cannon.x,CANNON_Y,'#4dff4d',30); burst(cannon.x,CANNON_Y,'#ff3b30',20);
+      SFX.cannon(); shake=1.4; deathT=1.3;
+      if(lives<0) lives=0;
+      // clear remaining bombs to avoid chain insta-death
+      bombs=[];
+      break;
+    }
+    if(bm.y>=GROUND_Y){ burst(bm.x,GROUND_Y,'#888888',8); bombs.splice(i,1); }
+  }
+
+  // UFO schedule (never during interstitial — we are in playing)
+  if(!ufo.active){
+    ufo.timer-=dt;
+    if(ufo.timer<=0){
+      ufo.active=true; ufo.dir=Math.random()<0.5?1:-1;
+      ufo.x=ufo.dir>0?-40:W+40; ufoBeepT=0;
+    }
+  } else {
+    ufo.x+=ufo.dir*115*dt;
+    ufoBeepT-=dt;
+    if(ufoBeepT<=0){ SFX.ufo(); ufoBeepT=0.45; }
+    if((ufo.dir>0&&ufo.x>W+50)||(ufo.dir<0&&ufo.x<-50)){ ufo.active=false; ufo.timer=rand(UFO_MIN_MS,UFO_MAX_MS)/1000; }
+  }
+
+  // invasion check (aliens reaching cannon row)
+  if(checkInvasion()){ enterGameover('invasion'); return; }
+}
+function checkInvasion(){
+  for(const a of aliens){ if(!a.alive) continue;
+    const sz=spriteSize(a.spr[0],PIX);
+    if(a.y+sz.h>=CANNON_Y-8) return true;
+  }
+  return false;
+}
+function enterGameover(reason){
+  state='gameover'; gameoverReason=reason; gameoverT=0;
+  if(score>hi){hi=score;saveHi();}
+  SFX.cannon();
+}
+function burst(x,y,color,n){
+  for(let i=0;i<(n||12);i++){
+    parts.push({x,y,vx:rand(-140,140),vy:rand(-220,40),ttl:rand(0.3,0.8),color,size:rand(1.5,3.5)});
+  }
+  if(parts.length>300) parts.splice(0,parts.length-300);
+}
+
+// ---------- render ----------
+function render(){
+  ctx.save();
+  if(shake>0){ ctx.translate(rand(-1,1)*shake*4, rand(-1,1)*shake*4); }
+  // bg
+  ctx.fillStyle='#05070f'; ctx.fillRect(-10,-10,W+20,H+20);
+  // stars
+  for(const s of stars){
+    const a=0.35+0.4*Math.abs(Math.sin(s.tw));
+    ctx.globalAlpha=a; ctx.fillStyle='#9fd8ff';
+    ctx.fillRect(s.x,s.y,s.s,s.s);
+  }
+  ctx.globalAlpha=1;
+  // ground line
+  ctx.fillStyle='#1d3a28'; ctx.fillRect(0,GROUND_Y,W,2);
+  ctx.fillStyle='#0a1410'; ctx.fillRect(0,GROUND_Y+2,W,H-GROUND_Y);
+
+  drawBunkers();
+  drawAliens();
+  if(ufo.active) drawUFO();
+  drawBullet(); drawBombs();
+  if(state!=='title') drawCannon();
+  drawParts(); drawFloaters();
+  drawHUD();
+
+  ctx.restore();
+  if(state==='title') renderTitle();
+  else if(state==='interstitial') renderInterstitial();
+  else if(state==='gameover') renderGameover();
+  else if(paused) renderPaused();
+  else if(deathT>0){ /* explosion visible via particles */ }
+}
+function drawHUD(){
+  ctx.fillStyle='#000000cc'; ctx.fillRect(0,0,W,HUD_H);
+  ctx.fillStyle='#1d3a28'; ctx.fillRect(0,HUD_H-2,W,2);
+  ctx.fillStyle='#eaffef'; ctx.font='bold 13px monospace'; ctx.textBaseline='top';
+  ctx.textAlign='left'; ctx.fillText('SCORE '+String(score).padStart(4,'0'), 10, 8);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffd54d'; ctx.fillText('HI '+String(hi).padStart(4,'0'), W/2, 8);
+  ctx.fillStyle='#eaffef'; ctx.textAlign='right'; ctx.fillText('WAVE '+wave, W-10, 8);
+  // lives + mute hint
+  ctx.textAlign='left'; ctx.fillStyle='#8fffab'; ctx.font='11px monospace';
+  ctx.fillText('LIVES', 10, 26);
+  for(let i=0;i<lives;i++) drawSprite(CANNON_SPR, 62+i*26, 24, 1, '#4dff4d');
+  ctx.textAlign='right'; ctx.fillStyle='#5a7a66';
+  ctx.fillText(muted?'M:UNMUTE':'M:MUTE', W-10, 26);
+  // march speed bar (shows acceleration)
+  const alive=aliveCount();
+  const frac=1-alive/TOTAL;
+  ctx.fillStyle='#123322'; ctx.fillRect(150,HUD_H-6,180,3);
+  ctx.fillStyle='#2aff5d'; ctx.fillRect(150,HUD_H-6,180*frac,3);
+}
+function drawAliens(){
+  for(const a of aliens){ if(!a.alive) continue;
+    drawSprite(a.spr[alienFrame], a.x, a.y, PIX, a.color);
+  }
+}
+function drawCannon(){
+  if(deathT>0&&Math.floor(performance.now()/90)%2===0) return; // blink while exploding
+  if(lives<=0&&state==='gameover'&&gameoverReason!=='invasion') return;
+  const px=2;
+  drawSprite(CANNON_SPR, cannon.x-11, CANNON_Y-8, px, '#4dff4d');
+}
+function drawBullet(){
+  if(!bullet.active) return;
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(bullet.x-1.5, bullet.y, 3, 10);
+  ctx.fillStyle='#aaffff';
+  ctx.fillRect(bullet.x-1.5, bullet.y, 3, 2);
+}
+function drawBombs(){
+  for(const b of bombs){
+    if(b.type===0){
+      // straight plunger: white shaft + flicker bars
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(b.x-1.5,b.y,3,10);
+      const f=Math.floor(b.ph*2)%2===0;
+      ctx.fillStyle=f?'#ff5555':'#ffffff';
+      ctx.fillRect(b.x-4,b.y+8,8,2);
+      ctx.fillRect(b.x-1.5,b.y-2,3,3);
+    } else {
+      // zigzag: yellow angled segments, wobbles
+      ctx.fillStyle='#ffd54d';
+      const o=Math.sin(b.ph)*3;
+      ctx.fillRect(b.x-3+o,b.y,6,3);
+      ctx.fillRect(b.x-3-o,b.y+3,6,3);
+      ctx.fillRect(b.x-3+o,b.y+6,6,3);
+      ctx.fillStyle='#ff9f43';
+      ctx.fillRect(b.x-1.5,b.y+9,3,3);
+    }
+  }
+}
+function drawUFO(){
+  drawSprite(UFO_SPR, ufo.x, ufo.y, PIX, '#ff3b30');
+  ctx.fillStyle='#ff8888';
+  ctx.fillRect(ufo.x+8,ufo.y+14,16,1);
+}
+function drawParts(){
+  for(const p of parts){ ctx.globalAlpha=Math.max(0,p.ttl*1.6); ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,p.size,p.size); }
+  ctx.globalAlpha=1;
+}
+function drawFloaters(){
+  ctx.textAlign='center'; ctx.font='bold 14px monospace';
+  for(const f of floaters){ ctx.globalAlpha=Math.min(1,f.ttl*1.5); ctx.fillStyle='#ffd54d'; ctx.fillText(f.text,f.x,f.y); }
+  ctx.globalAlpha=1;
+}
+function overlayDim(a){ ctx.fillStyle='rgba(2,6,10,'+a+')'; ctx.fillRect(0,0,W,H); }
+function renderTitle(){
+  overlayDim(0.72);
+  ctx.textAlign='center';
+  ctx.fillStyle='#2aff5d'; ctx.font='bold 38px monospace';
+  ctx.fillText('SAUCER', W/2, 92);
+  ctx.fillStyle='#ff3b30'; ctx.fillText('SIEGE', W/2, 132);
+  ctx.fillStyle='#5a7a66'; ctx.font='11px monospace';
+  ctx.fillText('a SPACE INVADERS homage · single file', W/2, 156);
+  // legend
+  ctx.fillStyle='#eaffef'; ctx.font='bold 13px monospace';
+  ctx.fillText('* SCORE TABLE *', W/2, 184);
+  drawSprite(SQUID_A, W/2-90, 204, PIX, '#4de1ff');
+  drawSprite(CRAB_A, W/2-90, 230, 2, '#7dff5e');
+  drawSprite(OCTO_A, W/2-90, 258, 2, '#ff9f43');
+  drawSprite(UFO_SPR, W/2-90, 288, 1, '#ff3b30');
+  ctx.textAlign='left'; ctx.font='13px monospace'; ctx.fillStyle='#eaffef';
+  ctx.fillText('= 30 PTS', W/2-40, 208);
+  ctx.fillText('= 20 PTS', W/2-40, 236);
+  ctx.fillText('= 10 PTS', W/2-40, 264);
+  ctx.fillText('= ??? PTS', W/2-40, 290);
+  ctx.textAlign='center'; ctx.font='11px monospace'; ctx.fillStyle='#9fd8ff';
+  const isTouch=document.body.classList.contains('touch');
+  if(isTouch){
+    ctx.fillText('DRAG = move cannon', W/2, 330);
+    ctx.fillText('TAP / SWIPE-UP / FIRE btn = shoot', W/2, 346);
+    ctx.fillText('TWO-FINGER TAP / ⏸ = pause', W/2, 362);
+  } else {
+    ctx.fillText('← → / A D = move · SPACE = fire (1 at a time)', W/2, 330);
+    ctx.fillText('P / ESC = pause · M = mute · drag / tap also work', W/2, 346);
+  }
+  ctx.fillStyle='#8fffab';
+  ctx.fillText('4 bunkers erode pixel-by-pixel · bombs fall faster each wave', W/2, 378);
+  ctx.fillText('UFO every ~15-25s · kill 23rd shot = 300pts trick', W/2, 394);
+  // hi
+  ctx.fillStyle='#ffd54d'; ctx.font='bold 14px monospace';
+  ctx.fillText('HI-SCORE  '+String(hi).padStart(4,'0'), W/2, 424);
+  // blink start
+  if(Math.floor(performance.now()/500)%2===0){
+    ctx.fillStyle='#ffffff'; ctx.font='bold 16px monospace';
+    ctx.fillText(isTouch?'— TAP TO START —':'— PRESS SPACE TO START —', W/2, 462);
+  }
+  ctx.fillStyle='#5a7a66'; ctx.font='11px monospace';
+  ctx.fillText('Built 2026-10-31 12:50 UTC · Muse Spark 1.3 Contributor', W/2, 500);
+  ctx.fillText('3 lives · invasion = instant defeat · hi-score persists', W/2, 516);
+  ctx.fillText('march stomps faster as swarm thins · P pauses', W/2, 532);
+}
+function renderInterstitial(){
+  overlayDim(0.55);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffffff'; ctx.font='bold 30px monospace';
+  ctx.fillText('WAVE '+interstitialNext, W/2, H/2-20);
+  ctx.fillStyle='#8fffab'; ctx.font='13px monospace';
+  ctx.fillText('formation drops lower · march + bombs faster', W/2, H/2+12);
+  ctx.fillText('bunkers stay damaged!', W/2, H/2+30);
+}
+function renderGameover(){
+  overlayDim(0.75);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ff3b30'; ctx.font='bold 34px monospace';
+  ctx.fillText(gameoverReason==='invasion'?'INVASION!':'GAME OVER', W/2, 220);
+  ctx.fillStyle='#eaffef'; ctx.font='14px monospace';
+  if(gameoverReason==='invasion') ctx.fillText('the swarm reached your cannon row', W/2, 248);
+  else ctx.fillText('the swarm claims another cannon', W/2, 248);
+  ctx.fillStyle='#ffffff'; ctx.font='bold 20px monospace';
+  ctx.fillText('SCORE  '+score, W/2, 292);
+  ctx.fillStyle='#ffd54d';
+  const isNew=score>=hi&&score>0;
+  ctx.fillText((isNew?'NEW HI!  ':'HI  ')+hi, W/2, 318);
+  ctx.fillStyle='#8fffab'; ctx.font='12px monospace';
+  ctx.fillText('reached wave '+wave+' · '+aliveCount()+' aliens left', W/2, 346);
+  if(Math.floor(performance.now()/500)%2===0){
+    ctx.fillStyle='#ffffff'; ctx.font='bold 14px monospace';
+    const isTouch=document.body.classList.contains('touch');
+    ctx.fillText(isTouch?'TAP TO RETRY':'SPACE TO RETRY · T FOR TITLE', W/2, 392);
+  }
+  ctx.fillStyle='#5a7a66'; ctx.font='11px monospace';
+  ctx.fillText('Built 2026-10-31 · Muse Spark 1.3 Contributor', W/2, 430);
+}
+function renderPaused(){
+  overlayDim(0.6);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffffff'; ctx.font='bold 26px monospace';
+  ctx.fillText('PAUSED', W/2, H/2-10);
+  ctx.fillStyle='#8fffab'; ctx.font='12px monospace';
+  ctx.fillText('P / ESC / ⏸ / two-finger tap to resume', W/2, H/2+16);
+}
+
+// ---------- boot ----------
+buildBunkers();
+startWave(1);
+state='title';
+syncPauseBtn();
+requestAnimationFrame(t=>{ last=t; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>

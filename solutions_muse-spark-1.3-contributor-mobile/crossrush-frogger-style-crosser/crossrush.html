@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1e13">
+<title>Crossrush — Frogger-Style Crosser</title>
+<style>
+  :root{
+    --bg:#0b1e13; --panel:#12291b; --accent:#7CFC00; --accent2:#ffd23f;
+    --danger:#ff4d6d; --water:#1d6fa5; --road:#2b2f36; --grass:#2e9e4f;
+    --text:#eafbe7; --muted:#9fbf9f;
+    --tap:64px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    overscroll-behavior:none; -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; touch-action:manipulation;}
+  body{min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom)); gap:8px;}
+  h1{font-size:clamp(18px,5vw,26px);margin:4px 0 0;letter-spacing:.5px;text-align:center;}
+  h1 .frog{display:inline-block;transform:translateY(2px);}
+  .sub{font-size:12px;color:var(--muted);text-align:center;max-width:520px;line-height:1.4;}
+  #hud{display:flex;gap:8px;align-items:stretch;justify-content:center;flex-wrap:wrap;
+    width:min(96vw,480px);}
+  .card{background:var(--panel);border:1px solid #234d30;border-radius:12px;
+    padding:6px 10px;min-width:0;flex:1 1 auto;text-align:center;}
+  .card .label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+  .card .val{font-size:18px;font-weight:800;line-height:1.1;}
+  #livesVal{letter-spacing:2px;}
+  #timerWrap{width:min(96vw,480px);background:#0a1510;border:1px solid #234d30;
+    border-radius:999px;height:14px;overflow:hidden;position:relative;}
+  #timerBar{height:100%;width:100%;background:linear-gradient(90deg,#7CFC00,#ffd23f,#ff4d6d);
+    transition:width .1s linear;}
+  #timerText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:700;color:#06120a;mix-blend-mode:plus-lighter;color:#fff;
+    text-shadow:0 1px 2px #000;}
+  #stage{position:relative;width:min(96vw,480px);}
+  canvas{width:100%;height:auto;display:block;border-radius:14px;
+    border:2px solid #234d30;background:#000;
+    touch-action:none; /* critical: swipe/tap gestures handled in JS, no scroll/zoom */
+    image-rendering:auto;}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,12,7,.82);backdrop-filter:blur(3px);border-radius:14px;
+    text-align:center;padding:16px;touch-action:none;}
+  #overlay.hidden{display:none;}
+  #overlay .box{max-width:380px;}
+  #overlay h2{margin:0 0 8px;font-size:clamp(20px,6vw,28px);}
+  #overlay p{font-size:14px;color:#d6ecd6;line-height:1.5;margin:8px 0;}
+  #overlay .keys{font-size:12px;color:var(--muted);}
+  .btnRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+  button{font:inherit;color:#06120a;background:var(--accent);border:0;border-radius:12px;
+    padding:12px 16px;font-weight:800;font-size:16px;cursor:pointer;
+    min-height:48px;touch-action:manipulation;}
+  button.secondary{background:#203a28;color:var(--text);border:1px solid #3a6b48;}
+  button:active{transform:scale(.96);}
+  #topBtns{display:flex;gap:8px;width:min(96vw,480px);justify-content:center;}
+  #topBtns button{flex:1;padding:10px;font-size:14px;min-height:44px;}
+  /* ---- touch d-pad ---- */
+  #touchUI{width:min(96vw,480px);display:flex;flex-direction:column;align-items:center;gap:6px;}
+  #dpad{display:grid;grid-template-columns:var(--tap) var(--tap) var(--tap);
+    grid-template-rows:var(--tap) var(--tap) var(--tap);gap:8px;
+    touch-action:none;user-select:none;}
+  .tbtn{background:#1d3a26;color:#fff;border:2px solid #3a6b48;border-radius:16px;
+    font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;
+    min-width:var(--tap);min-height:var(--tap);touch-action:none;cursor:pointer;}
+  .tbtn:active,.tbtn.pressed{background:var(--accent);color:#06120a;border-color:var(--accent);}
+  #gestureHint{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;max-width:480px;}
+  #gestureHint b{color:#d6ecd6;}
+  footer{font-size:11px;color:var(--muted);text-align:center;max-width:520px;line-height:1.5;
+    padding:8px 10px 16px;}
+  footer .sig{color:#c9e8c9;}
+  @media (max-height:700px){
+    :root{--tap:56px;}
+    .sub{display:none;}
+    h1{font-size:18px;}
+  }
+  @media (min-width:700px){
+    :root{--tap:60px;}
+    body{padding-top:14px;}
+  }
+</style>
+</head>
+<body>
+<h1><span class="frog">🐸</span> CROSSRUSH</h1>
+<div class="sub">Courier frog: cross 5 road lanes + 3 river rows. Fill all 5 goal slots to level up (+15% speed).</div>
+
+<div id="hud" role="status" aria-live="polite">
+  <div class="card"><div class="label">Score</div><div class="val" id="scoreVal">0</div></div>
+  <div class="card"><div class="label">High</div><div class="val" id="highVal">0</div></div>
+  <div class="card"><div class="label">Lives</div><div class="val" id="livesVal">🐸🐸🐸</div></div>
+  <div class="card"><div class="label">Level</div><div class="val" id="levelVal">1</div></div>
+</div>
+<div id="timerWrap" aria-label="Time left"><div id="timerBar"></div><div id="timerText">15.0s</div></div>
+
+<div id="stage">
+  <canvas id="game" width="440" height="480"></canvas>
+  <div id="overlay">
+    <div class="box">
+      <h2 id="ovTitle">🐸 CROSSRUSH</h2>
+      <p id="ovText">Hop with <b>Arrow keys / WASD</b>, <b>D-Pad</b>, <b>swipe</b>, or <b>tap near the frog</b>.<br>
+      Ride logs • avoid cars • beware sinking turtles • 15s per attempt.</p>
+      <p class="keys">⌨️ move · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 👆 swipe / tap · ✌️ two-finger tap = pause</p>
+      <div class="btnRow">
+        <button id="mainBtn">▶ Start</button>
+        <button id="muteBtn" class="secondary" aria-label="Mute">🔊 Sound</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="topBtns">
+  <button id="pauseBtn" class="secondary">⏸ Pause</button>
+  <button id="restartBtn" class="secondary">↻ Restart</button>
+  <button id="muteBtn2" class="secondary">🔊</button>
+</div>
+
+<div id="touchUI">
+  <div id="dpad" aria-label="Touch controls">
+    <div></div><div class="tbtn" data-dx="0" data-dy="-1" aria-label="Up">▲</div><div></div>
+    <div class="tbtn" data-dx="-1" data-dy="0" aria-label="Left">◀</div>
+    <div class="tbtn" data-dx="0" data-dy="1" aria-label="Down">▼</div>
+    <div class="tbtn" data-dx="1" data-dy="0" aria-label="Right">▶</div>
+    <div></div><div class="tbtn" data-dx="0" data-dy="-1" aria-label="Up">▲</div><div></div>
+  </div>
+  <div id="gestureHint"><b>Swipe</b> anywhere on the board = hop that way &nbsp;•&nbsp; <b>Tap</b> = hop toward finger &nbsp;•&nbsp; <b>Two-finger tap</b> = pause &nbsp;•&nbsp; D-Pad also works with thumbs</div>
+</div>
+
+<footer>
+  <div class="sig" id="signoff">Produced: 2026-10-31 00:00 UTC · by Muse Spark 1.3 Contributor (OpenCode · mobile subagent)</div>
+  <div>Single-file vanilla HTML/CSS/JS · no dependencies · no network · procedural sprites · 60&nbsp;Hz fixed timestep · high score in localStorage.</div>
+</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   CROSSRUSH — Frogger-style road & river crosser (mobile-first)
+   Single file, vanilla JS, procedural sprites, WebAudio bleeps only.
+   Fixed-timestep 60 Hz logic decoupled from render.
+   Mobile: D-Pad + swipe + tap-to-hop + two-finger-tap pause.
+   ===================================================================== */
+
+// ---- Required tunable lane config (sample from brief — edit to retune) ----
+const LANES = [
+  {type:'road', dir:1,  speed:90,  gap:220},
+  {type:'road', dir:-1, speed:120, gap:180},
+  {type:'river', dir:1,  speed:60, len:3, sink:false},
+  {type:'river', dir:-1, speed:70, len:2, sink:true, sinkPeriod:5},
+];
+// Full 12-row board is derived from LANES above (tunable): the two road
+// entries seed road speeds/gaps, the two river entries seed river rows.
+// Extra lanes follow the same alternating-direction pattern.
+
+const COLS = 11, ROWS = 12, CELL = 40, W = COLS*CELL, H = ROWS*CELL;
+const TURN_TIME = 15;              // 15s lane timeout per attempt (spec)
+const SLOT_COLS = [1,3,5,7,9];     // 5 goal slots across top bank
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// Crisp rendering on high-DPI phones (internal buffer scaled, CSS stays fluid)
+(function hiDPI(){
+  const dpr = Math.min(window.devicePixelRatio||1, 3);
+  if(dpr>1){
+    const bw=W, bh=H;
+    canvas.width=bw*dpr; canvas.height=bh*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+})();
+
+// ---- Row table: 12 rows (0=top goal … 11=bottom start) ----
+// type: goal | river | road | safe
+function buildRows(){
+  const r0=LANES[0], r1=LANES[1], v0=LANES[2], v1=LANES[3];
+  return [
+    {type:'goal', label:'goal'},
+    {type:'river',dir:v0.dir, speed:v0.speed, len:v0.len, sink:!!v0.sink, sinkPeriod:v0.sinkPeriod||5},
+    {type:'river',dir:v1.dir, speed:v1.speed, len:v1.len, sink:!!v1.sink, sinkPeriod:v1.sinkPeriod||5},
+    {type:'river',dir:1,     speed:78,        len:2,      sink:false, sinkPeriod:6},
+    {type:'safe', label:'median'},
+    {type:'road', dir:r0.dir, speed:r0.speed,       gap:r0.gap, kind:'car'},
+    {type:'road', dir:r1.dir, speed:r1.speed,       gap:r1.gap, kind:'car'},
+    {type:'road', dir:1,      speed:140,            gap:200,    kind:'truck'},
+    {type:'road', dir:-1,     speed:100,            gap:240,    kind:'car'},
+    {type:'road', dir:1,      speed:115,            gap:190,    kind:'car'},
+    {type:'safe', label:'sidewalk'},
+    {type:'safe', label:'start'},
+  ];
+}
+const ROWDEF = buildRows();
+const GOAL_ROW=0, RIVER_ROWS=[1,2,3], MEDIAN=4, ROAD_ROWS=[5,6,7,8,9];
+
+// ---- State ----
+let score=0, lives=3, level=1, speedMul=1;
+let high=0;
+try{ high = parseInt(localStorage.getItem('crossrush_high_score')||'0',10)||0; }catch(e){}
+let slots=[false,false,false,false,false];
+let timeLeft=TURN_TIME;
+let state='title'; // title|playing|paused|dying|levelclear|gameover
+let dieTimer=0, dieCause='', clearTimer=0;
+let elapsed=0;
+let cars=[];       // per-row arrays {x,w,color,fast}
+let plats=[];      // per-row arrays {x,w,sink,phase,period,kind}
+let fly=null, flyTimer=8;
+let flash=0, shake=0;
+
+const frog={ col:5, row:11, x:5*CELL+CELL/2, fromX:0,fromY:0,toX:0,toY:0, anim:1, face:'up', maxRow:11 };
+
+// ---- Audio (oscillator only) ----
+let AC=null, muted=false;
+function ac(){
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(AC && AC.state==='suspended') AC.resume();
+  return AC;
+}
+function tone(f0,f1,dur,type,vol,when){
+  if(muted) return;
+  const c=ac(); if(!c) return;
+  const t=c.currentTime+(when||0);
+  const o=c.createOscillator(), g=c.createGain();
+  o.type=type||'square';
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),t+dur);
+  g.gain.setValueAtTime(vol||0.12,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t+dur+0.02);
+}
+const sHop =()=>tone(280,520,0.09,'square',0.10);
+const sThud=()=>tone(140,90,0.10,'square',0.08);
+const sDie =()=>{tone(400,60,0.45,'sawtooth',0.14); tone(200,40,0.4,'square',0.08,0.05);};
+const sGoal=()=>{tone(523,523,0.10,'square',0.12); tone(659,659,0.10,'square',0.12,0.10); tone(784,784,0.18,'square',0.12,0.20);};
+const sLevel=()=>{[523,659,784,1046].forEach((f,i)=>tone(f,f,0.14,'triangle',0.12,i*0.11));};
+const sFly =()=>{tone(880,1320,0.15,'sine',0.12); tone(1320,1760,0.12,'sine',0.10,0.12);};
+function toggleMute(){
+  muted=!muted;
+  document.getElementById('muteBtn').textContent = muted?'🔇 Muted':'🔊 Sound';
+  document.getElementById('muteBtn2').textContent = muted?'🔇':'🔊';
+}
+document.getElementById('muteBtn').addEventListener('click',e=>{e.stopPropagation();ac();toggleMute();});
+document.getElementById('muteBtn2').addEventListener('click',e=>{e.stopPropagation();ac();toggleMute();});
+
+// ---- Level / spawn ----
+const CAR_COLORS=['#ff595e','#ffca3a','#8ac926','#1982c4','#6a4c93','#ff924c','#4cc9f0'];
+function rowY(r){return r*CELL;}
+function cellCX(c){return c*CELL+CELL/2;}
+function cellCY(r){return r*CELL+CELL/2;}
+
+function spawnTraffic(){
+  cars=ROWDEF.map(()=>[]);
+  plats=ROWDEF.map(()=>[]);
+  ROWDEF.forEach((rd,r)=>{
+    if(rd.type==='road'){
+      const arr=cars[r];
+      const isTruck = rd.kind==='truck';
+      const cw = (isTruck?1.9:1.15)*CELL;
+      const gap = rd.gap;
+      const n = Math.max(2, Math.floor((W+gap)/(cw+gap)));
+      for(let i=0;i<n;i++){
+        arr.push({
+          x: (i*(W/n) + (r*37)%60) % W,
+          w: cw*(0.9+Math.random()*0.25),
+          color: CAR_COLORS[(r+i)%CAR_COLORS.length],
+          truck:isTruck, offset:Math.random()*W
+        });
+      }
+    } else if(rd.type==='river'){
+      const arr=plats[r];
+      const pw = rd.len*CELL;
+      const gap = Math.max(90, 200 - rd.speed*0.4);
+      const n = Math.max(2, Math.round((W+gap)/(pw+gap)));
+      const kind = rd.sink ? 'turtle' : 'log';
+      for(let i=0;i<n;i++){
+        arr.push({
+          x:(i*(W/n) + (r*53)%80)%W,
+          w:pw, sink:rd.sink, period:rd.sinkPeriod||5,
+          phase:(i*(rd.sinkPeriod||5)/n + r*1.3)%(rd.sinkPeriod||5),
+          kind
+        });
+      }
+    }
+  });
+}
+function resetFrog(){
+  frog.col=5; frog.row=11; frog.x=cellCX(5);
+  frog.fromX=frog.toX=frog.x; frog.fromY=frog.toY=cellCY(11);
+  frog.anim=1; frog.face='up'; frog.maxRow=11;
+  timeLeft=TURN_TIME;
+}
+function fullReset(){
+  score=0; lives=3; level=1; speedMul=1;
+  slots=[false,false,false,false,false];
+  fly=null; flyTimer=7;
+  spawnTraffic(); resetFrog();
+  updateHUD();
+}
+
+// ---- HUD ----
+function updateHUD(){
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('highVal').textContent=Math.max(high,score);
+  document.getElementById('livesVal').textContent='🐸'.repeat(Math.max(0,lives))||'—';
+  document.getElementById('levelVal').textContent=level;
+  const pct=Math.max(0,timeLeft/TURN_TIME*100);
+  document.getElementById('timerBar').style.width=pct+'%';
+  document.getElementById('timerText').textContent=timeLeft.toFixed(1)+'s';
+  document.getElementById('timerBar').style.background =
+    timeLeft<4 ? '#ff4d6d' : 'linear-gradient(90deg,#7CFC00,#ffd23f,#ff4d6d)';
+}
+function saveHigh(){
+  if(score>high){ high=score; try{localStorage.setItem('crossrush_high_score',String(high));}catch(e){} }
+  updateHUD();
+}
+
+// ---- Overlays ----
+const overlay=document.getElementById('overlay');
+const ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
+const mainBtn=document.getElementById('mainBtn');
+function showOverlay(title,html,btn){
+  ovTitle.innerHTML=title; ovText.innerHTML=html; mainBtn.textContent=btn;
+  overlay.classList.remove('hidden');
+}
+function hideOverlay(){ overlay.classList.add('hidden'); }
+mainBtn.addEventListener('click',e=>{
+  e.stopPropagation(); ac();
+  if(state==='title'||state==='gameover'){ fullReset(); state='playing'; hideOverlay(); sGoal(); }
+  else if(state==='paused'){ state='playing'; hideOverlay(); }
+});
+document.getElementById('pauseBtn').addEventListener('click',()=>{ac(); togglePause();});
+document.getElementById('restartBtn').addEventListener('click',()=>{ac(); fullReset(); state='playing'; hideOverlay();});
+function togglePause(){
+  if(state==='playing'){ state='paused'; showOverlay('⏸ Paused','Take a breather. Tap ▶ to continue.<br>✌️ two-finger tap also pauses.','▶ Resume'); }
+  else if(state==='paused'){ state='playing'; hideOverlay(); }
+}
+
+// ---- Movement ----
+function tryMove(dx,dy){
+  if(state!=='playing') return;
+  if(frog.anim<1) return; // one hop at a time (prevents tunneling on mobile)
+  ac();
+  let nc=frog.col+dx, nr=frog.row+dy;
+  // side clamp
+  if(nc<0||nc>=COLS){ sThud(); return; }
+  if(nr<0) nr=0;
+  if(nr>=ROWS){ sThud(); return; }
+  // goal bank: only slots are enterable; bushes block
+  if(nr===GOAL_ROW){
+    const slotIdx=SLOT_COLS.indexOf(nc);
+    if(slotIdx<0){ sThud(); bump(dx,dy); return; }
+    if(slots[slotIdx]){ sThud(); bump(dx,dy); return; }
+  }
+  frog.col=nc; frog.row=nr;
+  frog.fromX=frog.x; frog.fromY=cellCY(frog.row - dy) ; // approx start render
+  // precise render start: use current rendered pos
+  frog.fromX=renderX; frog.fromY=renderY;
+  frog.x=cellCX(nc);
+  frog.toX=frog.x; frog.toY=cellCY(nr);
+  frog.anim=0;
+  frog.face = dy<0?'up':dy>0?'down':dx<0?'left':'right';
+  sHop();
+  // forward-hop bonus
+  if(nr<frog.maxRow && nr>GOAL_ROW){ frog.maxRow=nr; score+=10; saveHigh(); }
+  updateHUD();
+}
+function bump(dx,dy){ // tiny squash feedback when blocked
+  frog.face = dy<0?'up':dy>0?'down':dx<0?'left':'right';
+  frog.squashT=0;
+}
+
+// ---- Death / goal / level ----
+function die(cause){
+  if(state!=='playing') return;
+  state='dying'; dieTimer=1.1; dieCause=cause;
+  lives--; flash=1; shake=1; sDie();
+  saveHigh(); updateHUD();
+}
+function onGoal(slotIdx){
+  const timeBonus=Math.ceil(Math.max(0,timeLeft))*5;
+  score+=100+timeBonus;
+  if(flyTaken){ score+=200; flyTaken=false; }
+  slots[slotIdx]=true;
+  sGoal(); saveHigh();
+  if(slots.every(Boolean)){
+    state='levelclear'; clearTimer=1.6; sLevel();
+    score+=500; saveHigh();
+  } else {
+    resetFrog();
+  }
+  updateHUD();
+}
+let flyTaken=false;
+
+function levelUp(){
+  level++; speedMul*=1.15;
+  slots=[false,false,false,false,false];
+  fly=null; flyTimer=6;
+  spawnTrafficKeepPositions();
+  resetFrog(); state='playing'; hideOverlay();
+  updateHUD();
+}
+// keep object counts but speeds scale via speedMul — nothing to respawn,
+// but re-scatter slightly so higher level feels fresh
+function spawnTrafficKeepPositions(){
+  // speeds are read live as base*speedMul, so just re-jitter positions
+  cars.forEach(arr=>arr.forEach(c=>{c.x=(c.x+40)%(W+c.w);}));
+}
+
+// ---- Update (fixed 60 Hz) ----
+function platformUnder(){
+  const r=frog.row;
+  if(ROWDEF[r].type!=='river') return null;
+  const cx=frog.x;
+  for(const p of plats[r]){
+    // wrap-aware: platforms can straddle edges; test both copies
+    for(const off of [0,-W,W]){
+      if(cx>=p.x+off && cx<=p.x+off+p.w) return p;
+    }
+  }
+  return null;
+}
+function turtleSubmerged(p){
+  if(!p.sink) return false;
+  const t=(elapsed+p.phase)%p.period;
+  // floating 0..p-2, warning p-2..p-1, submerged p-1..p
+  return t > p.period-1;
+}
+function update(dt){
+  elapsed+=dt;
+  if(flash>0)flash-=dt*2;
+  if(shake>0)shake-=dt*2;
+  if(state!=='playing' && state!=='dying' && state!=='levelclear') return;
+
+  const spd=speedMul;
+  // move traffic
+  ROWDEF.forEach((rd,r)=>{
+    if(rd.type==='road'){
+      for(const c of cars[r]){
+        c.x += rd.dir*rd.speed*spd*dt;
+        if(rd.dir>0 && c.x>W+20) c.x=-c.w-20;
+        if(rd.dir<0 && c.x+c.w<-20) c.x=W+20;
+      }
+    } else if(rd.type==='river'){
+      for(const p of plats[r]){
+        p.x += rd.dir*rd.speed*spd*dt;
+        if(rd.dir>0 && p.x>W) p.x=-p.w;
+        if(rd.dir<0 && p.x+p.w<0) p.x=W;
+      }
+    }
+  });
+
+  if(state==='dying'){
+    dieTimer-=dt;
+    if(dieTimer<=0){
+      if(lives<=0){
+        state='gameover'; saveHigh();
+        showOverlay('💀 Game Over',
+          `Score <b>${score}</b> · Level <b>${level}</b> · Best <b>${high}</b><br>`+
+          (dieCause==='timeout'?'⏱ Out of time!':dieCause==='car'?'🚗 Splatted by traffic!':'🌊 The river claimed you!')+
+          `<br><br>Tap ↻ or ▶ to try again.`,
+          '▶ Play Again');
+      } else { resetFrog(); state='playing'; }
+    }
+    return;
+  }
+  if(state==='levelclear'){
+    clearTimer-=dt;
+    if(clearTimer<=0) levelUp();
+    return;
+  }
+
+  // hop animation
+  if(frog.anim<1){
+    frog.anim=Math.min(1,frog.anim+dt/0.11);
+    if(frog.anim>=1){
+      // arrived — check goal
+      if(frog.row===GOAL_ROW){
+        const si=SLOT_COLS.indexOf(frog.col);
+        if(si>=0 && !slots[si]){ onGoal(si); return; }
+      }
+    }
+  }
+
+  // log riding (inherit platform velocity)
+  const plat=platformUnder();
+  if(plat && frog.anim>=1){
+    const rd=ROWDEF[frog.row];
+    frog.x += rd.dir*rd.speed*spd*dt;
+    frog.toX=frog.x;
+    // fly pickup?
+    if(fly && fly.row===frog.row && Math.abs(frog.x-fly.x)<CELL*0.7){
+      flyTaken=true; sFly(); score+=0; // +200 awarded in onGoal? no — award now
+      score+=200; fly=null; flyTimer=8; saveHigh(); updateHUD();
+      flyTaken=false;
+    }
+    if(frog.x<0||frog.x>W){ die('drown'); return; }
+    frog.col=Math.max(0,Math.min(COLS-1,Math.round((frog.x-CELL/2)/CELL)));
+  }
+
+  // timer
+  timeLeft-=dt;
+  if(timeLeft<=0){ timeLeft=0; updateHUD(); die('timeout'); return; }
+
+  // collisions (only when hop finished, to feel fair on touch)
+  if(frog.anim>=1){
+    const r=frog.row, rd=ROWDEF[r];
+    if(rd.type==='road'){
+      const cy=cellCY(r), fh=CELL*0.42, fw=CELL*0.36;
+      const fx=frog.x;
+      for(const c of cars[r]){
+        if(fx+fw>c.x && fx-fw<c.x+c.w && Math.abs(cellCY(r)-cy)<CELL){
+          die('car'); return;
+        }
+      }
+    } else if(rd.type==='river'){
+      const p=platformUnder();
+      if(!p){ die('drown'); return; }
+      if(turtleSubmerged(p)){ die('drown'); return; }
+    }
+  }
+
+  // fly bonus: appears on a random log
+  flyTimer-=dt;
+  if(!fly && flyTimer<=0){
+    const rr=RIVER_ROWS[Math.floor(Math.random()*RIVER_ROWS.length)];
+    if(plats[rr].length){
+      const p=plats[rr][Math.floor(Math.random()*plats[rr].length)];
+      fly={row:rr, x:p.x+p.w/2, ttl:6, p};
+    }
+    flyTimer=9+Math.random()*6;
+  }
+  if(fly){
+    fly.ttl-=dt;
+    // stick fly to its platform
+    if(fly.p){ fly.x=fly.p.x+fly.p.w/2; fly.row=ROWDEF.indexOf(ROWDEF[fly.row])>=0?fly.row:fly.row; }
+    // find actual row of platform (platforms don't change rows)
+    if(fly.ttl<=0){ fly=null; }
+  }
+
+  updateHUD();
+}
+
+// ---- Render ----
+let renderX=cellCX(5), renderY=cellCY(11);
+function draw(){
+  ctx.save();
+  ctx.clearRect(0,0,W,H);
+  if(shake>0){ ctx.translate((Math.random()-0.5)*6*shake,(Math.random()-0.5)*6*shake); }
+
+  for(let r=0;r<ROWS;r++){
+    const rd=ROWDEF[r], y=rowY(r);
+    if(rd.type==='goal') drawGoalRow(y,r);
+    else if(rd.type==='river') drawRiverRow(y,r,rd);
+    else if(r===MEDIAN) drawGrass(y,'#2f9e52',true);
+    else if(rd.type==='road') drawRoadRow(y,r,rd);
+    else drawGrass(y, r===11?'#2f9e52':'#359e57', false);
+  }
+
+  // platforms then cars then fly then frog then slots overlay
+  RIVER_ROWS.forEach(r=>{ for(const p of plats[r]) drawPlat(p,r); });
+  ROAD_ROWS.forEach(r=>{ for(const c of cars[r]) drawCar(c,r,ROWDEF[r]); });
+
+  if(fly) drawFly(fly);
+
+  // goal frogs (filled slots)
+  slots.forEach((f,i)=>{ if(f) drawMiniFrog(cellCX(SLOT_COLS[i]), rowY(0)+CELL/2); });
+
+  if(state!=='gameover') drawFrog();
+
+  // water splash / death flash
+  if(flash>0 && (state==='dying')){
+    ctx.fillStyle=`rgba(255,60,80,${Math.min(0.45,flash*0.45)})`;
+    ctx.fillRect(0,0,W,H);
+  }
+  if(state==='levelclear'){
+    ctx.fillStyle='rgba(124,252,0,0.18)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#06120a'; ctx.font='bold 22px system-ui,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillStyle='#fff'; ctx.strokeStyle='#06120a'; ctx.lineWidth=4;
+    const msg='LEVEL '+level+' CLEAR! +500';
+    ctx.strokeText(msg,W/2,H/2); ctx.fillText(msg,W/2,H/2);
+  }
+  // drown ripple where frog died in water
+  ctx.restore();
+
+  // smooth render pos toward logical target (squash tween uses frog.anim)
+  const tx=frog.toX||frog.x, ty=frog.toY||cellCY(frog.row);
+  // renderX/Y updated in drawFrog path; keep fallback lerp
+}
+
+function drawGrass(y,color,dashed){
+  ctx.fillStyle=color; ctx.fillRect(0,y,W,CELL);
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  for(let i=0;i<40;i++){
+    const x=(i*67)%W, yy=y+6+(i*29)%(CELL-12);
+    ctx.fillRect(x,yy,3,2);
+  }
+  if(dashed){ ctx.fillStyle='#e8f5d6'; for(let x=4;x<W;x+=24) ctx.fillRect(x,y+CELL/2-1,12,2); }
+}
+function drawRoadRow(y,r,rd){
+  ctx.fillStyle='#2b2f36'; ctx.fillRect(0,y,W,CELL);
+  ctx.fillStyle='#3a4048'; ctx.fillRect(0,y,W,4); ctx.fillRect(0,y+CELL-4,W,4);
+  // lane dashes (alternate offset per row for motion feel)
+  ctx.fillStyle='#ffd23f';
+  const off=(elapsed*0)%CELL;
+  for(let x=((r*30)%40)-40;x<W+40;x+=40) ctx.fillRect(x,y+CELL/2-1.5,20,3);
+  // direction chevrons subtle
+  ctx.fillStyle='rgba(255,255,255,0.10)';
+  ctx.font='10px system-ui'; ctx.textAlign='center';
+  const ch=rd.dir>0?'›':'‹';
+  for(let x=10;x<W;x+=40) ctx.fillText(ch,x,y+12);
+}
+function drawRiverRow(y,r,rd){
+  const g=ctx.createLinearGradient(0,y,0,y+CELL);
+  g.addColorStop(0,'#1d6fa5'); g.addColorStop(1,'#144d75');
+  ctx.fillStyle=g; ctx.fillRect(0,y,W,CELL);
+  // animated waves
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1.5;
+  for(let k=0;k<3;k++){
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=8){
+      const yy=y+8+k*12+Math.sin(x*0.05+elapsed*2+r+k)*3;
+      x===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy);
+    }
+    ctx.stroke();
+  }
+  if(rd.sink){
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font='10px system-ui'; ctx.textAlign='left';
+    ctx.fillText('⚠ turtles sink!',6,y+12);
+  }
+}
+function drawGoalRow(y,r){
+  ctx.fillStyle='#1c5c33'; ctx.fillRect(0,y,W,CELL);
+  // bushes between slots
+  for(let c=0;c<COLS;c++){
+    if(!SLOT_COLS.includes(c)){
+      ctx.fillStyle='#145226'; ctx.fillRect(c*CELL+2,y+4,CELL-4,CELL-8);
+      ctx.fillStyle='#0e3d1c';
+      ctx.beginPath(); ctx.arc(c*CELL+CELL/2,y+CELL/2,9,0,7); ctx.fill();
+    }
+  }
+  // slots
+  slots.forEach((filled,i)=>{
+    const cx=cellCX(SLOT_COLS[i]);
+    ctx.fillStyle=filled?'#0c2b1a':'#123f5f';
+    ctx.beginPath(); ctx.roundRect(cx-17,y+5,34,CELL-10,8); ctx.fill();
+    ctx.strokeStyle='#7CFC00'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(cx-17,y+5,34,CELL-10,8); ctx.stroke();
+    if(!filled){
+      ctx.fillStyle='rgba(124,252,0,0.35)'; ctx.font='11px system-ui'; ctx.textAlign='center';
+      ctx.fillText('★',cx,y+CELL/2+4);
+    }
+  });
+}
+function drawPlat(p,r){
+  const y=rowY(r);
+  const sub=turtleSubmerged(p);
+  const t=(elapsed+p.phase)%p.period;
+  const warn=p.sink && t>p.period-2 && t<=p.period-1;
+  if(sub) return; // fully submerged — draw faint ripple only
+  if(p.kind==='turtle'){
+    const n=Math.max(1,Math.round(p.w/CELL));
+    for(let i=0;i<n;i++){
+      const cx=p.x+CELL/2+i*CELL, cy=y+CELL/2;
+      const bobY=warn?cy+4:cy+Math.sin(elapsed*3+i)*1.5;
+      ctx.fillStyle=warn?'#e07b39':'#2e9e4f';
+      ctx.beginPath(); ctx.ellipse(cx,bobY,15,11,0,0,7); ctx.fill();
+      ctx.fillStyle=warn?'#a34d1c':'#1d6b34';
+      ctx.beginPath(); ctx.ellipse(cx,bobY,9,6,0,0,7); ctx.fill();
+      ctx.fillStyle='#0b1e13';
+      ctx.beginPath(); ctx.arc(cx+(p && ROWDEF[r].dir>0?8:-8),bobY-3,2,0,7); ctx.fill();
+    }
+    if(warn){ ctx.fillStyle='#fff'; ctx.font='bold 10px system-ui'; ctx.textAlign='center';
+      ctx.fillText('!',p.x+p.w/2,y+12); }
+  } else {
+    ctx.fillStyle='#7a4a21';
+    ctx.beginPath(); ctx.roundRect(p.x+1,y+7,p.w-2,CELL-14,7); ctx.fill();
+    ctx.fillStyle='#9c6633';
+    ctx.beginPath(); ctx.roundRect(p.x+1,y+7,p.w-2,8,7); ctx.fill();
+    ctx.strokeStyle='#4d2d12'; ctx.lineWidth=1.5;
+    for(let x=p.x+10;x<p.x+p.w-4;x+=18){
+      ctx.beginPath(); ctx.moveTo(x,y+10); ctx.lineTo(x,y+CELL-10); ctx.stroke();
+    }
+  }
+  // wrap ghosts
+  if(p.x<0){ const q={...p,x:p.x+W}; /* drawn next frame via wrap test — draw copy */ drawPlatCopy(q,r); }
+  if(p.x+p.w>W){ const q={...p,x:p.x-W}; drawPlatCopy(q,r); }
+}
+function drawPlatCopy(p,r){
+  const y=rowY(r);
+  ctx.fillStyle=p.kind==='turtle'?'#2e9e4f':'#7a4a21';
+  ctx.beginPath(); ctx.roundRect(p.x+1,y+7,p.w-2,CELL-14,7); ctx.fill();
+}
+function drawCar(c,r,rd){
+  const y=rowY(r);
+  const dirn=rd.dir;
+  const h=CELL-14, yy=y+7;
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(c.x+2,yy+3,c.w,h);
+  // body
+  ctx.fillStyle=c.color;
+  ctx.beginPath(); ctx.roundRect(c.x,yy,c.w,h,6); ctx.fill();
+  // cabin
+  ctx.fillStyle='rgba(10,20,30,0.85)';
+  const cabW=c.truck?c.w*0.28:Math.min(26,c.w*0.35);
+  const cabX=dirn>0?c.x+c.w-cabW-6:c.x+6;
+  ctx.beginPath(); ctx.roundRect(cabX,yy+3,cabW,h-6,4); ctx.fill();
+  // windshield shine
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(cabX+3,yy+5,cabW-6,3);
+  // wheels
+  ctx.fillStyle='#0a0a0a';
+  const wy1=yy-2, wy2=yy+h-4;
+  ctx.beginPath();
+  ctx.arc(c.x+10,wy1+3,4,0,7); ctx.arc(c.x+c.w-10,wy1+3,4,0,7);
+  ctx.arc(c.x+10,wy2+3,4,0,7); ctx.arc(c.x+c.w-10,wy2+3,4,0,7);
+  ctx.fill();
+  // headlights
+  ctx.fillStyle='#fff9b0';
+  if(dirn>0){ ctx.fillRect(c.x+c.w-2,yy+4,3,4); ctx.fillRect(c.x+c.w-2,yy+h-8,3,4); }
+  else { ctx.fillRect(c.x-1,yy+4,3,4); ctx.fillRect(c.x-1,yy+h-8,3,4); }
+  // wrap ghost copies
+  if(c.x<0) drawCar({...c,x:c.x+W},r,rd);
+  if(c.x+c.w>W) drawCar({...c,x:c.x-W},r,rd);
+}
+function drawFly(f){
+  const y=rowY(f.row)+CELL/2+Math.sin(elapsed*6)*2;
+  const blink=Math.sin(elapsed*8)>0;
+  ctx.font='16px system-ui'; ctx.textAlign='center';
+  ctx.fillText(blink?'🪰':'✦',f.x,y+6);
+  ctx.fillStyle='#ffd23f'; ctx.font='bold 9px system-ui';
+  ctx.fillText('+200',f.x,y-12);
+}
+function frogRenderPos(){
+  const t=smooth(frog.anim);
+  const x=lerp(frog.fromX,frog.toX,t);
+  const y=lerp(frog.fromY,frog.toY,t);
+  return {x,y,t};
+}
+function smooth(t){return t<0?0:t>1?1:t*t*(3-2*t);}
+function lerp(a,b,t){return a+(b-a)*t;}
+function drawFrog(){
+  const {x,y,t}=frogRenderPos();
+  renderX=x; renderY=y;
+  // squash tween: stretch mid-hop, squash on land
+  const hop=Math.sin(Math.min(1,frog.anim)*Math.PI);
+  let sx=1+hop*0.18, sy=1-hop*0.18;
+  if(frog.face==='left'||frog.face==='right'){ const tmp=sx; sx=sy; sy=tmp; }
+  if(state==='dying'){
+    // flip + fade
+    ctx.save(); ctx.translate(x,y); ctx.rotate(Math.PI*(1-dieTimer)); ctx.globalAlpha=Math.max(0,dieTimer);
+    ctx.fillStyle='#b6f09c'; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill();
+    ctx.restore(); return;
+  }
+  ctx.save(); ctx.translate(x,y); ctx.scale(sx,sy);
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0,12,12,4,0,0,7); ctx.fill();
+  // body
+  ctx.fillStyle='#46d147';
+  ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill();
+  ctx.fillStyle='#2e9e4f';
+  ctx.beginPath(); ctx.arc(0,3,9,0,7); ctx.fill();
+  // eyes (face direction)
+  let ex=0,ey=-10;
+  if(frog.face==='left'){ex=-6;} else if(frog.face==='right'){ex=6;}
+  else if(frog.face==='down'){ey=2;} else {ey=-10;}
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(-6+ex,ey,5,0,7); ctx.arc(6+ex,ey,5,0,7); ctx.fill();
+  ctx.fillStyle='#0a0a0a';
+  ctx.beginPath(); ctx.arc(-6+ex,ey+(frog.face==='down'?1:-1),2.2,0,7); ctx.arc(6+ex,ey+(frog.face==='down'?1:-1),2.2,0,7); ctx.fill();
+  // feet
+  ctx.fillStyle='#2e9e4f';
+  ctx.beginPath(); ctx.ellipse(-12,6,4,3,0.5,0,7); ctx.ellipse(12,6,4,3,-0.5,0,7); ctx.fill();
+  ctx.restore();
+}
+function drawMiniFrog(cx,cy){
+  ctx.fillStyle='#46d147'; ctx.beginPath(); ctx.arc(cx,cy,11,0,7); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx-5,cy-6,4,0,7); ctx.arc(cx+5,cy-6,4,0,7); ctx.fill();
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(cx-5,cy-6,1.8,0,7); ctx.arc(cx+5,cy-6,1.8,0,7); ctx.fill();
+}
+
+// ---- Main loop: fixed 60 Hz logic, rAF render ----
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function frame(now){
+  requestAnimationFrame(frame);
+  let dtms=now-last; last=now;
+  if(dtms>250)dtms=250;
+  acc+=dtms;
+  while(acc>=STEP){ update(STEP/1000); acc-=STEP; }
+  draw();
+}
+
+// ---- Input: keyboard ----
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='w'){ e.preventDefault(); tryMove(0,-1); }
+  else if(k==='arrowdown'||k==='s'){ e.preventDefault(); tryMove(0,1); }
+  else if(k==='arrowleft'||k==='a'){ e.preventDefault(); tryMove(-1,0); }
+  else if(k==='arrowright'||k==='d'){ e.preventDefault(); tryMove(1,0); }
+  else if(k==='p'||k==='escape'){ togglePause(); }
+  else if(k==='m'){ toggleMute(); }
+  else if(k===' '||k==='enter'){
+    if(state!=='playing'){ document.getElementById('mainBtn').click(); }
+  }
+});
+
+// ---- Input: D-Pad (touch + mouse, thumb-friendly) ----
+document.querySelectorAll('.tbtn').forEach(b=>{
+  const dx=parseInt(b.dataset.dx,10), dy=parseInt(b.dataset.dy,10);
+  const fire=e=>{ e.preventDefault(); ac(); b.classList.add('pressed');
+    tryMove(dx,dy); setTimeout(()=>b.classList.remove('pressed'),120); };
+  b.addEventListener('pointerdown',fire);
+  b.addEventListener('touchstart',fire,{passive:false});
+});
+
+// ---- Input: swipe + tap + two-finger pause on canvas (hand gestures) ----
+let tStart=null, tMode=null, twoFinger=false;
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault(); ac();
+  if(e.touches.length===2){ twoFinger=true; togglePause(); return; }
+  if(e.touches.length===1){
+    const t=e.touches[0];
+    tStart={x:t.clientX,y:t.clientY,time:performance.now()};
+    tMode='pending';
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  // swipe-drag: hop repeatedly once drag exceeds threshold (great for phones)
+  if(tStart && e.touches.length===1){
+    const t=e.touches[0];
+    const dx=t.clientX-tStart.x, dy=t.clientY-tStart.y;
+    const adx=Math.abs(dx), ady=Math.abs(dy);
+    const TH=28;
+    if(Math.max(adx,ady)>TH){
+      if(adx>ady) tryMove(dx>0?1:-1,0);
+      else tryMove(0,dy>0?1:-1);
+      tStart={x:t.clientX,y:t.clientY,time:performance.now()};
+      tMode='swipe';
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  if(twoFinger){ twoFinger=false; tStart=null; return; }
+  if(!tStart) return;
+  const t=e.changedTouches[0];
+  const dx=t.clientX-tStart.x, dy=t.clientY-tStart.y;
+  const adx=Math.abs(dx), ady=Math.abs(dy);
+  const dt=performance.now()-tStart.time;
+  if(tMode==='pending'){
+    if(Math.max(adx,ady)>24){
+      // flick swipe
+      if(adx>ady) tryMove(dx>0?1:-1,0);
+      else tryMove(0,dy>0?1:-1);
+    } else if(dt<400){
+      // tap: hop toward finger relative to frog
+      tapToHop(t.clientX,t.clientY);
+    }
+  }
+  tStart=null; tMode=null;
+},{passive:false});
+canvas.addEventListener('touchcancel',()=>{tStart=null;twoFinger=false;},{passive:true});
+// mouse equivalents for desktop testing
+let mStart=null;
+canvas.addEventListener('mousedown',e=>{ mStart={x:e.clientX,y:e.clientY}; });
+canvas.addEventListener('mouseup',e=>{
+  if(!mStart) return;
+  const dx=e.clientX-mStart.x, dy=e.clientY-mStart.y;
+  if(Math.max(Math.abs(dx),Math.abs(dy))>16){
+    if(Math.abs(dx)>Math.abs(dy)) tryMove(dx>0?1:-1,0);
+    else tryMove(0,dy>0?1:-1);
+  } else tapToHop(e.clientX,e.clientY);
+  mStart=null;
+});
+canvas.addEventListener('click',e=>{
+  // if overlay visible, taps should start the game instead
+  if(state!=='playing' && !overlay.classList.contains('hidden')){
+    document.getElementById('mainBtn').click();
+  }
+});
+function tapToHop(clientX,clientY){
+  if(state!=='playing') return;
+  const r=canvas.getBoundingClientRect();
+  const bx=r.left + (renderX/W)*r.width;
+  const by=r.top + (renderY/H)*r.height;
+  const dx=clientX-bx, dy=clientY-by;
+  // ignore dead-center taps
+  if(Math.hypot(dx,dy)<8) return;
+  if(Math.abs(dx)>Math.abs(dy)) tryMove(dx>0?1:-1,0);
+  else tryMove(0,dy>0?1:-1);
+}
+// prevent double-tap zoom / scroll while playing
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+document.addEventListener('touchmove',e=>{
+  if(state==='playing') e.preventDefault();
+},{passive:false});
+// auto-pause when tab hidden (mobile switching apps)
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden && state==='playing') togglePause();
+});
+
+// ---- Boot ----
+fullReset();
+state='title';
+showOverlay('🐸 CROSSRUSH',
+  'Cross <b>5 road lanes</b>, ride <b>3 river rows</b>, fill all <b>5 ★ slots</b>.<br>'+
+  'Cars kill • water without a log drowns • sinking turtles submerge!<br>'+
+  '+10 per hop forward • +100 per goal • time bonus • fly bonus +200.<br><br>'+
+  '<b>Move:</b> swipe · tap · D-Pad · WASD/arrows<br>✌️ two-finger tap = pause',
+  '▶ Start');
+updateHUD();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
