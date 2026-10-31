@@ -103,6 +103,7 @@ effort, if known).
 | Mosaic Studio — Layered Pixel-Image Editor | HTML/CSS/JS (single file, canvas) | 🟠 Hard | [prompt](oneshots/mosaic-studio-pixel-editor.md) | Muse Spark 1.3 Contributor · adapted from [VSBDev/one-shot-app-benchmarks](https://github.com/VSBDev/one-shot-app-benchmarks) |
 | Planform Studio — Floor-Plan CAD | HTML/CSS/JS (single file, SVG) | 🔴 Extreme | [prompt](oneshots/planform-studio-floor-plan-cad.md) | Muse Spark 1.3 Contributor · adapted from [VSBDev/one-shot-app-benchmarks](https://github.com/VSBDev/one-shot-app-benchmarks) |
 | Trophy Tide — Knights Tower Defense & Whale Boss | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/trophy-tide-knights-tower-defense.md) | Muse Spark 1.3 Contributor |
+| RepoLens — Mobile-First GitHub Repository Explorer | HTML/CSS/JS (single file) | 🟠 Hard | [prompt](oneshots/repolens-mobile-first-github-repository-explorer.md) | Muse Spark 1.3 Contributor |
 
 <!-- Row template:
 | <Title> | <e.g. Python, SQLite> | <🟢/🟡/🟠/🔴> <Easy/Medium/Hard/Extreme> | [prompt](oneshots/<file>.md) | <model name> · thinking: <effort, if known> |
