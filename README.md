@@ -105,7 +105,7 @@ effort, if known).
 | Trophy Tide — Knights Tower Defense & Whale Boss | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/trophy-tide-knights-tower-defense.md) | Muse Spark 1.3 Contributor |
 | RepoLens — Mobile-First GitHub Repository Explorer | HTML/CSS/JS (single file) | 🟠 Hard | [prompt](oneshots/repolens-mobile-first-github-repository-explorer.md) | Muse Spark 1.3 Contributor |
 | Repo Apps | HTML/CSS/JS (single file) | 🔴 Extreme | [prompt](oneshots/repo-apps.md) | Muse Spark 1.3 Contributor |
-| Crumb Club — Muffin Match Bakery | HTML/CSS/JS (single file, canvas) | 🟡 Medium | [prompt](oneshots/crumb-club-muffin-match-bakery.md) | DeepSeek V4.1 Flash · thinking: off |
+| Crumb Club — Muffin Match Bakery | HTML/CSS/JS (single file, canvas) | 🟡 Medium | [prompt](oneshots/crumb-club-muffin-match-bakery.md) | DeepSeek V4.1 Flash · thinking: high |
 
 <!-- Row template:
 | <Title> | <e.g. Python, SQLite> | <🟢/🟡/🟠/🔴> <Easy/Medium/Hard/Extreme> | [prompt](oneshots/<file>.md) | <model name> · thinking: <effort, if known> |
