@@ -1,0 +1,41 @@
+server:
+  port: ${PORT:8000}
+  address: 127.0.0.1
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  application:
+    name: human-in-the-loop-outbox
+  servlet:
+    multipart:
+      # The application enforces the configurable per-file/per-message limits in code.
+      # These values only stop a runaway request from filling the disk.
+      max-file-size: 1GB
+      max-request-size: 1100MB
+      file-size-threshold: 1MB
+
+outbox:
+  data-dir: ${DATA_DIR:./data}
+  attachment-dir: ${ATTACHMENT_DIR:./data/attachments}
+  max-attachment-bytes: ${MAX_ATTACHMENT_BYTES:10485760}
+  max-message-attachment-bytes: ${MAX_MESSAGE_ATTACHMENT_BYTES:26214400}
+  expiration-interval-seconds: ${EXPIRATION_INTERVAL_SECONDS:30}
+  webhook-timeout-seconds: ${WEBHOOK_TIMEOUT_SECONDS:5}
+  webhook-max-attempts: ${WEBHOOK_MAX_ATTEMPTS:3}
+  webhook-backoff-base-seconds: ${WEBHOOK_BACKOFF_BASE_SECONDS:1}
+  download-timeout-seconds: ${DOWNLOAD_TIMEOUT_SECONDS:10}
+  max-redirects: ${MAX_REDIRECTS:3}
+  allow-private-urls: ${ALLOW_PRIVATE_URLS:false}
+  handoff-url-max-chars: ${HANDOFF_URL_MAX_CHARS:1800}
+  webhook-worker-interval-ms: ${WEBHOOK_WORKER_INTERVAL_MS:300}
+  built-at: ${BUILT_AT:2026-11-07T01:20:00Z}
+  built-by: ${BUILT_BY:DeepSeek V4.1 Flash}
+
+logging:
+  level:
+    root: INFO
+    dev.oneshot.outbox: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"

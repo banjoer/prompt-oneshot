@@ -1,0 +1,8 @@
+target/
+data/
+*.log
+.DS_Store
+frontend/node_modules/
+frontend/.vite/
+.idea/
+*.iml

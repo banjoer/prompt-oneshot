@@ -1,0 +1,10 @@
+{
+  "channel": "email",
+  "destination": "alex@example.com",
+  "subject": "Q4 report draft",
+  "body": "Hi Alex,\n\nPlease review the attached Q4 report before Friday.\n\nThanks,\nSam",
+  "expires_at": "2030-01-01T00:00:00Z",
+  "webhook_url": "http://127.0.0.1:9002/hooks/outbox",
+  "source": "report-agent",
+  "metadata": {"ticket": "OPS-142"}
+}

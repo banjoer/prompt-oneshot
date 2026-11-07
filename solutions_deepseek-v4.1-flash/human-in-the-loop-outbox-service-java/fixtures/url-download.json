@@ -1,0 +1,14 @@
+{
+  "channel": "email",
+  "destination": "alex@example.com",
+  "subject": "Reference and file",
+  "body": "See the external reference and the attached file.",
+  "references": ["https://example.com/spec"],
+  "attachments": [
+    {
+      "kind": "url_download",
+      "url": "http://127.0.0.1:9001/sample.txt",
+      "filename": "sample.txt"
+    }
+  ]
+}
