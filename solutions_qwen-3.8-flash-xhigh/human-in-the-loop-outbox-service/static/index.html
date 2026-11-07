@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outbox — Human-in-the-Loop Message Review</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#queue-panel">Skip to queue</a>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">⇄</span>
+    <div>
+      <h1>Outbox</h1>
+      <p class="tagline">Human-in-the-loop review for drafted messages</p>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab active" data-tab="queue" id="tab-queue">Queue</button>
+    <button class="tab" data-tab="history" id="tab-history">History</button>
+    <button class="tab" data-tab="destinations" id="tab-destinations">Destinations</button>
+  </nav>
+  <div class="sys">
+    <span id="health-dot" class="dot" role="img" aria-label="service health"></span>
+    <a href="/api/docs" class="quiet-link">API docs</a>
+  </div>
+</header>
+
+<main>
+  <!-- QUEUE / HISTORY --------------------------------------------------- -->
+  <section id="queue-panel" class="panel" aria-labelledby="queue-title">
+    <div class="toolbar">
+      <h2 id="queue-title" class="sr-only">Message queue</h2>
+      <div class="filters">
+        <label>Status
+          <select id="f-status" aria-label="Filter by status">
+            <option value="active" selected>Review queue</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="sent">Sent</option>
+            <option value="stale">Stale</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label>Channel
+          <select id="f-channel" aria-label="Filter by channel">
+            <option value="">All channels</option>
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </label>
+        <label>Sort
+          <select id="f-sort" aria-label="Sort order">
+            <option value="newest" selected>Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="expires_soon">Expiring soonest</option>
+            <option value="expires_late">Expiring latest</option>
+          </select>
+        </label>
+        <input id="f-destination" type="search" placeholder="Search destination or label…"
+               aria-label="Search destination or label">
+        <button id="btn-dates" class="ghost" aria-expanded="false">Date ranges</button>
+        <button id="btn-refresh" class="ghost" aria-label="Refresh queue">↻ Refresh</button>
+      </div>
+      <fieldset id="date-range" class="date-range" hidden>
+        <legend>Narrow by date</legend>
+        <label>Created from <input id="f-created-from" type="date"></label>
+        <label>Created to <input id="f-created-to" type="date"></label>
+        <label>Expires from <input id="f-expires-from" type="date"></label>
+        <label>Expires to <input id="f-expires-to" type="date"></label>
+      </fieldset>
+    </div>
+    <div class="split">
+      <div class="list-col">
+        <p id="list-summary" class="summary" aria-live="polite"></p>
+        <ul id="message-list" class="msg-list" aria-label="Messages"></ul>
+        <div id="list-pager" class="pager"></div>
+      </div>
+      <div class="detail-col" id="detail-col" hidden>
+        <div id="detail" class="detail-card"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESTINATIONS ------------------------------------------------------- -->
+  <section id="destinations-panel" class="panel" hidden aria-labelledby="dest-title">
+    <div class="toolbar">
+      <h2 id="dest-title">Known destinations</h2>
+      <p class="summary">Discovered automatically from submitted messages.
+        Labels are per channel and never rewrite history.</p>
+      <div class="filters">
+        <button id="btn-dest-refresh" class="ghost">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="dest-table" class="dest-table"></div>
+  </section>
+</main>
+
+<div id="modal-root" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-box">
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<footer class="foot">
+  <p>Built 2026-11-06 23:42 UTC by <strong>Qwen3.8 Flash</strong> — this service
+     never sends anything by itself.</p>
+  <p class="foot-links"><a href="/api/docs">API docs</a> ·
+     <a href="/openapi.json">OpenAPI</a> ·
+     <a href="/api/info">config</a></p>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

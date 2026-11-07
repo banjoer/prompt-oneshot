@@ -1,0 +1,639 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Human-in-the-Loop Outbox Service",
+    "version": "1.0.0",
+    "description": "Local REST API for submitting messages to a human review outbox. The service never sends messages and never calls provider APIs. A reviewer approves a message, uses server-prepared handoff links in their own app, then explicitly marks it sent.",
+    "contact": {"name": "DeepSeek V4.1 Flash"},
+    "x-built-at": "2026-11-07T00:09:15.580Z"
+  },
+  "servers": [{"url": "http://127.0.0.1:8000", "description": "Default local service"}],
+  "tags": [
+    {"name": "Messages", "description": "Submission, review, lifecycle and retrieval"},
+    {"name": "Attachments", "description": "Stored attachments and reference downloads"},
+    {"name": "Destinations", "description": "Discovered destinations and reviewer labels"},
+    {"name": "Handoff", "description": "Channel-aware handoff preparation"},
+    {"name": "Webhooks", "description": "Event and delivery history"},
+    {"name": "System", "description": "Health, configuration and documentation"}
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {"description": "Service and database are available", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Health"}, "example": {"status": "ok", "time": "2026-11-06T20:00:00.000Z", "version": "1.0.0", "database": "/app/data/outbox.sqlite3"}}}},
+          "503": {"description": "Database unavailable", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Health"}}}}
+        }
+      }
+    },
+    "/api/info": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Non-sensitive configuration and build information",
+        "operationId": "getInfo",
+        "responses": {
+          "200": {"description": "Service information", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Info"}}}}
+        }
+      }
+    },
+    "/api/messages": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "List messages with filters, pagination and sorting",
+        "operationId": "listMessages",
+        "description": "Expiration is checked before the query runs. No-expiration messages sort last for both expiration orders.",
+        "parameters": [
+          {"name": "status", "in": "query", "schema": {"type": "string", "example": "pending,approved,rejected"}, "description": "One status or a comma-separated list."},
+          {"name": "channel", "in": "query", "schema": {"type": "string", "enum": ["email", "whatsapp", "telegram"]}},
+          {"name": "destination", "in": "query", "schema": {"type": "string"}, "description": "Case-insensitive substring match on destination, normalized destination, destination label snapshot or managed label."},
+          {"name": "created_from", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "created_to", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "expires_from", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "expires_to", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}},
+          {"name": "offset", "in": "query", "schema": {"type": "integer", "minimum": 0, "default": 0}},
+          {"name": "sort", "in": "query", "schema": {"type": "string", "enum": ["newest", "oldest", "expires_soon", "expires_late"], "default": "newest"}}
+        ],
+        "responses": {
+          "200": {"description": "Consistent pagination envelope", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessageList"}}}},
+          "400": {"description": "Invalid filters or pagination", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      },
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Submit a message for human review",
+        "operationId": "createMessage",
+        "description": "Accepts JSON or multipart/form-data. Expires_at and ttl_seconds are mutually exclusive. An absolute expiry must be in the future. url_reference attachment entries are stored as references and never fetched; url_download entries are fetched with SSRF protections and stored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/MessageCreate"},
+              "examples": {
+                "email": {"summary": "Email with expiry and webhook", "value": {"channel": "email", "destination": "alex@example.com", "subject": "Q4 report draft", "body": "Hi Alex,\n\nPlease review the attached Q4 report before Friday.\n\nThanks,\nSam", "expires_at": "2030-01-01T00:00:00Z", "webhook_url": "http://127.0.0.1:9002/hooks/outbox", "source": "report-agent", "metadata": {"ticket": "OPS-142"}}},
+                "whatsapp": {"summary": "WhatsApp individual", "value": {"channel": "whatsapp", "destination": "+1 (415) 555-0123", "body": "Your appointment is confirmed for 3 PM."}},
+                "telegram_group": {"summary": "Telegram group fallback", "value": {"channel": "telegram", "destination": "group:Ops Room", "body": "Deploy is live."}},
+                "download": {"summary": "Reference and downloaded file", "value": {"channel": "email", "destination": "alex@example.com", "subject": "Reference and file", "body": "See the external reference and the attached file.", "references": ["https://example.com/spec"], "attachments": [{"kind": "url_download", "url": "http://127.0.0.1:9001/sample.txt", "filename": "sample.txt"}]}}
+              }
+            },
+            "multipart/form-data": {
+              "schema": {"$ref": "#/components/schemas/MessageCreateMultipart"}
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Message created", "headers": {"Location": {"schema": {"type": "string"}, "description": "URL of the created message"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "400": {"description": "Validation error (channel, destination, body, expiry, metadata, URLs)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "413": {"description": "Attachment exceeds a configured size limit", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "415": {"description": "Unsupported request media type", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get the complete active message",
+        "operationId": "getMessage",
+        "description": "Runs expiration checks first. Includes attachments, references, rejection information, revision number and expiration.",
+        "responses": {
+          "200": {"description": "Message detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      },
+      "patch": {
+        "tags": ["Messages"],
+        "summary": "Revise a pending or rejected message",
+        "operationId": "patchMessage",
+        "description": "Allowed only for pending and rejected messages. Creates a full revision snapshot, keeps the same message id and created_at. A rejected message returns to pending and its active rejection reason is cleared; previous rejection data stays in history. A status field is rejected. Attachments entries may be existing, url_reference or url_download.",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessagePatch"}, "examples": {"revision": {"summary": "Revise a rejected message", "value": {"subject": "Q4 report draft — revised", "body": "Hi Alex Smith,\n\nPlease review the attached Q4 report before Friday.\n\nThanks,\nSam"}}}}
+        }
+        },
+        "responses": {
+          "200": {"description": "Revised message (revision_number incremented)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "400": {"description": "Validation error or status field supplied", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Message is approved, sent, stale or cancelled", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}},
+          "413": {"description": "Attachment size limit exceeded", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "415": {"description": "Body is not JSON", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/approve": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Approve a pending message",
+        "operationId": "approveMessage",
+        "description": "Transactional and expiry-aware: an expired message can never become approved. Duplicate concurrent approvals produce exactly one success and one 409.",
+        "responses": {
+          "200": {"description": "Approved message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Invalid transition or expired message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/reject": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Reject a pending message with a mandatory reason",
+        "operationId": "rejectMessage",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["reason"], "properties": {"reason": {"type": "string", "minLength": 1, "example": "The recipient name is wrong. Address it to Alex Smith, not Alex Doe."}}}}}},
+        "responses": {
+          "200": {"description": "Rejected message; status history and message.rejected webhook recorded", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "400": {"description": "Missing or empty reason", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Invalid transition or expired message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Cancel a pending, approved or rejected message",
+        "operationId": "cancelMessage",
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"reason": {"type": "string"}}}}}},
+        "responses": {
+          "200": {"description": "Cancelled message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Invalid transition or expired message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/mark-sent": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Explicitly mark an approved message as sent",
+        "operationId": "markMessageSent",
+        "description": "This is the only operation that marks a message sent. Opening a handoff link or downloading an attachment never calls it. The UI requires an explicit second confirmation.",
+        "responses": {
+          "200": {"description": "Sent message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Message"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Invalid transition or expired message", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/history": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get revisions and status history in chronological order",
+        "operationId": "getMessageHistory",
+        "responses": {
+          "200": {"description": "Revision snapshots with attachment references and status transitions", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessageHistory"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/handoff": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Handoff"],
+        "summary": "Prepare a channel-aware handoff for an approved message",
+        "operationId": "getHandoff",
+        "description": "Available only for approved, non-expired messages. The frontend consumes this structured data and never builds channel URLs itself. All links are honest about provider limitations and attachments are always manual.",
+        "responses": {
+          "200": {"description": "Handoff data", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Handoff"}, "examples": {"email": {"summary": "Email handoff", "value": {"message_id": "msg_8f2c1a4b9d30", "channel": "email", "destination": "alex@example.com", "normalized_destination": "alex@example.com", "destination_kind": "individual", "handoff_url": "mailto:alex@example.com?subject=Q4%20report%20draft&body=Hi%20Alex%2C%0A%0APlease%20review.", "mode": "prefill", "capabilities": {"prefill_recipient": true, "prefill_subject": true, "prefill_body": true, "attachments_supported": false}, "manual_actions": ["Open the prepared email in your email application.", "Review the recipient, subject and body before sending.", "Send the message yourself from your email application."], "warnings": ["Email attachments are not included in the mailto: handoff and must be attached manually."], "subject": "Q4 report draft", "body": "Hi Alex,\n\nPlease review.", "copy": {"subject": "Q4 report draft", "body": "Hi Alex,\n\nPlease review."}, "attachments": [], "attachments_supported": false}}}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Message is not approved or has expired", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/attachments": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "List attachments on the active revision",
+        "operationId": "listAttachments",
+        "responses": {
+          "200": {"description": "Attachment list", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AttachmentList"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/attachments.zip": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Download all active attachments as a ZIP",
+        "operationId": "downloadAllAttachments",
+        "responses": {
+          "200": {"description": "ZIP archive", "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}}},
+          "404": {"description": "Message or attachments not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/attachments/{attachment_id}": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}, {"$ref": "#/components/parameters/AttachmentId"}],
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Download one attachment safely",
+        "operationId": "downloadAttachment",
+        "description": "Served with Content-Disposition: attachment and X-Content-Type-Options: nosniff. Downloading never changes message status.",
+        "responses": {
+          "200": {"description": "Attachment bytes", "headers": {"Content-Disposition": {"schema": {"type": "string"}}, "X-Content-Type-Options": {"schema": {"type": "string", "enum": ["nosniff"]}}}, "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}},
+          "404": {"description": "Message, attachment record or stored file not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/messages/{id}/webhook-events": {
+      "parameters": [{"$ref": "#/components/parameters/MessageId"}],
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhook events and delivery attempts",
+        "operationId": "listWebhookEvents",
+        "responses": {
+          "200": {"description": "Event and attempt history", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebhookEventList"}}}},
+          "404": {"description": "Message not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/destinations": {
+      "get": {
+        "tags": ["Destinations"],
+        "summary": "List destinations discovered from messages",
+        "operationId": "listDestinations",
+        "parameters": [
+          {"name": "channel", "in": "query", "schema": {"type": "string", "enum": ["email", "whatsapp", "telegram"]}},
+          {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Case-insensitive search over destination and label."}
+        ],
+        "responses": {
+          "200": {"description": "Known destinations with counts and labels", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DestinationList"}}}},
+          "400": {"description": "Invalid channel filter", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/destinations/label": {
+      "put": {
+        "tags": ["Destinations"],
+        "summary": "Assign or rename a destination label",
+        "operationId": "putDestinationLabel",
+        "description": "The destination must already be known from a submitted message. Labels are non-empty, at most 120 characters, and unique per channel (case-insensitive).",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["channel", "destination", "label"], "properties": {"channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]}, "destination": {"type": "string", "example": "alex@example.com"}, "label": {"type": "string", "maxLength": 120, "example": "Alex — Client"}}}}}},
+        "responses": {
+          "200": {"description": "Updated destination label", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DestinationLabel"}}}},
+          "400": {"description": "Validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Destination not discovered", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Label already used by another destination in this channel", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConflictError"}}}}
+        }
+      },
+      "delete": {
+        "tags": ["Destinations"],
+        "summary": "Remove a destination label",
+        "operationId": "deleteDestinationLabel",
+        "description": "Removing a label never deletes or modifies historical messages.",
+        "parameters": [
+          {"name": "channel", "in": "query", "required": true, "schema": {"type": "string", "enum": ["email", "whatsapp", "telegram"]}},
+          {"name": "destination", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Label removed (or already empty)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DestinationLabel"}}}},
+          "400": {"description": "Validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Destination not discovered", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+        }
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Human-readable API documentation",
+        "operationId": "getApiDocs",
+        "description": "Self-contained HTML rendering of the endpoint list from openapi.json. No CDN or network dependency.",
+        "responses": {"200": {"description": "HTML documentation", "content": {"text/html": {"schema": {"type": "string"}}}}}
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": ["System"],
+        "summary": "OpenAPI 3.x specification",
+        "operationId": "getOpenApi",
+        "responses": {"200": {"description": "OpenAPI document", "content": {"application/json": {"schema": {"type": "object"}}}}}
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "MessageId": {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^msg_[a-f0-9]+$"}, "example": "msg_8f2c1a4b9d30"},
+      "AttachmentId": {"name": "attachment_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^att_[a-f0-9]+$"}, "example": "att_ab12cd34ef56"}
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {"type": "string", "example": "validation_error"},
+              "message": {"type": "string", "example": "destination is required and must be a string."},
+              "details": {"type": "object", "additionalProperties": true}
+            }
+          }
+        }
+      },
+      "ConflictError": {
+        "allOf": [
+          {"$ref": "#/components/schemas/Error"},
+          {"type": "object", "properties": {"current_status": {"type": "string", "enum": ["pending", "approved", "sent", "rejected", "stale", "cancelled"]}, "allowed_actions": {"type": "array", "items": {"type": "string"}}}}
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {"status": {"type": "string"}, "time": {"type": "string", "format": "date-time"}, "version": {"type": "string"}, "database": {"type": "string"}}
+      },
+      "Info": {
+        "type": "object",
+        "properties": {
+          "app": {"type": "string"},
+          "version": {"type": "string"},
+          "built_at": {"type": "string", "format": "date-time"},
+          "author": {"type": "string"},
+          "config": {"type": "object", "additionalProperties": true},
+          "channels": {"type": "array", "items": {"type": "string"}},
+          "statuses": {"type": "array", "items": {"type": "string"}},
+          "time": {"type": "string", "format": "date-time"}
+        }
+      },
+      "MessageCreate": {
+        "type": "object",
+        "required": ["channel", "destination", "body"],
+        "properties": {
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string", "examples": ["alex@example.com", "+1 (415) 555-0123", "group:Project Alpha", "@alex_example", "group:Ops Room"]},
+          "destination_label": {"type": "string", "maxLength": 120},
+          "subject": {"type": "string"},
+          "body": {"type": "string", "minLength": 1},
+          "expires_at": {"type": "string", "format": "date-time", "description": "Absolute UTC expiry; must be in the future. Mutually exclusive with ttl_seconds."},
+          "ttl_seconds": {"type": "integer", "minimum": 1, "description": "Relative expiry in seconds. Mutually exclusive with expires_at."},
+          "webhook_url": {"type": "string", "format": "uri", "description": "http(s) URL validated against SSRF; delivery is asynchronous."},
+          "source": {"type": "string", "maxLength": 200},
+          "metadata": {"type": "object", "additionalProperties": true},
+          "references": {"type": "array", "maxItems": 100, "items": {"type": "string", "format": "uri"}, "description": "External references stored as strings and never fetched."},
+          "attachments": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {"$ref": "#/components/schemas/UrlReferenceAttachment"},
+                {"$ref": "#/components/schemas/UrlDownloadAttachment"}
+              ]
+            }
+          }
+        }
+      },
+      "MessageCreateMultipart": {
+        "type": "object",
+        "required": ["channel", "destination", "body"],
+        "properties": {
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string"},
+          "destination_label": {"type": "string"},
+          "subject": {"type": "string"},
+          "body": {"type": "string"},
+          "expires_at": {"type": "string", "format": "date-time"},
+          "ttl_seconds": {"type": "integer", "minimum": 1},
+          "webhook_url": {"type": "string", "format": "uri"},
+          "source": {"type": "string"},
+          "metadata": {"type": "string", "description": "JSON object serialized as a string"},
+          "references": {"type": "array", "items": {"type": "string"}, "description": "Repeated fields or a JSON array string"},
+          "attachments": {"type": "array", "items": {"type": "string", "format": "binary"}, "description": "Repeated file parts with the field name attachments"}
+        }
+      },
+      "UrlReferenceAttachment": {
+        "type": "object",
+        "required": ["kind", "url"],
+        "properties": {"kind": {"type": "string", "enum": ["url_reference"]}, "url": {"type": "string", "format": "uri"}}
+      },
+      "UrlDownloadAttachment": {
+        "type": "object",
+        "required": ["kind", "url"],
+        "properties": {"kind": {"type": "string", "enum": ["url_download"]}, "url": {"type": "string", "format": "uri"}, "filename": {"type": "string"}}
+      },
+      "ExistingAttachment": {
+        "type": "object",
+        "required": ["kind", "attachment_id"],
+        "properties": {"kind": {"type": "string", "enum": ["existing"]}, "attachment_id": {"type": "string"}}
+      },
+      "MessagePatch": {
+        "type": "object",
+        "properties": {
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string"},
+          "destination_label": {"type": ["string", "null"]},
+          "subject": {"type": ["string", "null"]},
+          "body": {"type": "string"},
+          "expires_at": {"type": ["string", "null"], "format": "date-time", "description": "null clears expiration"},
+          "ttl_seconds": {"type": "integer", "minimum": 1},
+          "metadata": {"type": "object"},
+          "references": {"type": "array", "items": {"type": "string", "format": "uri"}},
+          "attachments": {"type": "array", "items": {"oneOf": [{"$ref": "#/components/schemas/ExistingAttachment"}, {"$ref": "#/components/schemas/UrlReferenceAttachment"}, {"$ref": "#/components/schemas/UrlDownloadAttachment"}]}}
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": ["id", "channel", "destination", "body", "status", "created_at", "updated_at", "revision_number"],
+        "properties": {
+          "id": {"type": "string", "example": "msg_8f2c1a4b9d30"},
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string"},
+          "destination_normalized": {"type": "string"},
+          "destination_label": {"type": ["string", "null"], "description": "Snapshot captured at submission"},
+          "managed_label": {"type": ["string", "null"], "description": "Current reviewer-assigned label, when present"},
+          "destination_label_effective": {"type": ["string", "null"]},
+          "subject": {"type": ["string", "null"]},
+          "body": {"type": "string"},
+          "status": {"type": "string", "enum": ["pending", "approved", "sent", "rejected", "stale", "cancelled"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "expires_at": {"type": ["string", "null"], "format": "date-time"},
+          "expires_in_seconds": {"type": ["integer", "null"]},
+          "webhook_url": {"type": ["string", "null"]},
+          "rejection_reason": {"type": ["string", "null"]},
+          "rejection_at": {"type": ["string", "null"], "format": "date-time"},
+          "revision_number": {"type": "integer", "minimum": 1},
+          "source": {"type": ["string", "null"]},
+          "metadata": {"type": "object"},
+          "attachments": {"type": "array", "items": {"$ref": "#/components/schemas/Attachment"}},
+          "attachment_count": {"type": "integer"},
+          "references": {"type": "array", "items": {"type": "string"}},
+          "reference_details": {"type": "array", "items": {"$ref": "#/components/schemas/Reference"}},
+          "allowed_actions": {"type": "array", "items": {"type": "string"}},
+          "is_terminal": {"type": "boolean"},
+          "has_webhook": {"type": "boolean"}
+        }
+      },
+      "MessageList": {
+        "type": "object",
+        "required": ["items", "total", "limit", "offset"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/Message"}},
+          "total": {"type": "integer"},
+          "limit": {"type": "integer"},
+          "offset": {"type": "integer"}
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "example": "att_ab12cd34ef56"},
+          "filename": {"type": "string"},
+          "original_filename": {"type": "string"},
+          "mime_type": {"type": "string"},
+          "size_bytes": {"type": "integer"},
+          "storage_ref": {"type": "string"},
+          "uploaded_at": {"type": "string", "format": "date-time"},
+          "source_type": {"type": "string", "enum": ["multipart", "url_download"]},
+          "source_url": {"type": ["string", "null"]},
+          "download_url": {"type": "string"}
+        }
+      },
+      "AttachmentList": {
+        "type": "object",
+        "properties": {"message_id": {"type": "string"}, "items": {"type": "array", "items": {"$ref": "#/components/schemas/Attachment"}}, "total": {"type": "integer"}}
+      },
+      "Reference": {
+        "type": "object",
+        "properties": {"url": {"type": "string"}, "origin": {"type": "string", "enum": ["reference", "attachment_reference"]}}
+      },
+      "Revision": {
+        "type": "object",
+        "properties": {
+          "revision_number": {"type": "integer"},
+          "channel": {"type": "string"},
+          "destination": {"type": "string"},
+          "destination_normalized": {"type": "string"},
+          "destination_label": {"type": ["string", "null"]},
+          "subject": {"type": ["string", "null"]},
+          "body": {"type": "string"},
+          "expires_at": {"type": ["string", "null"]},
+          "source": {"type": ["string", "null"]},
+          "metadata": {"type": "object"},
+          "rejection_reason": {"type": ["string", "null"]},
+          "rejection_at": {"type": ["string", "null"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "attachments": {"type": "array", "items": {"$ref": "#/components/schemas/Attachment"}},
+          "attachment_count": {"type": "integer"},
+          "references": {"type": "array", "items": {"type": "string"}},
+          "reference_details": {"type": "array", "items": {"$ref": "#/components/schemas/Reference"}}
+        }
+      },
+      "StatusHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "from_status": {"type": ["string", "null"]},
+          "to_status": {"type": "string"},
+          "reason": {"type": ["string", "null"]},
+          "revision_number": {"type": "integer"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "MessageHistory": {
+        "type": "object",
+        "properties": {
+          "message_id": {"type": "string"},
+          "status": {"type": "string"},
+          "current_revision_number": {"type": "integer"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "rejection_reason": {"type": ["string", "null"]},
+          "rejection_at": {"type": ["string", "null"]},
+          "revisions": {"type": "array", "items": {"$ref": "#/components/schemas/Revision"}},
+          "status_history": {"type": "array", "items": {"$ref": "#/components/schemas/StatusHistoryEntry"}}
+        }
+      },
+      "Handoff": {
+        "type": "object",
+        "properties": {
+          "message_id": {"type": "string"},
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string"},
+          "normalized_destination": {"type": "string"},
+          "destination_kind": {"type": "string", "enum": ["individual", "group", "invite"]},
+          "handoff_url": {"type": "string"},
+          "url": {"type": "string"},
+          "mode": {"type": "string", "enum": ["prefill", "prefill_trimmed", "recipient_only", "manual_fallback"]},
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "prefill_recipient": {"type": "boolean"},
+              "prefill_subject": {"type": "boolean"},
+              "prefill_body": {"type": "boolean"},
+              "attachments_supported": {"type": "boolean"}
+            }
+          },
+          "manual_actions": {"type": "array", "items": {"type": "string"}},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "subject": {"type": ["string", "null"]},
+          "body": {"type": "string"},
+          "copy": {"type": "object", "properties": {"subject": {"type": ["string", "null"]}, "body": {"type": "string"}}},
+          "attachments": {"type": "array", "items": {"$ref": "#/components/schemas/Attachment"}},
+          "attachments_supported": {"type": "boolean"}
+        }
+      },
+      "Destination": {
+        "type": "object",
+        "properties": {
+          "channel": {"type": "string", "enum": ["email", "whatsapp", "telegram"]},
+          "destination": {"type": "string"},
+          "destination_normalized": {"type": "string"},
+          "label": {"type": ["string", "null"]},
+          "message_count": {"type": "integer"},
+          "last_used_at": {"type": ["string", "null"], "format": "date-time"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "DestinationList": {"type": "object", "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/Destination"}}, "total": {"type": "integer"}}},
+      "DestinationLabel": {
+        "type": "object",
+        "properties": {
+          "channel": {"type": "string"},
+          "destination": {"type": "string"},
+          "destination_normalized": {"type": "string"},
+          "label": {"type": ["string", "null"]},
+          "removed": {"type": "boolean"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "message_id": {"type": "string"},
+          "event": {"type": "string", "enum": ["message.approved", "message.rejected", "message.sent", "message.cancelled", "message.stale", "message.revised"]},
+          "revision_number": {"type": "integer"},
+          "status": {"type": "string", "enum": ["pending", "delivering", "delivered", "failed"]},
+          "payload": {"type": "object"},
+          "attempt_count": {"type": "integer"},
+          "last_error": {"type": ["string", "null"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "delivered_at": {"type": ["string", "null"], "format": "date-time"},
+          "attempts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "attempt_number": {"type": "integer"},
+                "status": {"type": "string", "enum": ["success", "failed"]},
+                "started_at": {"type": "string", "format": "date-time"},
+                "finished_at": {"type": "string", "format": "date-time"},
+                "http_status": {"type": ["integer", "null"]},
+                "error": {"type": ["string", "null"]},
+                "response_body": {"type": ["string", "null"]}
+              }
+            }
+          }
+        }
+      },
+      "WebhookEventList": {"type": "object", "properties": {"message_id": {"type": "string"}, "items": {"type": "array", "items": {"$ref": "#/components/schemas/WebhookEvent"}}, "total": {"type": "integer"}}}
+    }
+  }
+}

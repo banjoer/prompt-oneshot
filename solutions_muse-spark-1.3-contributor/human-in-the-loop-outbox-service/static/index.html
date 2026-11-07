@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outbox — Human-in-the-Loop Review</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a2230;--muted:#5b6575;--line:#dde3ec;--acc:#2456d6;--ok:#0f7a3d;--warn:#9a5b00;--bad:#b3261e;--chip:#eef2f9}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+header.top{position:sticky;top:0;z-index:20;background:#101828;color:#fff;padding:.7rem 1rem}
+header.top .row{max-width:1200px;margin:0 auto;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+header.top h1{font-size:1.05rem;margin:0;font-weight:650}
+header.top .sub{font-size:.8rem;opacity:.8}
+main{max-width:1200px;margin:0 auto;padding:1rem;display:grid;grid-template-columns:340px 1fr;gap:1rem}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:.9rem}
+.filters{display:flex;flex-direction:column;gap:.5rem}
+.filters .grid{display:flex;gap:.4rem;flex-wrap:wrap}
+label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:.15rem}
+input,select,textarea,button{font:inherit}
+input[type=text],input[type=search],select,textarea{width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+button{padding:.45rem .7rem;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+button.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+button.good{background:var(--ok);border-color:var(--ok);color:#fff}
+button:disabled{opacity:.55;cursor:not-allowed}
+.chips{display:flex;gap:.35rem;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:.2rem .6rem;font-size:.8rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--acc);color:#fff;border-color:var(--acc)}
+.list{display:flex;flex-direction:column;gap:.55rem;margin-top:.6rem;max-height:70vh;overflow:auto}
+.card{border:1px solid var(--line);border-radius:10px;padding:.6rem;cursor:pointer;background:#fff}
+.card[aria-selected=true]{outline:2px solid var(--acc)}
+.card .meta{font-size:.78rem;color:var(--muted);display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;border-radius:6px;padding:.1rem .45rem;border:1px solid var(--line);background:#f2f5fb}
+.badge.pending{border-color:#b6c8f5;background:#e8effc}
+.badge.approved{border-color:#9fd8b4;background:#e5f6ec}
+.badge.rejected{border-color:#f2b8b5;background:#fdecea}
+.badge.sent{border-color:#c9c9c9;background:#eee}
+.badge.stale,.badge.cancelled{border-color:#e0c48a;background:#fdf3dd}
+.detail h2{margin:.2rem 0 .5rem;font-size:1.1rem}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:.3rem .6rem;font-size:.9rem;margin:.5rem 0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
+pre.body{white-space:pre-wrap;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:.6rem;overflow-wrap:anywhere}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin:.6rem 0}
+.notice{border:1px solid var(--line);border-left:4px solid var(--acc);background:#f2f6ff;border-radius:8px;padding:.5rem .7rem;margin:.5rem 0;font-size:.88rem}
+.notice.warn{border-left-color:var(--warn);background:#fff7e8}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+td,th{border:1px solid var(--line);padding:.35rem .5rem;text-align:left;overflow-wrap:anywhere}
+dialog{border:1px solid var(--line);border-radius:12px;padding:1rem;max-width:min(520px,92vw);width:520px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+footer{max-width:1200px;margin:0 auto;padding:1rem;color:var(--muted);font-size:.82rem}
+.empty,.loading,.errorbox{padding:1rem;text-align:center;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+@media(max-width:480px){.row2{grid-template-columns:1fr}.kv{grid-template-columns:110px 1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><div class="row">
+<h1>Outbox Review</h1><span class="sub">Human-in-the-loop sending · nothing sends automatically</span>
+</div></header>
+<main>
+<section class="panel" aria-label="Queue">
+<h2 style="margin:.1rem 0 .5rem;font-size:1rem">Queue</h2>
+<div class="filters">
+<div class="chips" role="group" aria-label="Status filter" id="statusChips"></div>
+<div class="grid">
+<div style="flex:1;min-width:120px"><label for="fChannel">Channel</label><select id="fChannel"><option value="">All</option><option>email</option><option>whatsapp</option><option>telegram</option></select></div>
+<div style="flex:1;min-width:120px"><label for="fSort">Sort</label><select id="fSort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="expires_soon">Expiring soonest</option><option value="expires_late">Expiring latest</option></select></div>
+</div>
+<div><label for="fDest">Destination / label contains</label><input type="search" id="fDest" placeholder="e.g. alex, Ops Room"></div>
+<div class="row2"><div><label for="fFrom">Created from</label><input type="text" id="fFrom" placeholder="ISO date or blank"></div><div><label for="fTo">Created to</label><input type="text" id="fTo" placeholder="ISO date or blank"></div></div>
+<div class="grid"><button id="btnRefresh" class="primary" type="button">Refresh</button><button id="btnHistory" type="button">Show terminal history</button></div>
+<div class="grid"><button id="btnDests" type="button">Destination labels</button></div>
+</div>
+<div id="listState"></div>
+<div class="list" id="list" role="listbox" aria-label="Messages"></div>
+</section>
+<section class="panel detail" aria-label="Detail" id="detail"><div class="empty">Select a message to review it.</div></section>
+</main>
+<section class="panel" id="destPanel" style="max-width:1200px;margin:0 auto 1rem;display:none" aria-label="Destinations"></section>
+<dialog id="modal" aria-labelledby="modalTitle"><h3 id="modalTitle"></h3><div id="modalBody"></div><div class="actions" id="modalActions"></div></dialog>
+<footer>Built 2026-11-06 23:33 UTC by muse-spark-1.3-contributor (Muse Spark 1.3 Contributor) · Local-only outbox · <a href="/api/docs">API docs</a> · <a href="/openapi.json">OpenAPI</a></footer>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const st={status:"pending",showTerminal:false,selected:null,cache:[]};
+const STATUSES=["pending","approved","rejected","sent","stale","cancelled","all"];
+function chipRow(){
+  const w=$("statusChips");w.innerHTML="";
+  STATUSES.forEach(s=>{const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=s;b.setAttribute("aria-pressed",String(st.status===s));b.onclick=()=>{st.status=s;st.showTerminal=(s==="sent"||s==="stale"||s==="cancelled"||s==="all");chipRow();load();};w.appendChild(b);});
+}
+async function api(path,opts){opts=opts||{};opts.headers=Object.assign({},opts.headers||{});const r=await fetch(path,opts);let j=null;try{j=await r.json();}catch(e){const t=await r.text().catch(()=>"");throw new Error("HTTP "+r.status+" "+t.slice(0,200));}if(!r.ok){const m=(j&&j.error&&j.error.message)||("HTTP "+r.status);const ex=new Error(m);ex.data=j;throw ex;}return j;}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function relTime(iso){if(!iso)return"—";const t=new Date(iso).getTime();if(isNaN(t))return iso;const d=t-Date.now();const abs=Math.abs(d);const h=Math.floor(abs/36e5),m=Math.floor(abs%36e5/6e4);let s=h>48?Math.floor(h/24)+"d":(h+"h "+m+"m");return d>=0?("in "+s):(s+" ago");}
+async function load(){
+  const ls=$("listState");ls.innerHTML='<div class="loading">Loading…</div>';$("list").innerHTML="";
+  try{
+    const p=new URLSearchParams();if(st.status&&st.status!=="all")p.set("status",st.status);
+    const ch=$("fChannel").value;if(ch)p.set("channel",ch);
+    const d=$("fDest").value.trim();if(d)p.set("destination",d);
+    p.set("sort",$("fSort").value);p.set("limit","50");
+    const j=await api("/api/messages?"+p.toString());
+    st.cache=j.items||[];ls.innerHTML="";
+    if(!st.cache.length){ls.innerHTML='<div class="empty">No messages match. Terminal messages are reachable via history filter.</div>';return;}
+    const list=$("list");
+    st.cache.forEach(m=>{const c=document.createElement("div");c.className="card";c.tabIndex=0;c.setAttribute("role","option");c.setAttribute("aria-selected",String(st.selected===m.id));
+      c.innerHTML='<div><span class="badge '+esc(m.status)+'">'+esc(m.status)+'</span> <strong>'+esc(m.channel)+'</strong> → '+esc(m.destination)+'</div>'
+      +'<div>'+esc((m.label||m.destination_label||"")+(m.subject?(" · "+m.subject):""))+'</div>'
+      +'<div class="meta"><span>rev '+m.revision_number+'</span><span>'+(m.attachment_count||0)+' att</span><span>'+esc(m.created_at)+'</span>'+(m.expires_at?'<span>expires '+esc(m.expires_at)+' ('+esc(relTime(m.expires_at))+')</span>':"<span>no expiry</span>")+'</div>'
+      +'<div style="font-size:.85rem;color:#445">'+esc((m.body||"").slice(0,140))+'</div>';
+      c.onclick=()=>select(m.id);c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(m.id);}};
+      list.appendChild(c);});
+  }catch(e){ls.innerHTML='<div class="errorbox">Load failed: '+esc(e.message)+'</div>';}
+}
+async function select(id){st.selected=id;document.querySelectorAll(".card").forEach(el=>el.setAttribute("aria-selected","false"));await showDetail(id);}
+function busy(b){document.querySelectorAll("#detail button").forEach(x=>x.disabled=b);}
+async function showDetail(id){
+  const d=$("detail");d.innerHTML='<div class="loading">Loading message…</div>';
+  try{
+    const m=await api("/api/messages/"+encodeURIComponent(id));
+    const h=await api("/api/messages/"+encodeURIComponent(id)+"/history").catch(()=>({revisions:[],transitions:[]}));
+    const wh=await api("/api/messages/"+encodeURIComponent(id)+"/webhook-events").catch(()=>({events:[]}));
+    let html='<h2>'+esc(m.channel)+' → '+esc(m.destination)+'</h2>';
+    html+='<div><span class="badge '+esc(m.status)+'">'+esc(m.status)+'</span> <span style="font-size:.85rem;color:#567">rev '+m.revision_number+' · '+esc(m.id)+'</span></div>';
+    html+='<dl class="kv"><dt>Label</dt><dd>'+esc(m.label||m.destination_label||"—")+'</dd>'
+      +'<dt>Subject</dt><dd>'+esc(m.subject||"—")+'</dd><dt>Source</dt><dd>'+esc(m.source||"—")+'</dd>'
+      +'<dt>Created</dt><dd>'+esc(m.created_at)+'</dd><dt>Updated</dt><dd>'+esc(m.updated_at)+'</dd>'
+      +'<dt>Expires</dt><dd>'+esc(m.expires_at||"never")+(m.expires_at?" ("+esc(relTime(m.expires_at))+")":"")+'</dd>'
+      +'<dt>Metadata</dt><dd>'+esc(JSON.stringify(m.metadata||null))+'</dd>'
+      +(m.rejection_reason?'<dt>Rejection</dt><dd>'+esc(m.rejection_reason)+' ('+esc(m.rejection_at||"")+')</dd>':"")+'</dl>';
+    html+='<h3>Body</h3><pre class="body">'+esc(m.body)+'</pre>';
+    html+='<h3>Attachments ('+(m.attachments||[]).length+')</h3>';
+    if(!(m.attachments||[]).length)html+='<p style="color:#567">None.</p>';
+    else{html+='<table><tbody>'+m.attachments.map(a=>'<tr><td>'+esc(a.filename)+'</td><td>'+esc(a.mime)+'</td><td>'+a.size+' B</td><td><button data-dl="'+esc(a.id)+'">Download</button></td></tr>').join("")+'</tbody></table>';
+      html+='<div class="actions"><button data-zip="1">Download all (.zip)</button></div>';}
+    html+='<h3>References</h3>'+(((m.references||[]).length)?'<ul>'+m.references.map(u=>'<li><a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u)+'</a></li>').join("")+'</ul>':"<p>None.</p>");
+    html+='<h3>History</h3><table><thead><tr><th>#</th><th>At</th><th>Channel→Dest</th><th>Note</th></tr></thead><tbody>'
+      +(h.revisions||[]).map(r=>'<tr><td>'+r.revision_number+'</td><td>'+esc(r.created_at)+'</td><td>'+esc(r.channel)+'→'+esc(r.destination)+'</td><td>'+esc((r.body||"").slice(0,80))+(r.rejection_reason?(" [rejected: "+esc(r.rejection_reason)+"]"):"")+'</td></tr>').join("")+'</tbody></table>';
+    html+='<h3>Status transitions</h3><table><tbody>'+(h.transitions||[]).map(t=>'<tr><td>'+esc(t.from_status)+'→'+esc(t.to_status)+'</td><td>rev '+t.revision_number+'</td><td>'+esc(t.reason||"")+'</td><td>'+esc(t.created_at)+'</td></tr>').join("")+'</tbody></table>';
+    html+='<h3>Webhook deliveries</h3>'+((((wh.events||[]).length))?'<table><tbody>'+wh.events.map(e=>'<tr><td>'+esc(e.event)+'</td><td>'+esc(e.status)+' rev '+e.revision_number+'</td><td>'+(e.attempts||[]).length+' attempts, last: '+esc(((e.attempts||[]).slice(-1)[0]||{}).error||("HTTP "+(((e.attempts||[]).slice(-1)[0]||{}).http_status||""))||"")+'</td></tr>').join("")+'</tbody></table>':"<p>No webhook configured or no events yet.</p>");
+    html+='<div class="actions" id="acts"></div><div id="handoff"></div>';
+    d.innerHTML=html;
+    d.querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>{window.open("/api/messages/"+encodeURIComponent(id)+"/attachments/"+encodeURIComponent(b.getAttribute("data-dl")),"__blank");});
+    const zip=b=>{if(b)b.onclick=()=>window.open("/api/messages/"+encodeURIComponent(id)+"/attachments.zip","_blank");};zip(d.querySelector("[data-zip]"));
+    const acts=d.querySelector("#acts");
+    const add=(label,cls,fn)=>{const b=document.createElement("button");b.textContent=label;b.className=cls||"";b.onclick=fn;acts.appendChild(b);return b;};
+    if(m.status==="pending"){add("Approve","good",()=>doApprove(id));add("Reject…","danger",()=>rejectModal(id));add("Cancel","",()=>confirmModal("Cancel message?","The message leaves the active queue but history is kept.",()=>doPost(id,"/cancel",{})));}
+    else if(m.status==="approved"){add("Prepare handoff","primary",()=>showHandoff(id));add("Copy body","",()=>navigator.clipboard.writeText(m.body).then(()=>alert("Body copied")));if(m.subject)add("Copy subject","",()=>navigator.clipboard.writeText(m.subject).then(()=>alert("Subject copied")));add("Mark sent…","good",()=>sentModal(id));add("Cancel","",()=>confirmModal("Cancel message?","",()=>doPost(id,"/cancel",{})));}
+    else if(m.status==="rejected"){const p=document.createElement("p");p.innerHTML='<span class="notice warn">Rejected: '+esc(m.rejection_reason||"")+'. Revise via API PATCH to return it to pending; delivery actions are disabled.</span>';acts.appendChild(p);add("Cancel","",()=>confirmModal("Cancel message?","",()=>doPost(id,"/cancel",{})));}
+    else{const p=document.createElement("p");p.innerHTML='<span class="notice">Terminal state <strong>'+esc(m.status)+'</strong>. No delivery actions. Full history above.</span>';acts.appendChild(p);}
+  }catch(e){d.innerHTML='<div class="errorbox">Failed: '+esc(e.message)+'</div>';}
+}
+async function doPost(id,suffix,body){busy(true);try{await api("/api/messages/"+encodeURIComponent(id)+suffix,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});await load();await showDetail(id);}catch(e){alert("Failed: "+e.message);}finally{busy(false);}}
+async function doApprove(id){busy(true);try{await api("/api/messages/"+encodeURIComponent(id)+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});await load();await showDetail(id);}catch(e){alert("Approve failed: "+e.message);}finally{busy(false);}}
+function openModal(title,bodyHTML,buttons){const mg=$("modal");$("modalTitle").textContent=title;$("modalBody").innerHTML=bodyHTML;const ab=$("modalActions");ab.innerHTML="";buttons.forEach(([label,cls,fn])=>{const b=document.createElement("button");b.textContent=label;b.className=cls;b.onclick=fn;ab.appendChild(b);});mg.showModal();}
+function confirmModal(title,text,fn){openModal(title,'<p>'+esc(text)+'</p>',[["Back","",()=>$("modal").close()],["Confirm","primary",()=>{$("modal").close();fn();}]]);}
+function rejectModal(id){openModal("Reject message",'<label for="rejReason">Reason (required)</label><textarea id="rejReason" rows="4" placeholder="Why is this being rejected?"></textarea>',[["Back","",()=>$("modal").close()],["Reject","danger",async()=>{const v=$("rejReason").value.trim();if(!v){alert("Reason is required");return;}$("modal").close();busy(true);try{await api("/api/messages/"+encodeURIComponent(id)+"/reject",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reason:v})});await load();await showDetail(id);}catch(e){alert("Reject failed: "+e.message);}finally{busy(false);}}]]);}
+function sentModal(id){openModal("Mark as sent",'<p><label><input type="checkbox" id="sentChk"> I confirm this message was actually sent from my own app/account.</label></p>',[["Back","",()=>$("modal").close()],["Mark sent","good",async()=>{if(!$("sentChk").checked){alert("Explicit confirmation is required.");return;}$("modal").close();await doPost(id,"/mark-sent",{});}]]);}
+async function showHandoff(id){const box=$("detail").querySelector("#handoff");box.innerHTML="Loading handoff…";try{const h=await api("/api/messages/"+encodeURIComponent(id)+"/handoff");let s='<div class="notice"><strong>Prepared handoff</strong> — opening the link or downloading files never changes status.<br><a href="'+esc(h.handoff_url)+'" target="_blank" rel="noopener"><button class="primary" type="button">Open '+esc(h.channel)+' app</button></a> <span style="font-size:.8rem">'+esc(h.handoff_url.slice(0,120))+'</span></div>';
+if((h.warnings||[]).length)s+='<div class="notice warn">'+h.warnings.map(esc).join("<br>")+'</div>';
+s+='<h4>Manual steps</h4><ol>'+(h.manual_actions||[]).map(x=>"<li>"+esc(x)+"</li>").join("")+"</ol>";
+s+='<h4>Capabilities</h4><pre class="body">'+esc(JSON.stringify(h.capabilities,null,2))+'</pre>';
+s+='<div class="actions"><button id="cpB">Copy body</button>'+(h.subject?'<button id="cpS">Copy subject</button>':"")+'</div>';
+if((h.attachments||[]).length)s+='<p>Attachments: download each file from the list above and attach manually.</p>';
+box.innerHTML=s;const cb=$("cpB",box);box.querySelector("#cpB").onclick=()=>navigator.clipboard.writeText(h.body||"");const cs=box.querySelector("#cpS");if(cs)cs.onclick=()=>navigator.clipboard.writeText(h.subject||"");
+}catch(e){box.innerHTML='<div class="errorbox">Handoff failed: '+esc(e.message)+'</div>';}}
+async function showDests(){const p=$("destPanel");p.style.display="block";p.innerHTML="Loading destinations…";try{const j=await api("/api/destinations");const ds=j.destinations||[];let s="<h2>Destinations ("+ds.length+")</h2><p style='color:#567'>Discovered from submitted messages. Labels are unique per channel; removing a label never deletes messages.</p><table><thead><tr><th>Channel</th><th>Address</th><th>Label</th><th>#msgs</th><th>Last used</th><th>Actions</th></tr></thead><tbody>"+ds.map((x,i)=>"<tr><td>"+esc(x.channel)+"</td><td>"+esc(x.normalized_destination)+"</td><td>"+esc(x.label||"—")+"</td><td>"+x.message_count+"</td><td>"+esc(x.last_used||"")+"</td><td><button data-i='"+i+"'>Assign / rename</button> "+(x.label?("<button data-r='"+i+"'>Remove</button>"):"")+"</td></tr>").join("")+"</tbody></table>";p.innerHTML=s;
+p.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{const x=ds[+b.getAttribute("data-i")];openModal("Label destination",'<p>'+esc(x.channel)+' · '+esc(x.normalized_destination)+'</p><label>Label<input type="text" id="labVal" value="'+esc(x.label||"")+'"></label>',[["Cancel","",()=>$("modal").close()],["Save","primary",async()=>{const v=$("labVal").value.trim();if(!v){alert("Label must be non-empty");return;}$("modal").close();try{await api("/api/destinations/label",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({channel:x.channel,destination:x.destination,label:v})});showDests();load();if(st.selected)showDetail(st.selected);}catch(e){alert("Label failed: "+e.message);}}]]);});
+p.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{const x=ds[+b.getAttribute("data-r")];confirmModal("Remove label?","Messages are kept; only the label mapping is removed.",async()=>{try{await api("/api/destinations/label?channel="+encodeURIComponent(x.channel)+"&destination="+encodeURIComponent(x.destination),{method:"DELETE"});showDests();load();}catch(e){alert("Remove failed: "+e.message);}});});
+}catch(e){p.innerHTML="Failed: "+esc(e.message);}}
+$("btnRefresh").onclick=load;$("btnHistory").onclick=()=>{st.status="all";chipRow();load();};$("btnDests").onclick=showDests;
+$("fChannel").onchange=load;$("fSort").onchange=load;let deb;$("fDest").oninput=()=>{clearTimeout(deb);deb=setTimeout(load,300);};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=$("modal");if(m.open)m.close();}});
+chipRow();load();
+</script>
+</body>
+</html>

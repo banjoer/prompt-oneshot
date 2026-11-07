@@ -62,3 +62,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Trophy Tide — Knights Tower Defense & Whale Boss | 🔴 Extreme | ✅ Done |
 | RepoLens — Mobile-First GitHub Repository Explorer | 🟠 Hard | ✅ Done |
 | Repo Apps | 🔴 Extreme | ✅ Done |
+| Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |

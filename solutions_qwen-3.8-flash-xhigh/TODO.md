@@ -50,3 +50,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | CellForge: A Swing Spreadsheet Engine | 🔴 Extreme | ⏳ Pending |
 | Emberdeep: A Seeded ASCII Roguelike in a Single HTML File | 🔴 Extreme | ⏳ Pending |
 | Repo Apps | 🔴 Extreme | ✅ Done |
+| Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |

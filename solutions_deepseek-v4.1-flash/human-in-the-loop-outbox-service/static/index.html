@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outbox — Human-in-the-Loop Review</title>
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eceef2; --text:#16202b;
+  --muted:#5d6b7a; --line:#d7dce3; --accent:#1f5fbf; --accent-strong:#174b98;
+  --accent-soft:#e6efff; --danger:#a4262c; --danger-soft:#fdecec;
+  --ok:#17643a; --ok-soft:#e6f4eb; --warn:#7a4b00; --warn-soft:#fff3d6;
+  --shadow:0 8px 30px rgba(16,24,40,.14); --radius:12px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#10151b; --surface:#171e26; --surface-2:#202a35; --text:#e8edf3;
+    --muted:#9aa8b8; --line:#33404d; --accent:#79aaff; --accent-strong:#a6c8ff;
+    --accent-soft:#1c2f4c; --danger:#ff9a9a; --danger-soft:#3a1d1f;
+    --ok:#8ed7ab; --ok-soft:#173225; --warn:#ffd47d; --warn-soft:#33290f;
+    --shadow:0 8px 30px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font:16px/1.5 var(--sans); background:var(--bg); color:var(--text);
+  overflow-x:hidden;
+}
+a{color:var(--accent); text-underline-offset:2px}
+a:hover{color:var(--accent-strong)}
+button,input,select,textarea{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px; border-radius:4px}
+.skip{position:absolute; left:-999px; top:8px; z-index:1000; background:var(--surface); padding:.6rem 1rem; border:2px solid var(--accent)}
+.skip:focus{left:8px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.wrap{max-width:1280px;margin:0 auto;padding:0 1.25rem}
+
+/* header */
+.topbar{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-inner{display:flex;align-items:center;gap:1rem;min-height:64px;flex-wrap:wrap;padding:.5rem 1.25rem;max-width:1280px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:.65rem;margin-right:auto}
+.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:-.04em}
+.brand h1{font-size:1.05rem;margin:0;line-height:1.2}
+.brand p{margin:0;font-size:.78rem;color:var(--muted)}
+nav.views{display:flex;gap:.35rem;background:var(--surface-2);padding:.25rem;border-radius:10px}
+nav.views button{border:0;background:transparent;padding:.5rem .85rem;border-radius:7px;font-weight:600;color:var(--muted)}
+nav.views button[aria-current="page"]{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid var(--line);background:var(--surface);padding:.52rem .9rem;border-radius:8px;font-weight:600;text-decoration:none;line-height:1.2;min-height:40px}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);color:#fff}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.danger:hover{filter:brightness(.92);color:#fff}
+.btn.ghost{background:transparent}
+.btn.small{padding:.35rem .6rem;min-height:33px;font-size:.85rem}
+.btn:disabled{opacity:.55;cursor:not-allowed;filter:none}
+.btn[aria-busy="true"]{opacity:.7}
+
+/* page */
+main{padding:1.4rem 0 3rem;min-height:60vh}
+.page-head{display:flex;gap:1rem;align-items:flex-end;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap}
+.page-head h2{margin:0;font-size:1.45rem}
+.page-head p{margin:.2rem 0 0;color:var(--muted);font-size:.92rem}
+.count-note{color:var(--muted);font-size:.9rem}
+
+/* filters */
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1.1rem}
+.filter-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.75rem;align-items:end}
+.field{display:flex;flex-direction:column;gap:.3rem;min-width:0}
+.field label{font-size:.76rem;font-weight:700;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:.45rem .55rem;min-height:38px}
+.filter-actions{display:flex;gap:.5rem;grid-column:span 2;justify-content:flex-end}
+.filter-actions .btn{min-width:92px}
+@media (max-width:1100px){.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))} .filter-actions{grid-column:span 3}}
+@media (max-width:640px){.filter-grid{grid-template-columns:1fr 1fr} .filter-actions{grid-column:span 2;justify-content:stretch} .filter-actions .btn{flex:1}}
+
+/* queue */
+.queue{display:flex;flex-direction:column;gap:.7rem}
+.msg-card{width:100%;display:flex;align-items:stretch;gap:1rem;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem;transition:border-color .12s ease, transform .12s ease}
+.msg-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.msg-card.status-pending{border-left-color:#b26a00}
+.msg-card.status-approved{border-left-color:#1f5fbf}
+.msg-card.status-rejected{border-left-color:#a4262c}
+.msg-card.status-sent{border-left-color:#17643a}
+.msg-card.status-stale,.msg-card.status-cancelled{border-left-color:#718096}
+.msg-main{min-width:0;flex:1}
+.card-top{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.3rem}
+.card-top h3,.card-title{margin:0;font-size:1.03rem;line-height:1.3;overflow-wrap:anywhere;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:.3rem;border-radius:999px;padding:.15rem .55rem;font-size:.75rem;font-weight:700;border:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.badge.pending{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.badge.approved{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.badge.rejected{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.badge.sent{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.badge.stale,.badge.cancelled{background:var(--surface-2);color:var(--muted)}
+.badge.channel{font-weight:600;color:var(--muted)}
+.dest-line{font-family:var(--mono);font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
+.dest-label{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:.05rem .35rem;font-size:.75rem;margin-right:.35rem;font-weight:700}
+.preview{margin:.5rem 0;color:var(--text);opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.meta-line{display:flex;flex-wrap:wrap;gap:.25rem 1rem;font-size:.79rem;color:var(--muted)}
+.meta-line strong{font-weight:600;color:var(--text)}
+.card-side{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:.85rem;white-space:nowrap;padding-left:.5rem}
+@media (max-width:700px){.card-side{display:none} .msg-card{padding:.85rem}.preview{-webkit-line-clamp:3}}
+
+/* states */
+.state-box{background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:3rem 1.5rem;text-align:center;color:var(--muted)}
+.state-box h3{margin:.2rem 0 .4rem;color:var(--text);font-size:1.05rem}
+.state-box.error{border-color:var(--danger);background:var(--danger-soft);color:var(--text)}
+.skeleton{height:104px;border-radius:var(--radius);background:linear-gradient(90deg,var(--surface) 25%,var(--surface-2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto !important;animation:none !important;transition:none !important}}
+
+/* pagination */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem;flex-wrap:wrap}
+
+/* drawer */
+.overlay{position:fixed;inset:0;background:rgba(7,12,18,.5);z-index:50;display:none;opacity:0;transition:opacity .15s ease}
+.overlay.open{display:block;opacity:1}
+.drawer{position:fixed;top:0;right:0;height:100dvh;width:min(760px,94vw);background:var(--bg);z-index:60;box-shadow:var(--shadow);display:none;flex-direction:column;transform:translateX(18px);transition:transform .16s ease}
+.drawer.open{display:flex;transform:translateX(0)}
+.drawer-head{display:flex;gap:1rem;align-items:flex-start;padding:1rem 1.25rem;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+.drawer-head .grow{flex:1;min-width:0}
+.drawer-head h2{margin:.15rem 0 .3rem;font-size:1.3rem;overflow-wrap:anywhere}
+.drawer-head p{margin:0;color:var(--muted);font-size:.82rem;font-family:var(--mono)}
+.drawer-body{overflow-y:auto;padding:1.1rem 1.25rem 4rem;overscroll-behavior:contain}
+@media (max-width:760px){.drawer{width:100vw}}
+@media (prefers-reduced-motion:reduce){.drawer{transform:none}}
+
+.detail-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem;margin-bottom:.9rem}
+.detail-section h3{margin:0 0 .65rem;font-size:.95rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem 1rem}
+@media (max-width:600px){.detail-grid{grid-template-columns:1fr}}
+.kv{min-width:0}
+.kv dt{font-size:.73rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+.kv dd{margin:.1rem 0 0;overflow-wrap:anywhere;font-size:.92rem}
+.body-text{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface-2);border-radius:8px;padding:.8rem .9rem;margin:0;font-family:var(--sans);font-size:.95rem;max-height:none}
+.subject-line{margin:0 0 .6rem;font-weight:700;font-size:1.02rem;overflow-wrap:anywhere}
+.actions-row{display:flex;gap:.55rem;flex-wrap:wrap;margin:.35rem 0 0}
+.actions-row .btn{flex:0 1 auto}
+@media (max-width:520px){.actions-row .btn{flex:1 1 45%}}
+.callout{border-radius:8px;padding:.7rem .85rem;margin:.6rem 0;border:1px solid var(--line);background:var(--surface-2);font-size:.9rem}
+.callout.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.callout.danger{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.callout.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.callout ul,.callout ol{margin:.35rem 0 0;padding-left:1.25rem}
+.callout li{margin:.2rem 0}
+
+.att-list,.ref-list,.plain-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.att-item,.ref-item{display:flex;gap:.75rem;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:.55rem .65rem;background:var(--bg)}
+.att-info{min-width:0}
+.att-info strong{display:block;overflow-wrap:anywhere;font-size:.9rem}
+.att-info span{font-size:.76rem;color:var(--muted);font-family:var(--mono)}
+.meta-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.meta-table th,.meta-table td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .35rem;vertical-align:top;overflow-wrap:anywhere}
+.meta-table th{width:34%;font-weight:600;color:var(--muted)}
+.meta-table tr:last-child th,.meta-table tr:last-child td{border-bottom:0}
+
+.handoff{border:1px solid var(--accent);border-radius:var(--radius);padding:1rem;background:var(--accent-soft);margin-top:.4rem}
+.handoff h4{margin:0 0 .4rem;font-size:1rem}
+.handoff .mode{font-weight:700;font-size:.83rem;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin-bottom:.4rem}
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem .8rem;margin:.6rem 0;font-size:.86rem}
+.cap-grid div{display:flex;gap:.35rem;align-items:flex-start}
+.cap-yes{font-weight:700;color:var(--ok)}
+.cap-no{font-weight:700;color:var(--muted)}
+.handoff .btn{margin:.2rem .35rem .2rem 0}
+details{border:1px solid var(--line);border-radius:8px;padding:.55rem .7rem;background:var(--bg);margin-bottom:.5rem}
+details summary{cursor:pointer;font-weight:600;font-size:.88rem;overflow-wrap:anywhere}
+details[open] summary{margin-bottom:.5rem}
+.rev-body{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.88rem;background:var(--surface-2);border-radius:6px;padding:.6rem;margin:.4rem 0 0}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55rem}
+.timeline li{border-left:3px solid var(--line);padding:.1rem 0 .1rem .7rem}
+.timeline .t-top{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;font-size:.86rem;font-weight:600}
+.timeline .t-time{font-size:.76rem;color:var(--muted);font-family:var(--mono)}
+.timeline .t-reason{font-size:.84rem;margin-top:.1rem}
+.webhook-event{border:1px solid var(--line);border-radius:8px;padding:.6rem;margin-bottom:.5rem;background:var(--bg)}
+.attempt-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.4rem}
+.attempt-table th,.attempt-table td{text-align:left;border-bottom:1px solid var(--line);padding:.3rem;vertical-align:top}
+.payload{font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;background:var(--surface-2);padding:.5rem;border-radius:6px;margin:.4rem 0 0}
+
+/* destinations */
+.dest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.8rem}
+.dest-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+.dest-card h3{margin:0 0 .2rem;font-size:1rem;overflow-wrap:anywhere}
+.dest-card .norm{font-family:var(--mono);font-size:.8rem;color:var(--muted);overflow-wrap:anywhere;margin:0 0 .5rem}
+.dest-card .dest-meta{font-size:.82rem;color:var(--muted);margin:.35rem 0 .7rem}
+.dest-card .actions-row{margin:0}
+.label-chip{display:inline-block;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:.1rem .5rem;font-size:.75rem;font-weight:700;margin-bottom:.3rem}
+
+/* modal */
+.modal-layer{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:1rem;background:rgba(7,12,18,.55)}
+.modal-layer.open{display:flex}
+.modal{width:min(520px,100%);max-height:90dvh;overflow:auto;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:1.2rem 1.3rem}
+.modal h2{margin:0 0 .4rem;font-size:1.2rem}
+.modal .modal-desc{color:var(--muted);font-size:.9rem;margin:.1rem 0 .8rem}
+.modal label{display:block;font-weight:700;font-size:.85rem;margin:.7rem 0 .3rem}
+.modal textarea,.modal input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:.55rem;background:var(--bg)}
+.modal textarea{min-height:110px;resize:vertical}
+.modal .check-row{display:flex;gap:.55rem;align-items:flex-start;font-size:.9rem;margin:.8rem 0;font-weight:500}
+.modal .check-row input{width:20px;height:20px;margin-top:.05rem;flex:none}
+.modal-error{color:var(--danger);font-size:.86rem;margin:.5rem 0 0;font-weight:600}
+.modal-actions{display:flex;justify-content:flex-end;gap:.55rem;margin-top:1rem;flex-wrap:wrap}
+@media (max-width:520px){.modal-actions .btn{flex:1 1 45%}}
+
+/* toast */
+.toasts{position:fixed;bottom:1rem;right:1rem;z-index:100;display:flex;flex-direction:column;gap:.5rem;max-width:min(420px,calc(100vw - 2rem))}
+.toast{background:var(--text);color:var(--bg);border-radius:9px;padding:.65rem .9rem;box-shadow:var(--shadow);font-size:.9rem;overflow-wrap:anywhere}
+.toast.error{background:var(--danger);color:#fff}
+.toast.success{background:var(--ok);color:#fff}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:1rem 1.25rem 2rem;color:var(--muted);font-size:.82rem;background:var(--surface)}
+.footer-inner{max-width:1280px;margin:0 auto;display:flex;gap:.75rem 1.5rem;justify-content:space-between;flex-wrap:wrap}
+footer strong{color:var(--text)}
+code{font-family:var(--mono);font-size:.86em}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">O</div>
+      <div>
+        <h1>Outbox</h1>
+        <p>Human review before anything is sent</p>
+      </div>
+    </div>
+    <nav class="views" aria-label="Main views">
+      <button type="button" data-action="switch-view" data-view="queue" aria-current="page">Review queue</button>
+      <button type="button" data-action="switch-view" data-view="destinations">Destinations</button>
+    </nav>
+    <button type="button" class="btn ghost" data-action="refresh" aria-label="Refresh current view">Refresh</button>
+  </div>
+</header>
+
+<main id="main" class="wrap" tabindex="-1">
+  <section id="queue-view" aria-labelledby="queue-title">
+    <div class="page-head">
+      <div>
+        <h2 id="queue-title">Review queue</h2>
+        <p>Messages drafted by agents. Nothing is sent until you send it in your own app and confirm it here.</p>
+      </div>
+      <div class="count-note" id="queue-count" aria-live="polite"></div>
+    </div>
+
+    <form class="filters" id="queue-filters" aria-label="Filter messages">
+      <div class="filter-grid">
+        <div class="field">
+          <label for="f-status">Status</label>
+          <select id="f-status" name="status">
+            <option value="active" selected>Active (pending, approved, rejected)</option>
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="terminal">Terminal (sent, stale, cancelled)</option>
+            <option value="sent">Sent</option>
+            <option value="stale">Stale</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-channel">Channel</label>
+          <select id="f-channel" name="channel">
+            <option value="">Any channel</option>
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-destination">Destination or label</label>
+          <input id="f-destination" name="destination" type="search" placeholder="alex@example.com, group, label…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-sort">Sort</label>
+          <select id="f-sort" name="sort">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="expires_soon">Expiring soonest</option>
+            <option value="expires_late">Expiring latest</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-created-from">Created from</label>
+          <input id="f-created-from" name="created_from" type="date">
+        </div>
+        <div class="field">
+          <label for="f-created-to">Created to</label>
+          <input id="f-created-to" name="created_to" type="date">
+        </div>
+        <div class="field">
+          <label for="f-expires-from">Expires from</label>
+          <input id="f-expires-from" name="expires_from" type="date">
+        </div>
+        <div class="field">
+          <label for="f-expires-to">Expires to</label>
+          <input id="f-expires-to" name="expires_to" type="date">
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="btn ghost" data-action="reset-filters">Reset</button>
+          <button type="submit" class="btn primary">Apply filters</button>
+        </div>
+      </div>
+    </form>
+
+    <div id="queue-list" class="queue" aria-live="polite" aria-busy="false"></div>
+    <div class="pager" id="queue-pager" hidden>
+      <span id="pager-note" class="count-note"></span>
+      <div class="actions-row" style="margin:0">
+        <button type="button" class="btn small" data-action="page-prev" id="page-prev">Previous</button>
+        <button type="button" class="btn small" data-action="page-next" id="page-next">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="destinations-view" aria-labelledby="destinations-title" hidden>
+    <div class="page-head">
+      <div>
+        <h2 id="destinations-title">Destinations</h2>
+        <p>Discovered automatically from submitted messages. Labels are unique within a channel and never alter message history.</p>
+      </div>
+      <div class="count-note" id="dest-count" aria-live="polite"></div>
+    </div>
+    <form class="filters" id="dest-filters" aria-label="Filter destinations">
+      <div class="filter-grid">
+        <div class="field">
+          <label for="d-channel">Channel</label>
+          <select id="d-channel" name="channel">
+            <option value="">Any channel</option>
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="d-search">Destination or label</label>
+          <input id="d-search" name="q" type="search" placeholder="Search known destinations" autocomplete="off">
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="btn ghost" data-action="reset-dest-filters">Reset</button>
+          <button type="submit" class="btn primary">Apply</button>
+        </div>
+      </div>
+    </form>
+    <div id="dest-list" class="dest-grid" aria-live="polite" aria-busy="false"></div>
+  </section>
+</main>
+
+<div class="overlay" id="overlay" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title" tabindex="-1" hidden>
+  <div class="drawer-head">
+    <div class="grow">
+      <p id="detail-kicker">Message</p>
+      <h2 id="detail-title">Message details</h2>
+      <div id="detail-badges"></div>
+    </div>
+    <button type="button" class="btn small ghost" data-action="close-detail" aria-label="Close message details">Close ✕</button>
+  </div>
+  <div class="drawer-body" id="detail-body"></div>
+</aside>
+
+<div class="modal-layer" id="modal-layer" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h2 id="modal-title">Confirm</h2>
+    <div id="modal-desc" class="modal-desc"></div>
+    <div id="modal-content"></div>
+    <p class="modal-error" id="modal-error" role="alert" hidden></p>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-action="modal-cancel">Cancel</button>
+      <button type="button" class="btn primary" data-action="modal-confirm" id="modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<footer>
+  <div class="footer-inner">
+    <div id="built-line">Built <time datetime="2026-11-07T00:09:15.580Z">2026-11-07 00:09 UTC</time> by <strong>DeepSeek V4.1 Flash</strong> · local single-user service</div>
+    <div>
+      <a href="/api/docs">API documentation</a> ·
+      <a href="/openapi.json">OpenAPI specification</a> ·
+      <a href="/api/health">Health</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+
+const STATUS_LABELS = {
+  pending: "Pending", approved: "Approved", sent: "Sent",
+  rejected: "Rejected", stale: "Stale", cancelled: "Cancelled"
+};
+const STATUS_SYMBOLS = {
+  pending: "◷", approved: "✓", sent: "➜", rejected: "✕", stale: "⌛", cancelled: "⊘"
+};
+const STATUS_PRIORITY = {pending: 0, approved: 1, rejected: 2, sent: 3, stale: 4, cancelled: 5};
+const CHANNEL_LABELS = {email: "Email", whatsapp: "WhatsApp", telegram: "Telegram"};
+const TERMINAL = new Set(["sent", "stale", "cancelled"]);
+
+const state = {
+  view: "queue",
+  queue: {
+    items: [], total: 0, offset: 0, limit: 20, loading: false, error: null,
+    filters: {status: "active", channel: "", destination: "", sort: "newest",
+      created_from: "", created_to: "", expires_from: "", expires_to: ""}
+  },
+  destinations: {items: [], loading: false, error: null, filters: {channel: "", q: ""}},
+  detail: null,
+  handoff: null,
+  modal: null,
+  lastFocus: null,
+  info: null
+};
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function esc(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function fmtBytes(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  try {
+    return date.toLocaleString(undefined, {
+      dateStyle: "medium", timeStyle: "short", timeZoneName: "short"
+    });
+  } catch (_) {
+    return date.toString();
+  }
+}
+
+function relative(seconds) {
+  if (seconds == null) return "No expiration";
+  if (seconds <= 0) return "Expired";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return d + "d " + h + "h left";
+  if (h > 0) return h + "h " + m + "m left";
+  return Math.max(1, m) + "m left";
+}
+
+function statusBadge(status) {
+  const s = STATUS_LABELS[status] || status;
+  return `<span class="badge ${esc(status)}"><span aria-hidden="true">${STATUS_SYMBOLS[status] || "•"}</span> ${esc(s)}</span>`;
+}
+
+function channelLabel(channel) { return CHANNEL_LABELS[channel] || channel; }
+
+function previewText(body, max) {
+  const value = String(body || "").replace(/\s+/g, " ").trim();
+  if (value.length <= max) return value;
+  return value.slice(0, max - 1) + "…";
+}
+
+async function api(path, options = {}) {
+  const opts = Object.assign({headers: {}}, options);
+  if (opts.body && typeof opts.body !== "string") {
+    opts.headers = Object.assign({}, opts.headers, {"Content-Type": "application/json"});
+    opts.body = JSON.stringify(opts.body);
+  }
+  const response = await fetch(path, opts);
+  let payload = null;
+  const text = await response.text();
+  if (text) {
+    try { payload = JSON.parse(text); } catch (_) { payload = null; }
+  }
+  if (!response.ok) {
+    const message = (payload && payload.error && payload.error.message) ||
+      (payload && payload.detail) || ("Request failed with HTTP " + response.status + ".");
+    const err = new Error(message);
+    err.status = response.status;
+    err.payload = payload;
+    throw err;
+  }
+  return payload;
+}
+
+function toast(message, kind = "info") {
+  const box = document.createElement("div");
+  box.className = "toast " + kind;
+  box.textContent = message;
+  $("#toasts").appendChild(box);
+  setTimeout(() => { box.remove(); }, 5200);
+}
+
+/* ------------------------------------------------------------------ queue */
+function queueParams() {
+  const f = state.queue.filters;
+  const params = new URLSearchParams();
+  if (f.status === "active") params.set("status", "pending,approved,rejected");
+  else if (f.status === "terminal") params.set("status", "sent,stale,cancelled");
+  else if (f.status !== "all") params.set("status", f.status);
+  if (f.channel) params.set("channel", f.channel);
+  if (f.destination) params.set("destination", f.destination);
+  if (f.sort) params.set("sort", f.sort);
+  for (const key of ["created_from", "created_to", "expires_from", "expires_to"]) {
+    if (f[key]) params.set(key, f[key]);
+  }
+  params.set("limit", String(state.queue.limit));
+  params.set("offset", String(state.queue.offset));
+  return params;
+}
+
+async function loadQueue() {
+  const q = state.queue;
+  q.loading = true; q.error = null;
+  renderQueue();
+  try {
+    const data = await api("/api/messages?" + queueParams().toString());
+    q.items = Array.isArray(data.items) ? data.items : [];
+    q.total = data.total || 0;
+    if (q.filters.status === "active") {
+      q.items = q.items.slice().sort((a, b) =>
+        (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9));
+    }
+  } catch (err) {
+    q.error = err.message;
+  } finally {
+    q.loading = false;
+    renderQueue();
+  }
+}
+
+function renderQueue() {
+  const q = state.queue;
+  const list = $("#queue-list");
+  list.setAttribute("aria-busy", q.loading ? "true" : "false");
+  $("#queue-count").textContent = q.loading ? "Loading…" :
+    (q.total === 1 ? "1 message" : q.total + " messages");
+
+  if (q.loading) {
+    list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+    $("#queue-pager").hidden = true;
+    return;
+  }
+  if (q.error) {
+    list.innerHTML = `<div class="state-box error"><h3>Could not load messages</h3>
+      <p>${esc(q.error)}</p>
+      <button type="button" class="btn" data-action="retry-queue">Try again</button></div>`;
+    $("#queue-pager").hidden = true;
+    return;
+  }
+  if (!q.items.length) {
+    list.innerHTML = `<div class="state-box"><h3>No messages here</h3>
+      <p>Nothing matches the current filters. Submit a message through <code>POST /api/messages</code> or widen the filters.</p>
+      ${q.total ? "" : '<button type="button" class="btn" data-action="reset-filters">Show active messages</button>'}</div>`;
+    $("#queue-pager").hidden = true;
+    return;
+  }
+
+  list.innerHTML = q.items.map(item => {
+    const label = item.destination_label_effective;
+    const subject = item.subject ? esc(item.subject) : "No subject";
+    const expiry = item.expires_at
+      ? `<span>Expires <strong>${esc(fmtTime(item.expires_at))}</strong> · <span data-expiry="${esc(item.expires_at)}">${esc(relative(item.expires_in_seconds))}</span></span>`
+      : "<span><strong>No expiration</strong></span>";
+    const attachmentText = item.attachment_count
+      ? `${item.attachment_count} attachment${item.attachment_count === 1 ? "" : "s"}`
+      : "No attachments";
+    return `<button type="button" class="msg-card status-${esc(item.status)}" data-action="open-message" data-id="${esc(item.id)}" aria-label="Review ${esc(item.subject || "No subject")} to ${esc(item.destination)}, ${esc(STATUS_LABELS[item.status] || item.status)}">
+      <span class="msg-main">
+        <span class="card-top">
+          ${statusBadge(item.status)}
+          <span class="badge channel">${esc(channelLabel(item.channel))}</span>
+          <span class="badge">Revision ${esc(item.revision_number)}</span>
+        </span>
+        <span class="card-top"><span class="card-title">${subject}</span></span>
+        <span class="dest-line">${label ? `<span class="dest-label">${esc(label)}</span>` : ""}${esc(item.destination)}</span>
+        <span class="preview">${esc(previewText(item.body, 190))}</span>
+        <span class="meta-line">
+          <span>Created <strong>${esc(fmtTime(item.created_at))}</strong></span>
+          ${expiry}
+          <span>${esc(attachmentText)}</span>
+          ${item.source ? `<span>Source <strong>${esc(item.source)}</strong></span>` : ""}
+        </span>
+      </span>
+      <span class="card-side" aria-hidden="true">Review →</span>
+    </button>`;
+  }).join("");
+
+  const start = q.total ? q.offset + 1 : 0;
+  const end = Math.min(q.offset + q.items.length, q.total);
+  $("#pager-note").textContent = `Showing ${start}–${end} of ${q.total}`;
+  $("#queue-pager").hidden = false;
+  $("#page-prev").disabled = q.offset <= 0;
+  $("#page-next").disabled = q.offset + q.limit >= q.total;
+  updateCountdowns();
+}
+
+/* -------------------------------------------------------------- detail view */
+function openDrawerShell() {
+  const wasHidden = $("#drawer").hidden;
+  $("#overlay").hidden = false;
+  $("#drawer").hidden = false;
+  if (wasHidden) {
+    const drawer = $("#drawer");
+    requestAnimationFrame(() => drawer.focus());
+  }
+  requestAnimationFrame(() => {
+    $("#overlay").classList.add("open");
+    $("#drawer").classList.add("open");
+  });
+}
+
+function closeDetail() {
+  const drawer = $("#drawer");
+  if (drawer.hidden) return;
+  drawer.classList.remove("open");
+  $("#overlay").classList.remove("open");
+  setTimeout(() => {
+    drawer.hidden = true;
+    $("#overlay").hidden = true;
+  }, 120);
+  state.detail = null;
+  state.handoff = null;
+  const focusTarget = state.lastFocus;
+  state.lastFocus = null;
+  if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
+}
+
+async function openMessage(id, options = {}) {
+  if (!options.keepPosition) {
+    state.lastFocus = document.activeElement;
+  }
+  openDrawerShell();
+  $("#detail-kicker").textContent = "Message " + id;
+  $("#detail-title").textContent = "Loading…";
+  $("#detail-badges").innerHTML = "";
+  $("#detail-body").innerHTML = '<div class="skeleton" style="height:220px"></div>';
+  state.detail = {id, loading: true};
+  state.handoff = null;
+  try {
+    let [message, history, webhooks] = await Promise.all([
+      api("/api/messages/" + encodeURIComponent(id)),
+      api("/api/messages/" + encodeURIComponent(id) + "/history"),
+      api("/api/messages/" + encodeURIComponent(id) + "/webhook-events")
+    ]);
+    let handoff = null;
+    let handoffError = null;
+    if (message.status === "approved") {
+      try {
+        handoff = await api("/api/messages/" + encodeURIComponent(id) + "/handoff");
+      } catch (err) {
+        handoffError = err.message;
+        if (err.status === 409) {
+          message = await api("/api/messages/" + encodeURIComponent(id));
+          history = await api("/api/messages/" + encodeURIComponent(id) + "/history");
+        }
+      }
+    }
+    state.detail = {id, loading: false, message, history, webhooks, handoff, handoffError};
+    state.handoff = handoff;
+    renderDetail();
+    if (!options.keepPosition) $("#drawer").querySelector(".drawer-body").scrollTop = 0;
+  } catch (err) {
+    if (err.status === 404) {
+      state.detail = {id, loading: false, missing: true, error: err.message};
+      renderDetail();
+    } else {
+      state.detail = {id, loading: false, error: err.message};
+      renderDetail();
+    }
+  }
+}
+
+function renderDetail() {
+  const d = state.detail;
+  if (!d) return;
+  const body = $("#detail-body");
+  if (d.loading) {
+    $("#detail-title").textContent = "Loading…";
+    return;
+  }
+  if (d.missing) {
+    $("#detail-title").textContent = "Message not found";
+    $("#detail-badges").innerHTML = "";
+    body.innerHTML = `<div class="state-box error"><h3>Message not found</h3><p>${esc(d.error)}</p></div>`;
+    return;
+  }
+  if (d.error) {
+    $("#detail-title").textContent = "Could not load message";
+    $("#detail-badges").innerHTML = "";
+    body.innerHTML = `<div class="state-box error"><h3>Could not load message</h3><p>${esc(d.error)}</p>
+      <button type="button" class="btn" data-action="reload-detail" data-id="${esc(d.id)}">Try again</button></div>`;
+    return;
+  }
+  const m = d.message;
+  const label = m.destination_label_effective;
+  $("#detail-kicker").textContent = "Message " + m.id;
+  $("#detail-title").textContent = m.subject || ("To " + m.destination);
+  $("#detail-badges").innerHTML = `
+    ${statusBadge(m.status)}
+    <span class="badge channel">${esc(channelLabel(m.channel))}</span>
+    <span class="badge">Revision ${esc(m.revision_number)}</span>
+    ${m.is_terminal ? '<span class="badge">Terminal — read only</span>' : ""}
+  `;
+
+  const actions = renderActions(m);
+  const handoffHtml = renderHandoff(d);
+  const rejection = m.rejection_reason ? `<div class="callout danger"><strong>Rejection reason</strong><div>${esc(m.rejection_reason)}</div>
+    ${m.rejection_at ? `<div class="t-time" style="margin-top:.3rem">Rejected ${esc(fmtTime(m.rejection_at))}</div>` : ""}</div>` : "";
+
+  const expiry = m.expires_at
+    ? `<div><span data-expiry="${esc(m.expires_at)}">${esc(relative(m.expires_in_seconds))}</span></div>`
+    : "<div>No expiration</div>";
+
+  const metadataKeys = m.metadata && typeof m.metadata === "object" ? Object.keys(m.metadata) : [];
+  const metadataHtml = metadataKeys.length
+    ? `<table class="meta-table"><tbody>${metadataKeys.map(k =>
+        `<tr><th scope="row">${esc(k)}</th><td>${esc(typeof m.metadata[k] === "string" ? m.metadata[k] : JSON.stringify(m.metadata[k]))}</td></tr>`).join("")}</tbody></table>`
+    : '<p class="count-note">No metadata.</p>';
+
+  const refsHtml = (m.reference_details && m.reference_details.length)
+    ? `<ul class="ref-list">${m.reference_details.map((ref, idx) =>
+        `<li class="ref-item"><div class="att-info"><strong><a href="${esc(ref.url)}" target="_blank" rel="noopener noreferrer">${esc(ref.url)}</a></strong>
+        <span>${ref.origin === "attachment_reference" ? "Attachment reference (never downloaded)" : "External reference (never fetched)"}</span></div></li>`).join("")}</ul>`
+    : '<p class="count-note">No external references.</p>';
+
+  const attachments = m.attachments || [];
+  const attHtml = attachments.length
+    ? `<ul class="att-list">${attachments.map(att => `
+        <li class="att-item"><div class="att-info"><strong>${esc(att.original_filename)}</strong>
+          <span>${esc(att.mime_type)} · ${esc(fmtBytes(att.size_bytes))} · ${esc(att.source_type)}</span></div>
+          <a class="btn small" href="${esc(att.download_url)}" download="${esc(att.original_filename)}">Download</a></li>`).join("")}
+      </ul>
+      <div class="actions-row"><a class="btn small" href="/api/messages/${encodeURIComponent(m.id)}/attachments.zip" download>Download all attachments (ZIP)</a></div>`
+    : '<p class="count-note">No attachments on the current revision.</p>';
+
+  const revisions = (d.history && d.history.revisions) || [];
+  const revisionHtml = revisions.slice().reverse().map(rev => {
+    const attCount = rev.attachment_count || 0;
+    return `<details class="revision" ${rev.revision_number === m.revision_number ? "open" : ""}>
+      <summary>Revision ${esc(rev.revision_number)} · ${esc(fmtTime(rev.created_at))} · ${attCount} attachment${attCount === 1 ? "" : "s"}${rev.rejection_reason ? " · rejected" : ""}</summary>
+      <div class="subject-line">${esc(rev.subject || "No subject")}</div>
+      <div class="rev-body">${esc(rev.body)}</div>
+      ${rev.rejection_reason ? `<div class="callout danger" style="margin-top:.45rem"><strong>Rejected:</strong> ${esc(rev.rejection_reason)}</div>` : ""}
+      ${(rev.attachments && rev.attachments.length) ? `<ul class="att-list" style="margin-top:.5rem">${rev.attachments.map(att => `<li class="att-item"><div class="att-info"><strong>${esc(att.original_filename)}</strong><span>${esc(att.mime_type)} · ${esc(fmtBytes(att.size_bytes))}</span></div><a class="btn small" href="${esc(att.download_url)}" download="${esc(att.original_filename)}">Download</a></li>`).join("")}</ul>` : ""}
+      ${(rev.references && rev.references.length) ? `<div class="meta-line" style="margin-top:.4rem">${rev.references.map(r => `<a href="${esc(r)}" target="_blank" rel="noopener noreferrer">${esc(r)}</a>`).join(" · ")}</div>` : ""}
+    </details>`;
+  }).join("");
+
+  const statuses = (d.history && d.history.status_history) || [];
+  const statusHtml = statuses.length
+    ? `<ul class="timeline">${statuses.map(h => `
+        <li><div class="t-top">${statusBadge(h.to_status)} <span>from ${esc(h.from_status || "—")}</span>
+        <span class="t-time">${esc(fmtTime(h.created_at))}</span></div>
+        ${h.reason ? `<div class="t-reason">${esc(h.reason)}</div>` : ""}</li>`).join("")}</ul>`
+    : '<p class="count-note">No status history.</p>';
+
+  const events = (d.webhooks && d.webhooks.items) || [];
+  const webhookHtml = events.length
+    ? events.map(ev => `
+      <details class="webhook-event">
+        <summary>${esc(ev.event)} · ${esc(ev.status)} · ${ev.attempt_count || 0} attempt${ev.attempt_count === 1 ? "" : "s"} · revision ${esc(ev.revision_number)}</summary>
+        ${ev.last_error ? `<div class="callout danger" style="margin:.4rem 0"><strong>Last error:</strong> ${esc(ev.last_error)}</div>` : ""}
+        <table class="attempt-table"><thead><tr><th>#</th><th>Status</th><th>HTTP</th><th>Started</th><th>Error</th></tr></thead><tbody>
+        ${(ev.attempts || []).length ? ev.attempts.map(a => `<tr><td>${esc(a.attempt_number)}</td><td>${esc(a.status)}</td><td>${esc(a.http_status == null ? "—" : a.http_status)}</td><td>${esc(fmtTime(a.started_at))}</td><td>${esc(a.error || "—")}</td></tr>`).join("") : '<tr><td colspan="5">No attempts recorded yet.</td></tr>'}
+        </tbody></table>
+        <pre class="payload">${esc(JSON.stringify(ev.payload, null, 2))}</pre>
+      </details>`).join("")
+    : '<p class="count-note">No webhook events for this message.</p>';
+
+  body.innerHTML = `
+    ${rejection}
+    ${actions}
+    ${handoffHtml}
+
+    <section class="detail-section" aria-labelledby="sec-content">
+      <h3 id="sec-content">Message content</h3>
+      <div class="subject-line">${esc(m.subject || "No subject")}</div>
+      <pre class="body-text">${esc(m.body)}</pre>
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-overview">
+      <h3 id="sec-overview">Overview</h3>
+      <dl class="detail-grid">
+        <div class="kv"><dt>Destination</dt><dd>${label ? `<span class="dest-label">${esc(label)}</span>` : ""}${esc(m.destination)}</dd></div>
+        <div class="kv"><dt>Normalized destination</dt><dd><code>${esc(m.destination_normalized)}</code></dd></div>
+        <div class="kv"><dt>Channel</dt><dd>${esc(channelLabel(m.channel))}</dd></div>
+        <div class="kv"><dt>Source</dt><dd>${esc(m.source || "—")}</dd></div>
+        <div class="kv"><dt>Created (UTC)</dt><dd>${esc(m.created_at)}</dd></div>
+        <div class="kv"><dt>Updated</dt><dd>${esc(fmtTime(m.updated_at))}</dd></div>
+        <div class="kv"><dt>Expiration</dt><dd>${m.expires_at ? esc(fmtTime(m.expires_at)) : "No expiration"}<div class="count-note">${expiry}</div></dd></div>
+        <div class="kv"><dt>Message ID</dt><dd><code>${esc(m.id)}</code></dd></div>
+      </dl>
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-metadata">
+      <h3 id="sec-metadata">Metadata</h3>
+      ${metadataHtml}
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-attachments">
+      <h3 id="sec-attachments">Attachments (${attachments.length})</h3>
+      ${attHtml}
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-references">
+      <h3 id="sec-references">External references</h3>
+      ${refsHtml}
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-revisions">
+      <h3 id="sec-revisions">Revision history</h3>
+      ${revisionHtml || '<p class="count-note">No revisions.</p>'}
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-status">
+      <h3 id="sec-status">Status history</h3>
+      ${statusHtml}
+    </section>
+
+    <section class="detail-section" aria-labelledby="sec-webhooks">
+      <h3 id="sec-webhooks">Webhook delivery history</h3>
+      ${webhookHtml}
+    </section>
+  `;
+  updateCountdowns();
+}
+
+function renderActions(m) {
+  const id = esc(m.id);
+  const buttons = [];
+  if (m.status === "pending") {
+    buttons.push(`<button type="button" class="btn primary" data-action="approve" data-id="${id}">Approve for handoff</button>`);
+    buttons.push(`<button type="button" class="btn danger" data-action="open-reject" data-id="${id}">Reject with reason…</button>`);
+    buttons.push(`<button type="button" class="btn" data-action="open-cancel" data-id="${id}">Cancel…</button>`);
+  } else if (m.status === "approved") {
+    buttons.push(`<button type="button" class="btn primary" data-action="open-mark-sent" data-id="${id}">Mark as sent…</button>`);
+    buttons.push(`<button type="button" class="btn" data-action="reload-handoff" data-id="${id}">Refresh handoff</button>`);
+    buttons.push(`<button type="button" class="btn" data-action="open-cancel" data-id="${id}">Cancel…</button>`);
+  } else if (m.status === "rejected") {
+    buttons.push(`<button type="button" class="btn" data-action="open-cancel" data-id="${id}">Cancel message…</button>`);
+  }
+  let notice = "";
+  if (m.status === "pending") {
+    notice = '<div class="callout">Review the full content before approving. Nothing is sent by approving; it only unlocks the prepared handoff.</div>';
+  } else if (m.status === "approved") {
+    notice = '<div class="callout ok">Approved for handoff. Open your app, send the message yourself, then return and mark it sent. Opening a link or downloading an attachment never changes the status.</div>';
+  } else if (m.status === "rejected") {
+    notice = '<div class="callout warn">This message was rejected and is not deliverable. A producer can revise it via PATCH; revision creates a new pending revision with the same message ID. You cannot edit content here.</div>';
+  } else if (m.status === "sent") {
+    notice = '<div class="callout ok">This message was marked sent by the reviewer. It is terminal and read-only.</div>';
+  } else if (m.status === "stale") {
+    notice = '<div class="callout warn">This message expired before it was sent. Content and history are retained, but it cannot be approved or handed off.</div>';
+  } else if (m.status === "cancelled") {
+    notice = '<div class="callout">This message was cancelled. It is terminal and read-only.</div>';
+  }
+  return `<section class="detail-section"><h3>Review actions</h3>${notice}
+    ${buttons.length ? `<div class="actions-row">${buttons.join("")}</div>` : '<p class="count-note">No actions are available for this terminal message.</p>'}
+  </section>`;
+}
+
+function renderHandoff(d) {
+  const m = d.message;
+  if (m.status !== "approved") return "";
+  if (d.handoffError) {
+    return `<div class="callout danger"><strong>Handoff unavailable.</strong> ${esc(d.handoffError)}</div>`;
+  }
+  const h = d.handoff;
+  if (!h) return `<div class="callout">Preparing handoff…</div>`;
+  const caps = h.capabilities || {};
+  const capRow = (key, labelText) => `<div><span class="${caps[key] ? "cap-yes" : "cap-no"}" aria-hidden="true">${caps[key] ? "✓" : "—"}</span>
+    <span><strong>${esc(labelText)}:</strong> ${caps[key] ? "Yes" : "No"}</span></div>`;
+  const channel = h.channel || m.channel;
+  const openLabel = {email: "Open prepared email", whatsapp: "Open WhatsApp", telegram: "Open Telegram"}[channel] || "Open handoff link";
+  const warnings = (h.warnings || []).length
+    ? `<div class="callout warn"><strong>Warnings</strong><ul>${h.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>` : "";
+  const manual = (h.manual_actions || []).length
+    ? `<div class="callout"><strong>Manual steps</strong><ol>${h.manual_actions.map(a => `<li>${esc(a)}</li>`).join("")}</ol></div>` : "";
+  const subjectButton = h.subject
+    ? `<button type="button" class="btn small" data-action="copy" data-copy-kind="subject">Copy subject</button>` : "";
+  return `<div class="handoff" id="handoff-box">
+    <div class="mode">${h.mode === "prefill" ? "Prefilled handoff link" : (h.mode === "prefill_trimmed" ? "Prefilled link — body trimmed" : "Manual fallback")}</div>
+    <h4>Prepared handoff for ${esc(channelLabel(channel))}</h4>
+    <div class="cap-grid" aria-label="Handoff capabilities">
+      ${capRow("prefill_recipient", "Recipient prefilled")}
+      ${capRow("prefill_subject", "Subject prefilled")}
+      ${capRow("prefill_body", "Body prefilled")}
+      ${capRow("attachments_supported", "Attachments carried by link")}
+    </div>
+    ${warnings}
+    ${manual}
+    <div class="actions-row">
+      <a class="btn primary" href="${esc(h.handoff_url)}" target="_blank" rel="noopener noreferrer">${esc(openLabel)}</a>
+      ${subjectButton}
+      <button type="button" class="btn small" data-action="copy" data-copy-kind="body">Copy body</button>
+    </div>
+    <p class="count-note" style="margin-top:.55rem">Opening this link does not mark the message sent. Use “Mark as sent” only after you have actually sent it in ${esc(channelLabel(channel))}.</p>
+  </div>`;
+}
+
+/* --------------------------------------------------------------- actions */
+async function withBusy(button, task) {
+  if (!button) { await task(); return; }
+  const old = button.innerHTML;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  try { await task(); }
+  finally {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    if (button.isConnected) button.innerHTML = old;
+  }
+}
+
+async function doAction(path, body, successMessage) {
+  const result = await api(path, {method: "POST", body: body === undefined ? undefined : body});
+  toast(successMessage, "success");
+  return result;
+}
+
+async function approveMessage(id, button) {
+  await withBusy(button, async () => {
+    try {
+      await doAction("/api/messages/" + encodeURIComponent(id) + "/approve", undefined,
+        "Message approved. The handoff is ready.");
+      await loadQueue();
+      await openMessage(id, {keepPosition: true});
+    } catch (err) {
+      toast(err.message, "error");
+      if (err.status === 409) {
+        await loadQueue();
+        await openMessage(id, {keepPosition: true});
+      }
+    }
+  });
+}
+
+function openRejectModal(id) {
+  openModal({
+    title: "Reject this message with a reason",
+    description: "The reason is mandatory, is recorded in status history, and is included in the message.rejected webhook. The message becomes rejected; a producer may revise it later.",
+    content: `<label for="reject-reason">Rejection reason</label>
+      <textarea id="reject-reason" placeholder="Explain what must change, e.g. the recipient name is wrong."></textarea>`,
+    confirmLabel: "Reject message",
+    danger: true,
+    validate: () => {
+      const value = ($("#reject-reason") || {}).value || "";
+      return value.trim() ? null : "Enter a non-empty rejection reason.";
+    },
+    onConfirm: async () => {
+      const reason = ($("#reject-reason") || {}).value || "";
+      await doAction("/api/messages/" + encodeURIComponent(id) + "/reject", {reason: reason.trim()},
+        "Message rejected and reason recorded.");
+      closeModal();
+      await loadQueue();
+      await openMessage(id, {keepPosition: true});
+    }
+  });
+}
+
+function openCancelModal(id) {
+  openModal({
+    title: "Cancel this message?",
+    description: "Cancellation is terminal. The message is retained with all content and history, but it can no longer be approved, sent, or handed off.",
+    content: `<label for="cancel-reason">Reason (optional)</label>
+      <textarea id="cancel-reason" placeholder="Why is this message being cancelled?"></textarea>`,
+    confirmLabel: "Cancel message",
+    danger: true,
+    onConfirm: async () => {
+      const reason = (($("#cancel-reason") || {}).value || "").trim();
+      await doAction("/api/messages/" + encodeURIComponent(id) + "/cancel", reason ? {reason} : {},
+        "Message cancelled.");
+      closeModal();
+      await loadQueue();
+      await openMessage(id, {keepPosition: true});
+    }
+  });
+}
+
+function openMarkSentModal(id) {
+  openModal({
+    title: "Confirm you actually sent this message",
+    description: "This is the only operation that marks a message sent. It must happen after you sent it from your own email, WhatsApp, or Telegram application.",
+    content: `<label class="check-row"><input type="checkbox" id="sent-confirm">
+      <span>I confirm I sent this exact message to the intended destination from my own app.</span></label>`,
+    confirmLabel: "Yes, mark as sent",
+    validate: () => ($("#sent-confirm") && $("#sent-confirm").checked) ? null : "Tick the confirmation checkbox before continuing.",
+    onConfirm: async () => {
+      await doAction("/api/messages/" + encodeURIComponent(id) + "/mark-sent", {},
+        "Message marked sent.");
+      closeModal();
+      await loadQueue();
+      await openMessage(id, {keepPosition: true});
+    }
+  });
+}
+
+async function copyText(text, label) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    toast(label + " copied.", "success");
+  } catch (_) {
+    toast("Could not copy automatically. Select the text and copy manually.", "error");
+  }
+}
+
+/* ------------------------------------------------------------------ modal */
+function openModal(cfg) {
+  state.lastFocus = document.activeElement;
+  state.modal = cfg;
+  const layer = $("#modal-layer");
+  $("#modal-title").textContent = cfg.title || "Confirm";
+  $("#modal-desc").textContent = cfg.description || "";
+  $("#modal-content").innerHTML = cfg.content || "";
+  $("#modal-error").hidden = true;
+  $("#modal-error").textContent = "";
+  const confirm = $("#modal-confirm");
+  confirm.textContent = cfg.confirmLabel || "Confirm";
+  confirm.className = "btn " + (cfg.danger ? "danger" : "primary");
+  layer.hidden = false;
+  requestAnimationFrame(() => {
+    layer.classList.add("open");
+    const focusable = layer.querySelector("textarea, input, select, button");
+    if (focusable) focusable.focus();
+  });
+}
+
+function closeModal() {
+  const layer = $("#modal-layer");
+  layer.classList.remove("open");
+  setTimeout(() => { layer.hidden = true; }, 100);
+  state.modal = null;
+  const target = state.lastFocus;
+  if (target && document.contains(target)) target.focus();
+}
+
+async function confirmModal(button) {
+  const cfg = state.modal;
+  if (!cfg) return;
+  const errorBox = $("#modal-error");
+  if (cfg.validate) {
+    const problem = cfg.validate();
+    if (problem) {
+      errorBox.textContent = problem;
+      errorBox.hidden = false;
+      return;
+    }
+  }
+  errorBox.hidden = true;
+  await withBusy(button, async () => {
+    try {
+      await cfg.onConfirm();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.hidden = false;
+    }
+  });
+}
+
+/* ------------------------------------------------------------- destinations */
+async function loadDestinations() {
+  const d = state.destinations;
+  d.loading = true; d.error = null; renderDestinations();
+  try {
+    const params = new URLSearchParams();
+    if (d.filters.channel) params.set("channel", d.filters.channel);
+    if (d.filters.q) params.set("q", d.filters.q);
+    const data = await api("/api/destinations?" + params.toString());
+    d.items = Array.isArray(data.items) ? data.items : [];
+  } catch (err) {
+    d.error = err.message;
+  } finally {
+    d.loading = false;
+    renderDestinations();
+  }
+}
+
+function renderDestinations() {
+  const d = state.destinations;
+  const list = $("#dest-list");
+  list.setAttribute("aria-busy", d.loading ? "true" : "false");
+  $("#dest-count").textContent = d.loading ? "Loading…" :
+    (d.items.length === 1 ? "1 destination" : d.items.length + " destinations");
+  if (d.loading) {
+    list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+    return;
+  }
+  if (d.error) {
+    list.innerHTML = `<div class="state-box error"><h3>Could not load destinations</h3><p>${esc(d.error)}</p>
+      <button type="button" class="btn" data-action="retry-destinations">Try again</button></div>`;
+    return;
+  }
+  if (!d.items.length) {
+    list.innerHTML = `<div class="state-box"><h3>No known destinations</h3>
+      <p>Destinations appear automatically when messages are submitted. No registration is required.</p></div>`;
+    return;
+  }
+  list.innerHTML = d.items.map(item => {
+    const lastUsed = item.last_used_at ? fmtTime(item.last_used_at) : "Never used by a current message";
+    const count = item.message_count || 0;
+    return `<article class="dest-card">
+      <div class="badge channel">${esc(channelLabel(item.channel))}</div>
+      ${item.label ? `<div class="label-chip">Label: ${esc(item.label)}</div>` : '<div class="count-note">Unlabelled</div>'}
+      <h3>${esc(item.destination)}</h3>
+      <p class="norm">${esc(item.destination_normalized)}</p>
+      <div class="dest-meta">${count} message${count === 1 ? "" : "s"} · Last used ${esc(lastUsed)}</div>
+      <div class="actions-row">
+        <button type="button" class="btn small" data-action="edit-label" data-channel="${esc(item.channel)}" data-destination="${esc(item.destination)}" data-label="${esc(item.label || "")}">${item.label ? "Rename label…" : "Assign label…"}</button>
+        ${item.label ? `<button type="button" class="btn small" data-action="remove-label" data-channel="${esc(item.channel)}" data-destination="${esc(item.destination)}" data-label="${esc(item.label)}">Remove label…</button>` : ""}
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function openLabelModal(channel, destination, currentLabel) {
+  openModal({
+    title: currentLabel ? "Rename destination label" : "Assign destination label",
+    description: "Labels are your own display names. They are unique within a channel, never sent to the provider, and removing one leaves every message untouched.",
+    content: `<label for="label-input">Label (required, maximum 120 characters)</label>
+      <input id="label-input" type="text" maxlength="120" value="${esc(currentLabel || "")}" autocomplete="off">`,
+    confirmLabel: "Save label",
+    validate: () => {
+      const value = (($("#label-input") || {}).value || "").trim();
+      if (!value) return "Enter a non-empty label.";
+      if (value.length > 120) return "Labels are limited to 120 characters.";
+      return null;
+    },
+    onConfirm: async () => {
+      const label = (($("#label-input") || {}).value || "").trim();
+      await api("/api/destinations/label", {method: "PUT", body: {channel, destination, label}});
+      closeModal();
+      toast("Label saved.", "success");
+      await loadDestinations();
+      if (state.view === "queue") await loadQueue();
+    }
+  });
+}
+
+function openRemoveLabelModal(channel, destination, label) {
+  openModal({
+    title: "Remove this label?",
+    description: "Only the label is removed. Messages, their destination snapshots, and all history remain unchanged. The destination stays available for reuse.",
+    content: `<div class="callout"><strong>${esc(label)}</strong> on <code>${esc(destination)}</code> (${esc(channelLabel(channel))})</div>`,
+    confirmLabel: "Remove label",
+    danger: true,
+    onConfirm: async () => {
+      const params = new URLSearchParams({channel, destination});
+      await api("/api/destinations/label?" + params.toString(), {method: "DELETE"});
+      closeModal();
+      toast("Label removed; messages are unchanged.", "success");
+      await loadDestinations();
+      if (state.view === "queue") await loadQueue();
+    }
+  });
+}
+
+/* --------------------------------------------------------------- navigation */
+function switchView(view) {
+  state.view = view;
+  $$("nav.views button").forEach(btn => {
+    if (btn.dataset.view === view) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
+  });
+  $("#queue-view").hidden = view !== "queue";
+  $("#destinations-view").hidden = view !== "destinations";
+  if (view === "destinations") loadDestinations();
+  else loadQueue();
+}
+
+/* ------------------------------------------------------------------ events */
+document.addEventListener("click", async (event) => {
+  const el = event.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  try {
+    switch (action) {
+      case "switch-view":
+        switchView(el.dataset.view);
+        break;
+      case "refresh":
+        await withBusy(el, async () => {
+          if (state.view === "queue") await loadQueue();
+          else await loadDestinations();
+          toast("Refreshed.", "success");
+        });
+        break;
+      case "retry-queue":
+        await loadQueue();
+        break;
+      case "retry-destinations":
+        await loadDestinations();
+        break;
+      case "reset-filters":
+        resetQueueFilters();
+        break;
+      case "reset-dest-filters":
+        $("#dest-filters").reset();
+        state.destinations.filters = {channel: "", q: ""};
+        await loadDestinations();
+        break;
+      case "page-prev":
+        state.queue.offset = Math.max(0, state.queue.offset - state.queue.limit);
+        await loadQueue();
+        break;
+      case "page-next":
+        state.queue.offset += state.queue.limit;
+        await loadQueue();
+        break;
+      case "open-message":
+        await openMessage(id);
+        break;
+      case "close-detail":
+        closeDetail();
+        break;
+      case "approve":
+        await approveMessage(id, el);
+        break;
+      case "open-reject":
+        openRejectModal(id);
+        break;
+      case "open-cancel":
+        openCancelModal(id);
+        break;
+      case "open-mark-sent":
+        openMarkSentModal(id);
+        break;
+      case "reload-handoff": {
+        await withBusy(el, async () => {
+          try {
+            const handoff = await api("/api/messages/" + encodeURIComponent(id) + "/handoff");
+            if (state.detail) { state.detail.handoff = handoff; state.detail.handoffError = null; state.handoff = handoff; }
+            renderDetail();
+            toast("Handoff refreshed.", "success");
+          } catch (err) {
+            toast(err.message, "error");
+          }
+        });
+        break;
+      }
+      case "reload-detail":
+        await openMessage(id, {keepPosition: true});
+        break;
+      case "copy": {
+        if (!state.handoff) { toast("Handoff is not loaded.", "error"); break; }
+        const kind = el.dataset.copyKind;
+        const text = kind === "subject" ? (state.handoff.subject || "") : (state.handoff.body || "");
+        if (!text) { toast("Nothing to copy for " + kind + ".", "error"); break; }
+        await copyText(text, kind === "subject" ? "Subject" : "Body");
+        break;
+      }
+      case "modal-cancel":
+        closeModal();
+        break;
+      case "modal-confirm":
+        await confirmModal(el);
+        break;
+      case "edit-label":
+        openLabelModal(el.dataset.channel, el.dataset.destination, el.dataset.label);
+        break;
+      case "remove-label":
+        openRemoveLabelModal(el.dataset.channel, el.dataset.destination, el.dataset.label);
+        break;
+      default:
+        break;
+    }
+  } catch (err) {
+    toast(err.message || "Something went wrong.", "error");
+  }
+});
+
+$("#queue-filters").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submitter = event.submitter;
+  if (submitter) { submitter.disabled = true; submitter.setAttribute("aria-busy", "true"); }
+  try {
+    const form = new FormData(event.currentTarget);
+    state.queue.filters = {
+      status: form.get("status") || "active",
+      channel: form.get("channel") || "",
+      destination: (form.get("destination") || "").trim(),
+      sort: form.get("sort") || "newest",
+      created_from: form.get("created_from") || "",
+      created_to: form.get("created_to") || "",
+      expires_from: form.get("expires_from") || "",
+      expires_to: form.get("expires_to") || ""
+    };
+    state.queue.offset = 0;
+    await loadQueue();
+  } finally {
+    if (submitter) { submitter.disabled = false; submitter.removeAttribute("aria-busy"); }
+  }
+});
+
+$("#dest-filters").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submitter = event.submitter;
+  if (submitter) { submitter.disabled = true; submitter.setAttribute("aria-busy", "true"); }
+  try {
+    const form = new FormData(event.currentTarget);
+    state.destinations.filters = {
+      channel: form.get("channel") || "",
+      q: (form.get("q") || "").trim()
+    };
+    await loadDestinations();
+  } finally {
+    if (submitter) { submitter.disabled = false; submitter.removeAttribute("aria-busy"); }
+  }
+});
+
+$("#overlay").addEventListener("click", closeDetail);
+$("#modal-layer").addEventListener("click", (event) => {
+  if (event.target === $("#modal-layer")) closeModal();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (!$("#modal-layer").hidden) { closeModal(); return; }
+    if (!$("#drawer").hidden) closeDetail();
+    return;
+  }
+  if (event.key === "Tab" && !$("#modal-layer").hidden) {
+    const layer = $("#modal-layer");
+    const focusable = $$('button:not([disabled]), textarea, input, select, a[href]', layer)
+      .filter(node => node.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+    return;
+  }
+  if (event.key === "Tab" && !$("#drawer").hidden) {
+    const drawer = $("#drawer");
+    const focusable = $$('button:not([disabled]), a[href], input, textarea, select, summary', drawer)
+      .filter(node => node.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === drawer)) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  }
+});
+
+function resetQueueFilters() {
+  $("#queue-filters").reset();
+  state.queue.filters = {status: "active", channel: "", destination: "", sort: "newest",
+    created_from: "", created_to: "", expires_from: "", expires_to: ""};
+  state.queue.offset = 0;
+  loadQueue();
+}
+
+/* ------------------------------------------------------------------ timers */
+function updateCountdowns() {
+  $$("[data-expiry]").forEach(node => {
+    const iso = node.getAttribute("data-expiry");
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return;
+    const seconds = Math.floor((date.getTime() - Date.now()) / 1000);
+    node.textContent = relative(seconds);
+  });
+}
+setInterval(updateCountdowns, 15000);
+
+function fmtBuildTime(iso) {
+  if (!iso) return "unknown";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  const pad = n => String(n).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ` +
+    `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`;
+}
+
+async function loadInfo() {
+  try {
+    const info = await api("/api/info");
+    state.info = info;
+    $("#built-line").innerHTML =
+      `Built <time datetime="${esc(info.built_at)}">${esc(fmtBuildTime(info.built_at))}</time> by <strong>${esc(info.author)}</strong> · ` +
+      `${esc(info.app)} v${esc(info.version)} · local single-user service`;
+  } catch (_) {
+    $("#built-line").textContent = "Built information unavailable.";
+  }
+}
+
+async function init() {
+  await loadInfo();
+  await loadQueue();
+}
+
+init();
+</script>
+</body>
+</html>
