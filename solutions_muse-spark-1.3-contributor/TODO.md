@@ -63,3 +63,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | RepoLens — Mobile-First GitHub Repository Explorer | 🟠 Hard | ✅ Done |
 | Repo Apps | 🔴 Extreme | ✅ Done |
 | Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |
+| Rigsmith — SVG Character Factory | 🔴 Extreme | ✅ Done |

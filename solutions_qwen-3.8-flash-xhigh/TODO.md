@@ -51,3 +51,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Emberdeep: A Seeded ASCII Roguelike in a Single HTML File | 🔴 Extreme | ⏳ Pending |
 | Repo Apps | 🔴 Extreme | ✅ Done |
 | Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |
+| Rigsmith — SVG Character Factory | 🔴 Extreme | ✅ Done |

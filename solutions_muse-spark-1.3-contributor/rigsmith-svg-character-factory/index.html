@@ -1,0 +1,1042 @@
+<!-- Rigsmith — SVG Character Factory | Produced: 2026-11-15T12:00:00Z | Author/Model: Muse Spark 1.3 Contributor (OpenCode) | Generator: Rigsmith/Muse-Spark-1.3-Contributor -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rigsmith — SVG Character Factory</title>
+<style>
+:root{
+  --bg:#14161c; --panel:#1d212b; --panel2:#232936; --line:#2e3547;
+  --ink:#eef1f7; --dim:#a7b0c4; --acc:#ffb347; --acc2:#7dd3fc;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+button,select,input{font:inherit;color:inherit}
+button{min-height:44px;min-width:44px;border:1px solid var(--line);background:#2a3142;border-radius:10px;
+  padding:8px 12px;cursor:pointer;touch-action:manipulation}
+button[aria-pressed="true"],button.on{background:#3a4a6b;border-color:var(--acc2)}
+button:active{transform:translateY(1px)}
+input[type="range"]{width:100%;min-height:44px;touch-action:pan-y;accent-color:var(--acc)}
+input[type="number"],input[type="text"]{background:#11141b;border:1px solid var(--line);border-radius:8px;padding:8px;min-height:44px}
+select{background:#11141b;border:1px solid var(--line);border-radius:8px;padding:8px;min-height:44px;max-width:100%}
+label{font-size:13px;color:var(--dim)}
+.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px));
+  background:#191d27;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.topbar h1{font-size:17px;margin:0;letter-spacing:.3px}
+.topbar h1 span{color:var(--acc)}
+.seedrow{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.seedrow input{width:110px}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.workbench{display:grid;grid-template-columns:308px minmax(0,1fr) 336px;gap:10px;padding:10px;
+  padding-left:calc(10px + env(safe-area-inset-left,0px));padding-right:calc(10px + env(safe-area-inset-right,0px));
+  max-width:1700px;margin:0 auto;align-items:start}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.pane h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin:2px 0 10px}
+.ctl{margin:0 0 8px;padding:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px}
+.ctl .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ctl output{font-variant-numeric:tabular-nums;color:var(--ink);background:#11141b;border:1px solid var(--line);border-radius:6px;padding:2px 8px;min-width:58px;text-align:right}
+.group{margin-bottom:12px}
+.group>h3{font-size:12px;color:var(--acc2);text-transform:uppercase;letter-spacing:.1em;margin:8px 0 6px}
+#stagePane{display:flex;flex-direction:column;gap:8px;position:relative;min-width:0}
+.zoombar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-width:64px}
+.seg button+button{border-left:1px solid var(--line)}
+.transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.transport .grow{flex:1;min-width:120px}
+#stageWrap{position:relative;background:
+  repeating-conic-gradient(#20242f 0 25%, #1a1e28 0 50%) 0 0/28px 28px;
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:none}
+#stage{display:block;width:100%;height:min(62vh,620px);touch-action:none;user-select:none;-webkit-user-select:none}
+#stage:focus{outline:2px solid var(--acc2)}
+.hud{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--dim)}
+.hud b{color:var(--ink);font-variant-numeric:tabular-nums}
+#rail{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:420px;overflow:auto;padding:2px}
+.tile{background:#11141b;border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:0;text-align:left}
+.tile[aria-selected="true"]{border-color:var(--acc)}
+.tile svg{display:block;width:100%;height:96px;background:transparent}
+.tile .cap{display:flex;justify-content:space-between;gap:6px;font-size:11px;padding:4px 6px;color:var(--dim)}
+.tile .cap b{color:var(--ink);font-size:11px}
+.badge{font-size:10px;border:1px solid var(--line);border-radius:20px;padding:1px 7px;white-space:nowrap}
+.expgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+footer{position:sticky;bottom:0;z-index:30;background:#191d27;border-top:1px solid var(--line);
+  padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px));padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px));
+  font-size:12px;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+footer b{color:var(--ink)}
+.mobiletabs{display:none;gap:8px;padding:8px 10px 0}
+.mobiletabs button{flex:1}
+#bakeProg{font-variant-numeric:tabular-nums}
+#atlasPreview{max-width:100%;border:1px solid var(--line);border-radius:8px;background:repeating-conic-gradient(#888 0 25%, #fff 0 50%) 0 0/16px 16px}
+#atlasCanvas{background:repeating-conic-gradient(#565d78 0 25%, #2b3040 0 50%) 0 0/16px 16px; /* checkerboard for transparency */}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:#11141b;font-size:11px}
+.hint{font-size:12px;color:var(--dim)}
+@media (max-width:1100px){.workbench{grid-template-columns:280px minmax(0,1fr)}#rightPane{grid-column:1/-1}#rail{grid-template-columns:repeat(5,1fr);max-height:260px}}
+@media (max-width:900px){
+  .workbench{display:flex;flex-direction:column}
+  .mobiletabs{display:flex}
+  #stagePane{position:sticky;top:57px;z-index:20;background:var(--bg);padding-bottom:8px}
+  #stage{height:52dvh;min-height:340px}
+  #controlsPane,#rightPane{display:none}
+  body[data-mtab="controls"] #controlsPane{display:block}
+  body[data-mtab="clips"] #rightPane{display:block}
+  body[data-mtab="clips"] #exportBox{display:none}
+  body[data-mtab="export"] #rightPane{display:block}
+  body[data-mtab="export"] #railBox{display:none}
+  #rail{grid-template-columns:repeat(3,minmax(104px,1fr));max-height:none}
+  .tile svg{height:84px}
+  html,body{overflow-x:hidden}
+}
+</style>
+</head>
+<body data-mtab="controls">
+<header class="topbar">
+  <h1><span>Rigsmith</span> · SVG Character Factory</h1>
+  <div class="presets" role="group" aria-label="Presets">
+    <button id="pPip" title="Load Pip">Pip</button>
+    <button id="pMoss" title="Load Moss">Moss</button>
+    <button id="pGloop" title="Load Gloop">Gloop</button>
+    <button id="bRand" title="Randomize">🎲 Randomize</button>
+    <button id="bReset" title="Reset defaults">Reset</button>
+  </div>
+  <div class="seedrow">
+    <label for="seedIn">Seed</label>
+    <input id="seedIn" type="number" step="1" value="1337" aria-label="Seed">
+    <button id="bDice" title="New seed" aria-label="New seed">🎲</button>
+  </div>
+</header>
+
+<nav class="mobiletabs" aria-label="Panels">
+  <button data-tab="controls">Controls</button>
+  <button data-tab="clips">Clips</button>
+  <button data-tab="export">Export</button>
+</nav>
+
+<main class="workbench">
+  <aside class="pane" id="controlsPane" aria-label="Control rack">
+    <h2>Control rack <span class="hint">· live, no Apply</span></h2>
+    <div id="controls"></div>
+    <div class="ctl"><div class="row"><label for="clipSel">Clip</label><span class="hint"><span class="kbd">[</span> <span class="kbd">]</span></span></div>
+      <select id="clipSel" style="width:100%"></select></div>
+    <div class="ctl"><button id="bClear" style="width:100%">Reset all (clear storage)</button></div>
+    <p class="hint">Shortcuts: <span class="kbd">Space</span> play · <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> views · <span class="kbd">B</span> bones · <span class="kbd">E</span> bake</p>
+  </aside>
+
+  <section class="pane" id="stagePane" aria-label="Character stage">
+    <div class="zoombar">
+      <div class="seg" role="group" aria-label="Zoom preset">
+        <button id="zFull" aria-pressed="true">Full</button>
+        <button id="zBody" aria-pressed="false">Body</button>
+        <button id="zFace" aria-pressed="false">Face</button>
+      </div>
+      <button id="zOut" aria-label="Zoom out">−</button>
+      <button id="zIn" aria-label="Zoom in">+</button>
+      <button id="zReset">Reset view</button>
+      <button id="bBones" aria-pressed="false" title="Bone overlay (B)">🦴 Bones</button>
+      <button id="bGround" aria-pressed="true" title="Ground line + shadow">⌖ Ground</button>
+    </div>
+    <div id="stageWrap">
+      <svg id="stage" viewBox="0 0 512 512" role="img" aria-label="Character stage" tabindex="0">
+        <g id="stageG"></g>
+      </svg>
+    </div>
+    <div class="transport" aria-label="Transport">
+      <button id="bPlay" aria-label="Play or pause">⏸ Pause</button>
+      <label for="scrub">Scrub</label>
+      <input id="scrub" class="grow" type="range" min="0" max="100" step="0.1" value="0" aria-label="Scrub 0 to 100 percent">
+      <label for="speed">Speed</label>
+      <select id="speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>1.5</option><option>2</option></select>
+      <label><input id="loopChk" type="checkbox" checked style="min-height:24px;min-width:24px"> loop</label>
+    </div>
+    <div class="hud"><span>Clip <b id="hudClip">idle</b></span><span>t <b id="hudT">0%</b></span>
+      <span>FPS <b id="fps">—</b></span><span id="hudView">view Full</span><span id="hudSeed">seed 1337</span></div>
+  </section>
+
+  <aside class="pane" id="rightPane" aria-label="Animation rail and export">
+    <div id="railBox">
+      <h2>Animation rail · 15 live tiles <button id="bGal" aria-pressed="false" style="min-height:36px">Pause gallery</button></h2>
+      <div id="rail"></div>
+    </div>
+    <div id="exportBox">
+      <h2>Export · sprite sheet</h2>
+      <div class="expgrid">
+        <div class="ctl"><div class="row"><label for="cellSel">Cell size</label></div>
+          <select id="cellSel"><option>64</option><option>128</option><option selected>256</option></select></div>
+        <div class="ctl"><div class="row"><label for="framesIn">Frames / body clip (4–16)</label><output id="framesOut">8</output></div>
+          <input id="framesIn" type="range" min="4" max="16" step="1" value="8"></div>
+      </div>
+      <div class="ctl"><label><input id="shadowChk" type="checkbox" style="min-height:24px;min-width:24px"> include ground shadow in bake (default off)</label></div>
+      <div class="ctl"><button id="bBake" style="width:100%">🔥 Bake atlas (E)</button>
+        <div id="bakeProg" class="hint" style="margin-top:6px">idle · 96 frames → 2048×3840</div>
+        <div id="bakeNote" class="hint"></div></div>
+      <div class="ctl"><div class="row"><label>Atlas preview</label><span id="atlasInfo" class="hint">—</span></div>
+        <div style="max-height:280px;overflow:auto"><canvas id="atlasCanvas" style="max-width:100%"></canvas></div>
+        <img id="atlasPreview" alt="Atlas preview" style="display:none">
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button id="dlPng">Download PNG</button><button id="dlJson">Download JSON</button>
+        </div><div id="saveHint" class="hint"></div></div>
+    </div>
+  </aside>
+</main>
+
+<footer><span>Produced <b id="signDate">2026-11-15 12:00 UTC</b> by <b id="signWho">Muse Spark 1.3 Contributor (OpenCode)</b></span>
+<span class="hint">Space play · 1/2/3 views · [ ] clips · B bones · E bake · file:// ready · zero network</span></footer>
+
+<script>
+"use strict";
+/* Rigsmith single-file factory. Vanilla JS, SVG rendering, Canvas2D export only. */
+const GENERATOR="Rigsmith/Muse-Spark-1.3-Contributor";
+const PRODUCED_ISO="2026-11-15T12:00:00.000Z";
+const GROUND_Y=448;
+const BODY_CLIPS=["idle","walk","run","jump","crawl","step","taunt","dance","climb"];
+const EXPR_CLIPS=["expr_neutral","expr_happy","expr_angry","expr_sad","expr_surprise","expr_sleepy"];
+const ALL_CLIPS=BODY_CLIPS.concat(EXPR_CLIPS);
+const DUR={idle:1.0,walk:0.66,run:0.4,jump:1.0,crawl:1.0,step:0.6,taunt:1.2,dance:1.2,climb:1.0,
+ expr_neutral:0.5,expr_happy:0.5,expr_angry:0.5,expr_sad:0.5,expr_surprise:0.5,expr_sleepy:0.5};
+const LOOPDEF={idle:1,walk:1,run:1,jump:0,crawl:1,step:1,taunt:0,dance:1,climb:1,
+ expr_neutral:1,expr_happy:1,expr_angry:1,expr_sad:1,expr_surprise:1,expr_sleepy:1};
+const DEFAULTS={archetype:"humanoid",seed:1337,height:1.0,torsoW:1.0,headSize:1.0,belly:0.25,
+ armLen:1.0,legLen:1.0,neckLen:0.4,earSize:0.6,snout:0.2,tailLen:0.3,eyeSize:1.0,eyeSpacing:1.0,
+ pupilSize:1.0,browAngle:0,mouthCurve:0.15,blush:0.2,hue:22,sat:0.55,outline:3,pattern:0.35,
+ style:"ink",earVariant:"round"};
+const CTLDEF=[
+ {g:"Body",k:"height",min:0.7,max:1.3},{g:"Body",k:"torsoW",min:0.6,max:1.6},
+ {g:"Body",k:"headSize",min:0.6,max:1.5},{g:"Body",k:"belly",min:0,max:1},
+ {g:"Body",k:"armLen",min:0.6,max:1.4},{g:"Body",k:"legLen",min:0.6,max:1.5},
+ {g:"Body",k:"neckLen",min:0,max:1},{g:"Body",k:"earSize",min:0,max:1},
+ {g:"Body",k:"snout",min:0,max:1},{g:"Body",k:"tailLen",min:0,max:1},
+ {g:"Face",k:"eyeSize",min:0.6,max:1.6},{g:"Face",k:"eyeSpacing",min:0.6,max:1.6},
+ {g:"Face",k:"pupilSize",min:0.4,max:1.4},{g:"Face",k:"browAngle",min:-1,max:1},
+ {g:"Face",k:"mouthCurve",min:-1,max:1},{g:"Face",k:"blush",min:0,max:1},
+ {g:"Style",k:"hue",min:0,max:360,step:1},{g:"Style",k:"sat",min:0,max:0.9},
+ {g:"Style",k:"outline",min:0,max:8,step:0.5},{g:"Style",k:"pattern",min:0,max:1}];
+const PRESETS={
+ Pip:{archetype:"humanoid",seed:1337,headSize:1.2,eyeSize:1.25,blush:0.4,mouthCurve:0.35,hue:24,style:"ink"},
+ Moss:{archetype:"beast",seed:90210,snout:0.85,earSize:0.9,tailLen:0.9,pattern:0.6,hue:96,outline:2,style:"flat"},
+ Gloop:{archetype:"blob",seed:4242,belly:0.95,eyeSpacing:1.35,legLen:0.7,pattern:0.7,hue:282,style:"papercut"}};
+
+/* ---------- utils (seeded PRNG only; no nondeterministic RNG) ---------- */
+function mulberry32(a){a|=0;a=a+0x6D2B79F5|0;let t=function(){t=a=a+0x6D2B79F5|0;let r=Math.imul(a^a>>>15,1|a);r=r+Math.imul(r^r>>>7,61|r)^r;return((r^r>>>14)>>>0)/4294967296;};return t;}
+function fnv1a(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193);}return("0000000"+(h>>>0).toString(16)).slice(-8);}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function lerp(a,b,t){return a+(b-a)*t;}
+function easeIO(t){return t*t*(3-2*t);}
+function keyAt(t,keys){if(t<=keys[0][0])return keys[0][1];for(let i=1;i<keys.length;i++){if(t<=keys[i][0]){const t0=keys[i-1][0],v0=keys[i-1][1],t1=keys[i][0],v1=keys[i][1];const u=easeIO((t-t0)/Math.max(1e-6,t1-t0));return lerp(v0,v1,u);}}return keys[keys.length-1][1];}
+function el(id){return document.getElementById(id);}
+let seedCounter=1;
+function freshSeed(){const n=(Date.now()%1000000)^((seedCounter++)*7919)^(performance.now()*1000|0);return ((n%90000)+90000)%90000+1000;}
+function esc(s){return String(s);}
+
+/* ---------- state ---------- */
+let spec=Object.assign({},DEFAULTS);
+let ui={clip:"idle",playing:true,time:0,speed:1,loop:true,zoom:"Full",
+ view:{x:0,y:0,w:512,h:512},target:null,bones:false,ground:true,galPaused:false,
+ cell:256,bodyFrames:8,shadow:false,atlasURL:null,jsonURL:null,atlasJSON:null};
+try{const raw=localStorage.getItem("rigsmith-v1");if(raw){const s=JSON.parse(raw);
+ if(s.spec)spec=Object.assign({},DEFAULTS,s.spec);
+ if(s.clip&&ALL_CLIPS.indexOf(s.clip)>=0)ui.clip=s.clip;
+ if(s.zoom)ui.zoom=s.zoom;}}catch(e){}
+function save(){try{localStorage.setItem("rigsmith-v1",JSON.stringify({spec:spec,clip:ui.clip,zoom:ui.zoom}));}catch(e){}}
+let saveT=0;function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,300);}
+
+/* ---------- palette ---------- */
+function palette(s){
+ const h=((s.hue%360)+360)%360, sa=clamp(s.sat,0,0.9);
+ const skin="hsl("+h+","+(sa*100).toFixed(1)+"%,68%)";
+ const skinD="hsl("+h+","+(sa*100).toFixed(1)+"%,52%)";
+ const bellyC="hsl("+h+","+(sa*70).toFixed(1)+"%,82%)";
+ const acc="hsl("+((h+140)%360)+","+(Math.min(0.85,sa+0.2)*100).toFixed(1)+"%,55%)";
+ const dark="hsl("+h+",30%,22%)";
+ const outln=s.style==="flat"?"hsl("+h+",25%,20%)":(s.style==="papercut"?"hsl("+((h+20)%360)+",30%,18%)":"#1c1410");
+ return{skin:skin,skinD:skinD,belly:bellyC,acc:acc,dark:dark,outln:outln};
+}
+
+/* ---------- skeleton ---------- */
+function baseSkel(s){
+ const thigh=58*s.legLen, shin=58*s.legLen;
+ const ua=52*s.armLen, fa=48*s.armLen;
+ const torsoH=85*s.height, halfW=38*s.torsoW;
+ const neckH=8+28*s.neckLen, headR=40*s.headSize;
+ if(s.archetype==="beast"){
+  const hips={x:322,y:352-20*(s.legLen-1)}, chest={x:192,y:356-14*(s.height-1)};
+  const neck={x:150,y:330}, head={x:112,y:296-neckH*0.3};
+  return{kind:"beast",hips:hips,spine:{x:257,y:354},chest:chest,neck:neck,head:head,
+   headR:headR*(1+0.15*s.snout),thigh:thigh*0.9,shin:shin*0.9,ua:ua*0.85,fa:fa*0.85,
+   torsoH:torsoH,halfW:halfW,neckH:neckH,groundY:GROUND_Y,
+   shL:{x:chest.x-10,y:chest.y+14},shR:{x:chest.x+10,y:chest.y+14},
+   hipL:{x:hips.x-14,y:hips.y},hipR:{x:hips.x+14,y:hips.y},
+   tailB:{x:hips.x+34,y:hips.y-6}};
+ }
+ if(s.archetype==="blob"){
+  const cx=256, hipY=GROUND_Y-58*s.legLen-22;
+  const hips={x:cx,y:hipY}, chest={x:cx,y:hipY-44*s.height};
+  const head={x:cx,y:hipY-44*s.height-neckH*0.4-headR*0.9};
+  return{kind:"blob",hips:hips,spine:{x:cx,y:hipY-22*s.height},chest:chest,neck:{x:cx,y:chest.y-6},head:head,
+   headR:headR,thigh:34*s.legLen+8,shin:30*s.legLen+8,ua:26*s.armLen+8,fa:24*s.armLen+8,
+   torsoH:torsoH,halfW:halfW+22*s.belly,neckH:neckH,groundY:GROUND_Y,
+   shL:{x:chest.x-halfW-8,y:chest.y+10},shR:{x:chest.x+halfW+8,y:chest.y+10},
+   hipL:{x:hips.x-26,y:hips.y+6},hipR:{x:hips.x+26,y:hips.y+6},
+   tailB:{x:hips.x+halfW*0.8,y:hips.y+2}};
+ }
+ const hipY=GROUND_Y-(thigh+shin);
+ const hips={x:256,y:hipY}, chest={x:256,y:hipY-torsoH*0.72};
+ const spine={x:256,y:hipY-torsoH*0.36};
+ const neck={x:256,y:chest.y-neckH}, head={x:256,y:chest.y-neckH-headR-6};
+ return{kind:"human",hips:hips,spine:spine,chest:chest,neck:neck,head:head,headR:headR,
+  thigh:thigh,shin:shin,ua:ua,fa:fa,torsoH:torsoH,halfW:halfW,neckH:neckH,groundY:GROUND_Y,
+  shL:{x:chest.x-halfW,y:chest.y+8},shR:{x:chest.x+halfW,y:chest.y+8},
+  hipL:{x:hips.x-17*s.torsoW,y:hips.y},hipR:{x:hips.x+17*s.torsoW,y:hips.y},
+  tailB:{x:hips.x,y:hips.y+10}};
+}
+function ik(hipX,hipY,L1,L2,tx,ty){
+ let dx=tx-hipX,dy=ty-hipY,d=Math.hypot(dx,dy)||1e-6;
+ const maxR=L1+L2-0.5, minR=Math.abs(L1-L2)+0.5;
+ const dc=clamp(d,minR,maxR);
+ const ux=dx/d,uy=dy/d; tx=hipX+ux*dc; ty=hipY+uy*dc;
+ const a=Math.acos(clamp((L1*L1+dc*dc-L2*L2)/(2*L1*dc),-1,1));
+ const base=Math.atan2(dy,dx);
+ const bend=1; // knee forward
+ const a1=base+a*bend;
+ // knee on +side
+ const kx=hipX+Math.cos(base+a)*L1, ky=hipY+Math.sin(base+a)*L1;
+ return{kx:kx,ky:ky,fx:tx,fy:ty};
+}
+function fk(x,y,L,angDeg){const r=angDeg*Math.PI/180;return{x:x+Math.sin(r)*L,y:y+Math.cos(r)*L};}
+
+/* ---------- clip pose evaluators (t in 0..1) ---------- */
+function defPose(){return{dx:0,dy:0,lean:0,hipsDrop:0,chestSX:1,chestSY:1,squash:0,
+ headRot:0,headDX:0,headDY:0,shL:6,shR:-6,elL:10,elR:10,hipL:4,hipR:-4,kneeL:8,kneeR:8,
+ footL:null,footR:null,foreL:null,foreR:null,tail:0,ear:0,lift:0};}
+function gaitFeet(t,stride,liftH,stanceFrac,phaseOff){
+ // returns per-leg {frac,stance,x,y}
+ function leg(ph){const c=(t+ph)%1;let x,y,stance;
+  if(c<stanceFrac){const f=c/stanceFrac;stance=true;x=-stride*0.5+stride*f;y=GROUND_Y;}
+  else{const f=(c-stanceFrac)/(1-stanceFrac);stance=false;x=stride*0.5-stride*f;y=GROUND_Y-liftH*Math.sin(Math.PI*f);}
+  return{stance:stance,ox:x,y:y};}
+ return{L:leg(0),R:leg(phaseOff)};
+}
+function evalBody(clip,t,s,sk){
+ const p=defPose(); const TAU=Math.PI*2;
+ const breath=Math.sin(t*TAU);
+ if(clip==="idle"){p.dy=3*breath;p.chestSY=1+0.03*breath;p.chestSX=1-0.015*breath;
+  p.headDY=4*breath;p.headRot=3*Math.sin(t*TAU+0.6);p.shL=6+4*breath;p.shR=-6+4*breath;
+  p.elL=10;p.elR=10;p.tail=14*Math.sin(t*TAU+1);p.ear=6*Math.sin(t*TAU*0.9);}
+ else if(clip==="walk"){const sw=26;
+  p.shL=22*Math.sin(t*TAU);p.shR=22*Math.sin(t*TAU+Math.PI);p.elL=12;p.elR=12;
+  p.lean=4;p.dy=2*Math.sin(t*TAU*2);
+  const g=gaitFeet(t,72,26,0.6,0.5);
+  p.footL={x:256+g.L.ox,y:g.L.y,stance:g.L.stance};p.footR={x:256+g.R.ox,y:g.R.y,stance:g.R.stance};
+  p.hipL=sw*Math.sin(t*TAU);p.hipR=sw*Math.sin(t*TAU+Math.PI);
+  p.tail=12*Math.sin(t*TAU+0.8);p.headDY=2*Math.sin(t*TAU*2);}
+ else if(clip==="run"){const sw=38;
+  p.lean=14;p.dy=-4;p.shL=40*Math.sin(t*TAU);p.shR=40*Math.sin(t*TAU+Math.PI);p.elL=55;p.elR=55;
+  // stance + two flight windows
+  const inFlight=(t>0.18&&t<0.34)||(t>0.68&&t<0.84);
+  const g=gaitFeet(t,112,44,0.42,0.5);
+  let Ly=g.L.y,Ry=g.R.y;
+  if(inFlight){Ly=Math.min(Ly,GROUND_Y-22-14*Math.sin(Math.PI*(t<0.5?(t-0.18)/0.16:(t-0.68)/0.16)));Ry=Math.min(Ry,GROUND_Y-26-12*Math.sin(Math.PI*(t<0.5?(t-0.18)/0.16:(t-0.68)/0.16)));}
+  p.footL={x:256+g.L.ox,y:Ly,stance:g.L.stance&&!inFlight};p.footR={x:256+g.R.ox,y:Ry,stance:g.R.stance&&!inFlight};
+  p.hipL=sw*Math.sin(t*TAU);p.hipR=sw*Math.sin(t*TAU+Math.PI);p.tail=20*Math.sin(t*TAU+0.5);
+  p.headRot=4;p.squash=0;}
+ else if(clip==="jump"){
+  const dy=keyAt(t,[[0,0],[0.18,20],[0.38,-120],[0.5,-142],[0.62,-90],[0.8,8],[0.9,16],[1,0]]);
+  const crouch=keyAt(t,[[0,0],[0.18,16],[0.38,0],[0.5,0],[0.8,14],[0.9,18],[1,0]]);
+  p.dy=dy;p.hipsDrop=crouch;p.lean=keyAt(t,[[0,4],[0.38,10],[0.5,2],[0.8,-4],[1,0]]);
+  p.shL=keyAt(t,[[0,10],[0.38,-150],[0.5,-160],[0.8,20],[1,6]]);
+  p.shR=keyAt(t,[[0,-10],[0.38,150],[0.5,160],[0.8,-20],[1,-6]]);
+  p.elL=30;p.elR=30;p.headRot=keyAt(t,[[0,0],[0.5,-8],[1,0]]);
+  p.hipL=keyAt(t,[[0,6],[0.18,40],[0.45,55],[0.8,30],[1,4]]);
+  p.hipR=-p.hipL*0.7;p.kneeL=keyAt(t,[[0,10],[0.18,55],[0.45,75],[0.8,50],[1,8]]);
+  p.kneeR=p.kneeL*0.7;p.tail=-20;}
+ else if(clip==="crawl"){const isBlob=s.archetype==="blob",isBeast=s.archetype==="beast";
+  p.dy=isBlob?54:(isBeast?70:86);p.hipsDrop=20;p.lean=isBeast?6:24;
+  p.headDY=isBlob?40:(isBeast?30:55);p.headDX=6*Math.sin(t*TAU*2);p.headRot=5*Math.sin(t*TAU);
+  p.shL=38*Math.sin(t*TAU);p.shR=38*Math.sin(t*TAU+Math.PI);p.elL=30;p.elR=30;
+  const g=gaitFeet(t,64,20,0.6,0.5);
+  p.footL={x:256+g.L.ox,y:g.L.stance?GROUND_Y:g.L.y-70,stance:g.L.stance};
+  p.footR={x:256+g.R.ox,y:g.R.stance?GROUND_Y:g.R.y-70,stance:g.R.stance};
+  if(s.archetype==="beast"||s.archetype==="blob"){p.foreL={x:200+g.R.ox*0.5,y:GROUND_Y-(g.R.stance?0:18)};p.foreR={x:200-g.L.ox*0.5,y:GROUND_Y-(g.L.stance?0:18)};}
+  p.tail=16*Math.sin(t*TAU+2);}
+ else if(clip==="step"){const sw=30;
+  p.lean=2;p.dy=-2+2*Math.sin(t*TAU*2);p.headRot=3*Math.sin(t*TAU);
+  p.shL=30*Math.sin(t*TAU);p.shR=30*Math.sin(t*TAU+Math.PI);p.elL=25;p.elR=25;
+  // high knee: swing lift tall, knee handled in renderer via lift flag
+  const g=gaitFeet(t,58,56,0.55,0.5);
+  p.footL={x:256+g.L.ox,y:g.L.y,stance:g.L.stance,high:!g.L.stance};
+  p.footR={x:256+g.R.ox,y:g.R.y,stance:g.R.stance,high:!g.R.stance};
+  p.hipL=sw*Math.sin(t*TAU);p.hipR=sw*Math.sin(t*TAU+Math.PI);p.tail=8*Math.sin(t*TAU);}
+ else if(clip==="taunt"){const w=Math.sin(clamp((t-0.3)/0.5,0,1)*Math.PI*3)*22;
+  p.lean=-6+4*Math.sin(t*Math.PI);p.chestSX=1.08;p.chestSY=1.05;
+  p.shL=keyAt(t,[[0,6],[0.3,-40],[0.8,-40],[1,-20]]);
+  p.shR=keyAt(t,[[0,-6],[0.3,-110],[0.8,-110+w*0],[1,-70]])+ (t>0.3&&t<0.85?w:0);
+  p.elR=keyAt(t,[[0,10],[0.3,40],[0.8,40],[1,20]]);p.elL=24;
+  p.headRot=keyAt(t,[[0,0],[0.35,14],[0.75,14],[1,6]]);
+  p.headDY=-6;p.tail=18*Math.sin(t*Math.PI*2);p.dy=-4*Math.sin(t*Math.PI);}
+ else if(clip==="dance"){const b=t*TAU*2;
+  p.dx=18*Math.sin(b);p.dy=4*Math.sin(b*2)-4;p.lean=6*Math.sin(b);
+  p.shL=-60+46*Math.sin(b);p.shR=-60+46*Math.sin(b+Math.PI);p.elL=35;p.elR=35;
+  p.headRot=10*Math.sin(b);p.headDY=5*Math.sin(b*2);
+  p.hipL=14*Math.sin(b);p.hipR=14*Math.sin(b+Math.PI);p.kneeL=20;p.kneeR=20;
+  p.tail=22*Math.sin(b+1);p.chestSX=1+0.02*Math.sin(b*2);}
+ else if(clip==="climb"){const b=t*TAU;
+  p.lean=9;p.dx=10;p.dy=6*Math.sin(b*2);
+  p.shL=-158+26*Math.sin(b);p.shR=-158+26*Math.sin(b+Math.PI);p.elL=28;p.elR=28;
+  p.hipL=26+18*Math.sin(b+Math.PI);p.hipR=26+18*Math.sin(b);p.kneeL=55;p.kneeR=55;
+  p.headDY=-8;p.headRot=6;p.tail=10*Math.sin(b);}
+ // archetype retarget tweaks
+ if(s.archetype==="blob"){p.squash=Math.sin(t*TAU*2)*0.06+(clip==="walk"||clip==="run"?0.05*Math.sin(t*TAU*4):0);
+  if(clip==="jump")p.squash=keyAt(t,[[0,0.12],[0.38,-0.12],[0.5,-0.14],[0.8,0.14],[1,0]]);}
+ if(s.archetype==="beast"&&(clip==="walk"||clip==="run"||clip==="step")){
+  // forelegs (arm chain) take hind-opposite gait for 4-leg contact
+  const g2=gaitFeet((t+0.5)%1,clip==="run"?100:66,clip==="run"?36:22,0.6,0.5);
+  p.foreL={x:192+g2.L.ox*0.7,y:g2.L.y,stance:g2.L.stance};
+  p.foreR={x:192+g2.R.ox*0.7,y:g2.R.y,stance:g2.R.stance};}
+ if(s.archetype==="beast"&&clip==="idle"){p.foreL={x:186,y:GROUND_Y,stance:true};p.foreR={x:198,y:GROUND_Y,stance:true};}
+ // deterministic spring follow-through for tail/ears from root velocity
+ const e=0.012;const dAhead=evalVel(clip,t,e,s);
+ p.tail+=clamp(-dAhead*0.9,-24,24);p.ear=8*Math.sin(t*TAU*1.3+0.4)+clamp(-dAhead*0.5,-14,14);
+ return p;
+}
+function evalVel(clip,t,e,s){
+ // root vertical velocity proxy (dy difference) without recursion: sample lean/dy via light eval
+ function light(tt){tt=((tt%1)+1)%1;const TAU=Math.PI*2;
+  if(clip==="idle")return 3*Math.sin(tt*TAU);
+  if(clip==="walk")return 2*Math.sin(tt*TAU*2);
+  if(clip==="run")return -4+6*Math.sin(tt*TAU*2);
+  if(clip==="jump")return keyAt(tt,[[0,0],[0.18,20],[0.38,-120],[0.5,-142],[0.62,-90],[0.8,8],[0.9,16],[1,0]]);
+  if(clip==="dance")return 4*Math.sin(tt*TAU*4)-4;
+  return 0;}
+ return (light(t+e)-light(t-e))/(2*e)/60;
+}
+function evalExpr(clip,t){
+ const o={brow:0,lid:0,pupil:0,mouth:0,open:0,accent:"none",mx:0};
+ const w=Math.sin(t*Math.PI*2)*0.15;
+ if(clip==="expr_happy"){o.brow=0.5;o.lid=0.1;o.pupil=0.1;o.mouth=0.85;o.open=0.5;o.accent="sparkle";}
+ else if(clip==="expr_angry"){o.brow=-0.9;o.lid=-0.45;o.pupil=-0.45;o.mouth=-0.5;o.open=0.25;o.accent="vein";}
+ else if(clip==="expr_sad"){o.brow=0.7;o.lid=-0.3;o.pupil=-0.2;o.mouth=-0.8;o.open=0.22;o.accent="tear";}
+ else if(clip==="expr_surprise"){o.brow=0.9;o.lid=0.55;o.pupil=0.5;o.mouth=0.1;o.open=0.95;o.accent="sweat";}
+ else if(clip==="expr_sleepy"){o.brow=-0.15;o.lid=-0.8;o.pupil=-0.6;o.mouth=-0.1;o.open=0.3;o.accent="zzz";}
+ o.lid+=w*0.2;return o;
+}
+
+/* ---------- character SVG content ---------- */
+function charContent(s,pose,exprO,opt){
+ opt=opt||{};const pal=palette(s);const sk=baseSkel(s);
+ const rnd=mulberry32(s.seed|0);const OW=s.outline;
+ const j=JSON.parse(JSON.stringify(sk));
+ // apply root offsets
+ const rootDX=pose.dx, rootDY=pose.dy+pose.hipsDrop;
+ function sh(p,dx,dy){return{x:p.x+dx,y:p.y+dy};}
+ let hips=sh(j.hips,rootDX,rootDY), chest=sh(j.chest,rootDX,rootDY*0.9+ (pose.lean*0.4));
+ let head=sh(j.head,rootDX+pose.headDX,rootDY*0.85+pose.headDY);
+ let shL=sh(j.shL,rootDX,rootDY*0.9), shR=sh(j.shR,rootDX,rootDY*0.9);
+ let hipL=sh(j.hipL,rootDX,rootDY), hipR=sh(j.hipR,rootDX,rootDY);
+ let tailB=sh(j.tailB,rootDX,rootDY);
+ const H=j.headR;
+ // limbs
+ function arm(S,shAng,elB){const E=fk(S.x,S.y,j.ua,shAng);const W=fk(E.x,E.y,j.fa,shAng+elB);return{E:E,W:W};}
+ const armL=arm(shL,pose.shL,pose.elL);
+ const armR2=arm(shR,pose.shR,pose.elR);
+ // legs: IK when foot target present else FK
+ function leg(HJ,hipAng,kneeB,foot){if(foot){const r=ik(HJ.x,HJ.y,j.thigh,j.shin,foot.x,foot.y);return{k:{x:r.kx,y:r.ky},f:{x:r.fx,y:r.fy}};}
+  const K=fk(HJ.x,HJ.y,j.thigh,hipAng);const A=fk(K.x,K.y,j.shin,hipAng+kneeB);return{k:K,f:A};}
+ const legL=leg(hipL,pose.hipL,pose.kneeL+(pose.footL&&pose.footL.high?55:0),pose.footL);
+ const legR=leg(hipR,pose.hipR,pose.kneeR+(pose.footR&&pose.footR.high?55:0),pose.footR);
+ // beast forelegs from arm chain via IK
+ let fore={L:null,R:null};
+ if(j.kind==="beast"&&(pose.foreL||pose.foreR)){
+  if(pose.foreL){const r=ik(shL.x,shL.y,j.ua,j.fa,pose.foreL.x,pose.foreL.y);fore.L={k:{x:r.kx,y:r.ky},f:{x:r.fx,y:r.fy}};}
+  if(pose.foreR){const r=ik(shR.x,shR.y,j.ua,j.fa,pose.foreR.x,pose.foreR.y);fore.R={k:{x:r.kx,y:r.ky},f:{x:r.fx,y:r.fy}};}
+ }
+ // store joints for bone overlay
+ const bones={root:{x:(hips.x+chest.x)/2,y:(hips.y+chest.y)/2},hips:hips,spine:{x:(hips.x+chest.x)/2,y:(hips.y+chest.y)/2},
+  chest:chest,neck:{x:(chest.x+head.x)/2,y:(chest.y+head.y)/2},head:head,
+  shL:shL,elL:fore.L?fore.L.k:armL.E,wrL:fore.L?fore.L.f:armL.W,
+  shR:shR,elR:fore.R?fore.R.k:armR2.E,wrR:fore.R?fore.R.f:armR2.W,
+  hipL:hipL,knL:legL.k,anL:legL.f,hipR:hipR,knR:legR.k,anR:legR.f,
+  tailB:tailB,earL:{x:head.x-H*0.5,y:head.y-H*0.75},earR:{x:head.x+H*0.5,y:head.y-H*0.75}};
+ // tail tip
+ const tailLen=(20+70*s.tailLen);
+ const tailA=(-50+pose.tail*1.2)*Math.PI/180;
+ const tailTip={x:tailB.x+Math.cos(tailA)*(j.kind==="beast"?tailLen:tailLen*0.5),y:tailB.y+Math.sin(tailA)*(j.kind==="beast"?tailLen:tailLen*0.4)-8};
+ bones.tail=tailTip;
+ let g="";
+ const SW=OW;
+ // papercut back layers
+ if(s.style==="papercut"){
+  g+='<g opacity="0.55" transform="translate(7,8)" fill="hsl('+(((s.hue+30)%360))+',30%,40%)" stroke="none">';
+  g+=torsoShape(s,j,hips,chest,H,"none",0,true)+headShape(s,head,H,"none",0,true)+"</g>";
+  g+='<g opacity="0.4" transform="translate(3,4)" fill="hsl('+(((s.hue+15)%360))+',35%,55%)" stroke="none">';
+  g+=torsoShape(s,j,hips,chest,H,"none",0,true)+"</g>";
+ }
+ // ground + shadow (stage only or bake-with-shadow)
+ if(opt.ground){g+='<line x1="16" y1="'+GROUND_Y+'" x2="496" y2="'+GROUND_Y+'" stroke="#7d8aa5" stroke-width="2" stroke-dasharray="10 6" opacity="0.8"/>';
+  const shw=54+30*s.torsoW- Math.max(0,(GROUND_Y-legL.f.y))*0.1;
+  g+='<ellipse cx="'+(hips.x*0.5+256*0.5).toFixed(1)+'" cy="'+(GROUND_Y+12)+'" rx="'+shw.toFixed(1)+'" ry="10" fill="rgba(0,0,0,0.30)"/>';
+  if(opt.clip==="climb"){g+='<rect x="356" y="60" width="18" height="388" rx="6" fill="#3a3f52" stroke="#7d8aa5" stroke-width="2"/><g stroke="#565d78" stroke-width="2">'+
+   '<line x1="356" y1="120" x2="374" y2="120"/><line x1="356" y1="200" x2="374" y2="200"/><line x1="356" y1="280" x2="374" y2="280"/><line x1="356" y1="360" x2="374" y2="360"/></g>';}
+ }
+ // tail (behind body)
+ if(s.tailLen>0.02){
+  const mid={x:(tailB.x+tailTip.x)/2,y:(tailB.y+tailTip.y)/2-10};
+  g+='<path d="M '+tailB.x.toFixed(1)+' '+tailB.y.toFixed(1)+' Q '+mid.x.toFixed(1)+' '+mid.y.toFixed(1)+' '+tailTip.x.toFixed(1)+' '+tailTip.y.toFixed(1)+'" fill="none" stroke="'+pal.outln+'" stroke-width="'+(10+SW)+'" stroke-linecap="round"/>';
+  g+='<path d="M '+tailB.x.toFixed(1)+' '+tailB.y.toFixed(1)+' Q '+mid.x.toFixed(1)+' '+mid.y.toFixed(1)+' '+tailTip.x.toFixed(1)+' '+tailTip.y.toFixed(1)+'" fill="none" stroke="'+pal.skinD+'" stroke-width="10" stroke-linecap="round"/>';
+  g+='<circle cx="'+tailTip.x.toFixed(1)+'" cy="'+tailTip.y.toFixed(1)+'" r="'+(5+4*s.tailLen)+'" fill="'+pal.acc+'" stroke="'+pal.outln+'" stroke-width="'+(SW*0.7)+'"/>';
+ }
+ // legs behind torso? draw legs first
+ function limb(a,b,c,w,fill){
+  return '<path d="M '+a.x.toFixed(1)+' '+a.y.toFixed(1)+' L '+b.x.toFixed(1)+' '+b.y.toFixed(1)+' L '+c.x.toFixed(1)+' '+c.y.toFixed(1)+'" fill="none" stroke="'+pal.outln+'" stroke-width="'+(w+SW*2).toFixed(1)+'" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '<path d="M '+a.x.toFixed(1)+' '+a.y.toFixed(1)+' L '+b.x.toFixed(1)+' '+b.y.toFixed(1)+' L '+c.x.toFixed(1)+' '+c.y.toFixed(1)+'" fill="none" stroke="'+fill+'" stroke-width="'+w.toFixed(1)+'" stroke-linecap="round" stroke-linejoin="round"/>';
+ }
+ const legW=j.kind==="blob"?16:(j.kind==="beast"?15:17);
+ const armW=j.kind==="blob"?13:(j.kind==="beast"?13:15);
+ g+=limb(hipL,legL.k,legL.f,legW,pal.skin);
+ g+=limb(hipR,legR.k,legR.f,legW,pal.skin);
+ // feet
+ g+='<ellipse cx="'+legL.f.x.toFixed(1)+'" cy="'+legL.f.y.toFixed(1)+'" rx="13" ry="8" fill="'+pal.skinD+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/>';
+ g+='<ellipse cx="'+legR.f.x.toFixed(1)+'" cy="'+legR.f.y.toFixed(1)+'" rx="13" ry="8" fill="'+pal.skinD+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/>';
+ // beast forelegs or human arms
+ if(fore.L)g+=limb(shL,fore.L.k,fore.L.f,armW+1,pal.skin);
+ else g+=limb(shL,armL.E,armL.W,armW,pal.skin);
+ if(fore.R)g+=limb(shR,fore.R.k,fore.R.f,armW+1,pal.skin);
+ else g+=limb(shR,armR2.E,armR2.W,armW,pal.skin);
+ g+='<circle cx="'+(fore.L?fore.L.f.x:armL.W.x).toFixed(1)+'" cy="'+(fore.L?fore.L.f.y:armL.W.y).toFixed(1)+'" r="9" fill="'+pal.belly+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/>';
+ g+='<circle cx="'+(fore.R?fore.R.f.x:armR2.W.x).toFixed(1)+'" cy="'+(fore.R?fore.R.f.y:armR2.W.y).toFixed(1)+'" r="9" fill="'+pal.belly+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/>';
+ // torso
+ g+=torsoShape(s,j,hips,chest,H,pal,SW,false);
+ // decorations (seeded)
+ g+=decorShape(s,pal,hips,chest,rnd);
+ // head + ears + face
+ g+=earShape(s,head,H,pal,SW,pose);
+ g+=headShape(s,head,H,pal,SW,false);
+ g+=faceShape(s,head,H,pal,SW,pose,exprO,rnd);
+ // ink hatch
+ if(s.style==="ink"){
+  g+='<g stroke="rgba(0,0,0,0.28)" stroke-width="1.6">'+
+   '<line x1="'+(chest.x+ (j.halfW||30)*0.4).toFixed(1)+'" y1="'+(chest.y+8).toFixed(1)+'" x2="'+(hips.x+(j.halfW||30)*0.55).toFixed(1)+'" y2="'+(hips.y-6).toFixed(1)+'"/>'+
+   '<line x1="'+(chest.x+(j.halfW||30)*0.55).toFixed(1)+'" y1="'+(chest.y+14).toFixed(1)+'" x2="'+(hips.x+(j.halfW||30)*0.7).toFixed(1)+'" y2="'+(hips.y-2).toFixed(1)+'"/>'+
+   '<line x1="'+(chest.x+(j.halfW||30)*0.7).toFixed(1)+'" y1="'+(chest.y+20).toFixed(1)+'" x2="'+(hips.x+(j.halfW||30)*0.85).toFixed(1)+'" y2="'+(hips.y+2).toFixed(1)+'"/></g>';
+ }
+ // bone overlay
+ if(opt.bones){
+  const bl=[["root","hips"],["hips","spine"],["spine","chest"],["chest","neck"],["neck","head"],
+   ["chest","shL"],["shL","elL"],["elL","wrL"],["chest","shR"],["shR","elR"],["elR","wrR"],
+   ["hips","hipL"],["hipL","knL"],["knL","anL"],["hips","hipR"],["hipR","knR"],["knR","anR"],
+   ["hips","tailB"],["tailB","tail"],["head","earL"],["head","earR"]];
+  // map alternate bone names: expose canonical lines
+  let sg='<g id="bones">';
+  bl.forEach(function(pair){const a=bones[pair[0]],b=bones[pair[1]];if(!a||!b)return;
+   sg+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)+'" stroke="#39ff6a" stroke-width="2.5" opacity="0.95"/>';});
+  Object.keys(bones).forEach(function(k){const p=bones[k];
+   sg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="5" fill="#ffe14d" stroke="#0a3d1a" stroke-width="2"/>';});
+  sg+="</g>";g+=sg;
+ }
+ // store skeleton for zoom/debug
+ g+='<g data-head="'+head.x.toFixed(1)+','+head.y.toFixed(1)+','+H.toFixed(1)+'" style="display:none"></g>';
+ if(opt.debugBones)opt.debugBones.joints=bones;
+ return g;
+}
+function torsoShape(s,j,hips,chest,H,pal,SW,ghost){
+ const fill=ghost?"currentFill":pal.skin, stroke=ghost?"none":pal.outln;
+ const bw=(j.halfW||40), belly=s.belly*22;
+ if(j.kind==="beast"){
+  const cx=(hips.x+j.chest.x)/2, cy=(hips.y+j.chest.y)/2;
+  const rx=Math.abs(hips.x-j.chest.x)/2+34, ry=44+belly*0.8;
+  return '<ellipse cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="'+(ghost?"#000":pal.skin)+'" '+(ghost?"":('stroke="'+pal.outln+'" stroke-width="'+SW+'"'))+'/>' +
+   '<ellipse cx="'+cx.toFixed(1)+'" cy="'+(cy+ry*0.42).toFixed(1)+'" rx="'+(rx*0.62).toFixed(1)+'" ry="'+(ry*0.5).toFixed(1)+'" fill="'+(ghost?"#000":pal.belly)+'" opacity="0.9" stroke="none"/>';
+ }
+ if(j.kind==="blob"){
+  const cx=hips.x, cy=(hips.y+chest.y)/2;
+  const rx=bw+30, ry=66+ (j.torsoH||80)*0.22;
+  return '<ellipse cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="'+(ghost?"#000":pal.skin)+'" '+(ghost?"":('stroke="'+pal.outln+'" stroke-width="'+SW+'"'))+'/>' +
+   '<ellipse cx="'+cx.toFixed(1)+'" cy="'+(cy+ry*0.4).toFixed(1)+'" rx="'+(rx*0.6).toFixed(1)+'" ry="'+(ry*0.42).toFixed(1)+'" fill="'+(ghost?"#000":pal.belly)+'" opacity="0.85" stroke="none"/>';
+ }
+ const hw=bw;
+ return '<path d="M '+(chest.x-hw).toFixed(1)+' '+chest.y.toFixed(1)+
+  ' C '+(chest.x-hw-10-belly).toFixed(1)+' '+((chest.y+hips.y)/2).toFixed(1)+
+  ' '+(hips.x-hw-8-belly).toFixed(1)+' '+(hips.y-14).toFixed(1)+
+  ' '+(hips.x-hw*0.7).toFixed(1)+' '+hips.y.toFixed(1)+
+  ' L '+(hips.x+hw*0.7).toFixed(1)+' '+hips.y.toFixed(1)+
+  ' C '+(hips.x+hw+8+belly).toFixed(1)+' '+(hips.y-14).toFixed(1)+
+  ' '+(chest.x+hw+10+belly).toFixed(1)+' '+((chest.y+hips.y)/2).toFixed(1)+
+  ' '+(chest.x+hw).toFixed(1)+' '+chest.y.toFixed(1)+
+  ' Q '+chest.x.toFixed(1)+' '+(chest.y-16).toFixed(1)+
+  ' '+(chest.x-hw).toFixed(1)+' '+chest.y.toFixed(1)+' Z" fill="'+(ghost?"#000":pal.skin)+'" '+(ghost?"":('stroke="'+pal.outln+'" stroke-width="'+SW+'" stroke-linejoin="round"'))+'/>' +
+  '<ellipse cx="'+hips.x.toFixed(1)+'" cy="'+(hips.y-16).toFixed(1)+'" rx="'+(hw*0.62).toFixed(1)+'" ry="'+(16+belly*0.5).toFixed(1)+'" fill="'+(ghost?"#000":pal.belly)+'" opacity="0.9" stroke="none"/>';
+}
+function headShape(s,head,H,pal,SW,ghost){
+ const f=ghost?"#000":pal.skin;
+ const st=ghost?"":(' stroke="'+pal.outln+'" stroke-width="'+SW+'"');
+ if(s.archetype==="beast"){
+  return '<g><circle cx="'+head.x.toFixed(1)+'" cy="'+head.y.toFixed(1)+'" r="'+H.toFixed(1)+'" fill="'+f+'"'+st+'/>'+
+   (ghost?"":'<ellipse cx="'+(head.x-H*0.9).toFixed(1)+'" cy="'+(head.y+H*0.35).toFixed(1)+'" rx="'+(H*(0.4+0.5*s.snout)).toFixed(1)+'" ry="'+(H*0.42).toFixed(1)+'" fill="'+pal.belly+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/>'+
+   '<circle cx="'+(head.x-H*0.9-(H*(0.4+0.5*s.snout))*0.5).toFixed(1)+'" cy="'+(head.y+H*0.35).toFixed(1)+'" r="'+(4+3*s.snout).toFixed(1)+'" fill="#20242f"/>')+"</g>";
+ }
+ return '<circle cx="'+head.x.toFixed(1)+'" cy="'+head.y.toFixed(1)+'" r="'+H.toFixed(1)+'" fill="'+f+'"'+st+'/>';
+}
+function earShape(s,head,H,pal,SW,pose){
+ const e2=s.earSize, v=s.earVariant; if(e2<0.03&&v!=="horn")return "";
+ const ex=H*0.62, ey=head.y-H*0.78, sz=(10+22*e2);
+ const fl=pose.ear*0.6;
+ let g="";
+ function ear(x,side){
+  const rot=(side*18+fl*side).toFixed(1);
+  if(v==="point")return '<g transform="rotate('+rot+' '+x.toFixed(1)+' '+ey.toFixed(1)+')"><path d="M '+x.toFixed(1)+' '+ey.toFixed(1)+' l '+(-9*side).toFixed(1)+' '+(-sz).toFixed(1)+' l 16 8 Z" fill="'+pal.skin+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/></g>';
+  if(v==="horn")return '<g transform="rotate('+rot+' '+x.toFixed(1)+' '+ey.toFixed(1)+')"><path d="M '+x.toFixed(1)+' '+ey.toFixed(1)+' q '+(-4*side).toFixed(1)+' '+(-sz*1.4).toFixed(1)+' '+(6*side).toFixed(1)+' '+(-sz*1.6).toFixed(1)+' q 2 '+(sz*0.7).toFixed(1)+' '+(-6*side).toFixed(1)+' '+(sz*0.9).toFixed(1)+' Z" fill="'+pal.acc+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/></g>';
+  if(v==="fin")return '<g transform="rotate('+rot+' '+x.toFixed(1)+' '+ey.toFixed(1)+')"><ellipse cx="'+x.toFixed(1)+'" cy="'+(ey-sz*0.4).toFixed(1)+'" rx="'+(sz*0.5).toFixed(1)+'" ry="'+(sz*0.8).toFixed(1)+'" fill="'+pal.acc+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/></g>';
+  return '<g transform="rotate('+rot+' '+x.toFixed(1)+' '+ey.toFixed(1)+')"><ellipse cx="'+x.toFixed(1)+'" cy="'+(ey-sz*0.35).toFixed(1)+'" rx="'+(sz*0.55).toFixed(1)+'" ry="'+(sz*0.75).toFixed(1)+'" fill="'+pal.skin+'" stroke="'+pal.outln+'" stroke-width="'+SW+'"/><ellipse cx="'+x.toFixed(1)+'" cy="'+(ey-sz*0.35).toFixed(1)+'" rx="'+(sz*0.28).toFixed(1)+'" ry="'+(sz*0.42).toFixed(1)+'" fill="'+pal.belly+'" stroke="none"/></g>';
+ }
+ g+=ear(head.x-ex,-1)+ear(head.x+ex,1);
+ if(s.archetype==="beast"&&e2>0.05){/* extra tuft */g+='<path d="M '+head.x.toFixed(1)+' '+(head.y-H*0.95).toFixed(1)+' q 6 -14 14 -16 q -2 10 -6 16 q 8 -6 16 -6 q -6 10 -16 12 Z" fill="'+pal.acc+'" stroke="'+pal.outln+'" stroke-width="'+Math.max(1,SW*0.7)+'"/>';}
+ return g;
+}
+function decorShape(s,pal,hips,chest,rnd){
+ const n=Math.round(s.pattern*14); if(n<=0)return "";
+ let g='<g opacity="0.85">';
+ for(let i=0;i<n;i++){const rr=rnd();
+  const x=lerp(chest.x-30,hips.x+30,rnd()), y=lerp(chest.y+6,hips.y-6,rnd());
+  const r2=4+rr*9;
+  if(i%3===0)g+='<ellipse cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" rx="'+r2.toFixed(1)+'" ry="'+(r2*0.7).toFixed(1)+'" fill="'+pal.acc+'" opacity="0.75"/>';
+  else g+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+(r2*0.55).toFixed(1)+'" fill="'+pal.skinD+'" opacity="0.7"/>';
+ }
+ g+="</g>";return g;
+}
+function faceShape(s,head,H,pal,SW,pose,ex,rnd){
+ const exDX=(13*s.eyeSpacing+6)* (H/40);
+ const eyeY=head.y-H*0.08+pose.headDY*0.1;
+ const eyeRX=(11*s.eyeSize)*(H/40)+4, eyeRY=eyeRX*1.18;
+ const lidC=clamp(0.85+(ex?ex.lid:0),0.05,1); // 1 open
+ const browBase=s.browAngle+(ex?ex.brow*0.9:0);
+ const pupS=s.pupilSize*(1+(ex?ex.pupil:0));
+ const mouthC=s.mouthCurve+(ex?ex.mouth:0), open=(ex?ex.open:0.08);
+ let g='<g transform="rotate('+pose.headRot.toFixed(1)+' '+head.x.toFixed(1)+' '+head.y.toFixed(1)+')">';
+ // snout bridge for snout slider on human/blob
+ if(s.snout>0.05&&s.archetype!=="beast"){
+  g+='<ellipse cx="'+head.x.toFixed(1)+'" cy="'+(head.y+H*0.32).toFixed(1)+'" rx="'+(H*0.34*s.snout+10).toFixed(1)+'" ry="'+(H*0.2*s.snout+8).toFixed(1)+'" fill="'+pal.belly+'" stroke="'+pal.outln+'" stroke-width="'+(SW*0.8)+'"/>';
+ }
+ // blush
+ if(s.blush>0.02){g+='<ellipse cx="'+(head.x-exDX-eyeRX*0.9).toFixed(1)+'" cy="'+(eyeY+eyeRY+9).toFixed(1)+'" rx="'+(eyeRX*0.8).toFixed(1)+'" ry="6" fill="#ff7d9c" opacity="'+(s.blush*0.7).toFixed(2)+'"/>'+
+  '<ellipse cx="'+(head.x+exDX+eyeRX*0.9).toFixed(1)+'" cy="'+(eyeY+eyeRY+9).toFixed(1)+'" rx="'+(eyeRX*0.8).toFixed(1)+'" ry="6" fill="#ff7d9c" opacity="'+(s.blush*0.7).toFixed(2)+'"/>';}
+ // freckles seeded
+ const nf=Math.round(2+s.pattern*8);
+ g+='<g fill="rgba(60,30,20,0.5)">';
+ for(let i=0;i<nf;i++){const fx=head.x+(rnd()-0.5)*H*1.3, fy=eyeY+eyeRY+4+rnd()*12;g+='<circle cx="'+fx.toFixed(1)+'" cy="'+fy.toFixed(1)+'" r="1.6"/>';}
+ g+="</g>";
+ // eyes
+ [-1,1].forEach(function(sd){
+  const cx=head.x+sd*exDX;
+  const browA=(browBase*28*sd+(sd<0?-6:6)+(ex&&ex.accent==="expr"?0:0)).toFixed(1);
+  // sclera
+  g+='<ellipse cx="'+cx.toFixed(1)+'" cy="'+eyeY.toFixed(1)+'" rx="'+eyeRX.toFixed(1)+'" ry="'+eyeRY.toFixed(1)+'" fill="#fff" stroke="'+pal.outln+'" stroke-width="'+(SW*0.8)+'"/>';
+  // iris/pupil
+  const pr=clamp(5.5*pupS*(eyeRX/14),1.5,eyeRX*0.75);
+  const py=eyeY+(ex&&ex.accent==="tear"?-2:(lidC<0.4?1:0));
+  g+='<circle cx="'+cx.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(pr+2.5).toFixed(1)+'" fill="'+pal.acc+'" stroke="#20242f" stroke-width="1.5"/>';
+  g+='<circle cx="'+cx.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+pr.toFixed(1)+'" fill="#14161c"/>';
+  g+='<circle cx="'+(cx-pr*0.3).toFixed(1)+'" cy="'+(py-pr*0.3).toFixed(1)+'" r="'+(Math.max(1.2,pr*0.32)).toFixed(1)+'" fill="#fff"/>';
+  // lids (skin covers)
+  const topCover=(1-clamp(lidC+0.25,0,1.15))*(eyeRY*2+4);
+  const botCover=(clamp(0.35-lidC,0,0.5))*(eyeRY*1.2);
+  if(topCover>0.5)g+='<rect x="'+(cx-eyeRX-3).toFixed(1)+'" y="'+(eyeY-eyeRY-3).toFixed(1)+'" width="'+(eyeRX*2+6).toFixed(1)+'" height="'+topCover.toFixed(1)+'" fill="'+pal.skin+'" stroke="none"/>';
+  if(topCover>0.5)g+='<line x1="'+(cx-eyeRX).toFixed(1)+'" y1="'+(eyeY-eyeRY+topCover-3).toFixed(1)+'" x2="'+(cx+eyeRX).toFixed(1)+'" y2="'+(eyeY-eyeRY+topCover-3).toFixed(1)+'" stroke="'+pal.outln+'" stroke-width="'+(SW*0.8)+'"/>';
+  if(botCover>0.5)g+='<rect x="'+(cx-eyeRX-3).toFixed(1)+'" y="'+(eyeY+eyeRY-botCover+1).toFixed(1)+'" width="'+(eyeRX*2+6).toFixed(1)+'" height="'+botCover.toFixed(1)+'" fill="'+pal.skin+'" stroke="none"/>';
+  // brow (angle: browBase -1..1 mapped)
+  const ba=(sd*browBase*26 + (ex&&/angry/.test(currentExpr||"")?(sd<0?-18:18):0));
+  const bx=cx, by=eyeY-eyeRY-12;
+  g+='<g transform="rotate('+ba.toFixed(1)+' '+bx.toFixed(1)+' '+by.toFixed(1)+')"><rect x="'+(bx-13).toFixed(1)+'" y="'+(by-3).toFixed(1)+'" width="26" height="6" rx="3" fill="#2b2118" stroke="'+pal.outln+'" stroke-width="1"/></g>';
+ });
+ // mouth
+ const mw=H*(0.85+0.15*Math.abs(mouthC)), my=head.y+H*0.48;
+ const curve=mouthC*18, op=open*22+ (open>0.6?6:0);
+ if(open>0.12){
+  g+='<ellipse cx="'+head.x.toFixed(1)+'" cy="'+(my+curve*0.3).toFixed(1)+'" rx="'+(mw*0.5).toFixed(1)+'" ry="'+(Math.max(3,op*0.6)).toFixed(1)+'" fill="#5b2222" stroke="'+pal.outln+'" stroke-width="'+(SW*0.8)+'"/>';
+  if(open>0.25)g+='<rect x="'+(head.x-mw*0.42).toFixed(1)+'" y="'+(my+curve*0.3-op*0.35).toFixed(1)+'" width="'+(mw*0.84).toFixed(1)+'" height="'+(Math.max(3,op*0.3)).toFixed(1)+'" fill="#fff" stroke="none" opacity="0.95"/>';
+  if(open>0.45)g+='<ellipse cx="'+head.x.toFixed(1)+'" cy="'+(my+curve*0.3+op*0.25).toFixed(1)+'" rx="'+(mw*0.22).toFixed(1)+'" ry="'+(op*0.22).toFixed(1)+'" fill="#ff8d8d"/>';
+ }else{
+  g+='<path d="M '+(head.x-mw/2).toFixed(1)+' '+my.toFixed(1)+' Q '+head.x.toFixed(1)+' '+(my+curve*2).toFixed(1)+' '+(head.x+mw/2).toFixed(1)+' '+my.toFixed(1)+'" fill="none" stroke="'+pal.outln+'" stroke-width="'+(2+SW*0.8)+'" stroke-linecap="round"/>';
+ }
+ // accents
+ g+=accentShape(ex,head,H);
+ g+="</g>";return g;
+}
+let currentExpr="expr_neutral";
+function accentShape(ex,head,H){
+ if(!ex||ex.accent==="none")return "";
+ const a=ex.accent;let g="";
+ if(a==="sparkle"){g+='<g fill="#fff" stroke="#c98a1b" stroke-width="1"><path d="M '+(head.x+H*0.9).toFixed(1)+' '+(head.y-H*0.7).toFixed(1)+' l 3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 Z"/><path d="M '+(head.x-H*1.0).toFixed(1)+' '+(head.y-H*0.5).toFixed(1)+' l 2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z"/></g>';}
+ else if(a==="vein"){const vx=head.x+H*0.75,vy=head.y-H*0.55;
+  g+='<g stroke="#c0392b" stroke-width="3" fill="none" stroke-linecap="round"><path d="M '+vx.toFixed(1)+' '+vy.toFixed(1)+' l 10 -8 M '+vx.toFixed(1)+' '+vy.toFixed(1)+' l 12 2 M '+vx.toFixed(1)+' '+vy.toFixed(1)+' l 4 12"/></g>';}
+ else if(a==="tear"){const tx=head.x+ (13*spec.eyeSpacing+6)*(H/40);
+  g+='<path d="M '+tx.toFixed(1)+' '+(head.y+14).toFixed(1)+' q -7 12 0 18 q 7 -6 0 -18" fill="#7dd3fc" stroke="#1d4ed8" stroke-width="1.5"/>';}
+ else if(a==="sweat"){g+='<path d="M '+(head.x+H*0.85).toFixed(1)+' '+(head.y-H*0.2).toFixed(1)+' q -8 12 0 19 q 8 -7 0 -19" fill="#bae6fd" stroke="#0369a1" stroke-width="1.5"/>';}
+ else if(a==="zzz"){g+='<g fill="#dbeafe" stroke="#334155" stroke-width="1" font-family="sans-serif" font-weight="bold"><text x="'+(head.x+H*0.8).toFixed(1)+'" y="'+(head.y-H*0.6).toFixed(1)+'" font-size="20">z</text><text x="'+(head.x+H*1.05).toFixed(1)+'" y="'+(head.y-H*0.9).toFixed(1)+'" font-size="28">z</text><text x="'+(head.x+H*1.35).toFixed(1)+'" y="'+(head.y-H*1.25).toFixed(1)+'" font-size="36">z</text></g>';}
+ return g;
+}
+
+/* ---------- framing ---------- */
+function headInfo(s){const sk=baseSkel(s);return{x:sk.head.x,y:sk.head.y,r:sk.headR};}
+function frameFor(preset,s){
+ if(preset==="Face"){const h=headInfo(s);const sz=clamp(h.r*4.1,120,220);
+  return{x:h.x-sz/2,y:h.y-sz/2-10,w:sz,h:sz};}
+ if(preset==="Body"){const sk=baseSkel(s);
+  const top=Math.min(sk.head.y-sk.headR,sk.chest.y-30)-14;
+  const w=clamp(200+40*s.torsoW,200,300);
+  return{x:256-w/2,y:top,w:w,h:GROUND_Y-top+24};}
+ return{x:0,y:0,w:512,h:512};
+}
+function setZoomPreset(p,anim){ui.zoom=p;
+ ["Full","Body","Face"].forEach(function(k){el("z"+k).setAttribute("aria-pressed",k===p?"true":"false");});
+ const f=frameFor(p,spec);
+ if(anim===false){ui.view=f;ui.target=null;applyView();}
+ else{ui.target={from:Object.assign({},ui.view),to:f,t0:performance.now(),dur:280};}
+ el("hudView").textContent="view "+p;saveSoon();}
+function applyView(){const v=ui.view;
+ el("stage").setAttribute("viewBox",v.x.toFixed(1)+" "+v.y.toFixed(1)+" "+v.w.toFixed(1)+" "+v.h.toFixed(1));}
+function zoomBy(f,cx,cy){
+ const v=ui.view;ui.target=null;
+ let nw=clamp(v.w*f,512/6,512/0.5); if(nw>1024)nw=1024;
+ const s=nw/v.w;let nh=v.h*s;
+ // about cursor (svg coords)
+ const r=el("stage").getBoundingClientRect();
+ let px=0.5,py=0.5;
+ if(cx!==undefined){px=(cx-r.left)/r.width;py=(cy-r.top)/r.height;}
+ const sx=v.x+v.w*px, sy=v.y+v.h*py;
+ v.w=nw;v.h=nh;v.x=sx-v.w*px;v.y=sy-v.h*py;
+ applyView();
+}
+
+/* ---------- UI: controls ---------- */
+const ctlRefs={};
+function buildControls(){
+ const host=el("controls");host.innerHTML="";
+ const groups={};CTLDEF.forEach(function(d){(groups[d.g]=groups[d.g]||[]).push(d);});
+ Object.keys(groups).forEach(function(g){
+  const gd=document.createElement("div");gd.className="group";
+  gd.innerHTML="<h3>"+g+"</h3>";host.appendChild(gd);
+  groups[g].forEach(function(d){
+   const wrap=document.createElement("div");wrap.className="ctl";
+   const step=d.step||0.01;
+   wrap.innerHTML='<div class="row"><label>'+d.k+'</label><output></output></div>'+
+    '<input type="range" min="'+d.min+'" max="'+d.max+'" step="'+step+'" aria-label="'+d.k+'">';
+   const inp=wrap.querySelector("input"), out=wrap.querySelector("output");
+   inp.value=spec[d.k];out.textContent=(+spec[d.k]).toFixed(step>=1?0:2);
+   inp.addEventListener("input",function(){spec[d.k]=+inp.value;out.textContent=(+spec[d.k]).toFixed(step>=1?0:2);specChanged(d.k);});
+   ctlRefs[d.k]={inp:inp,out:out,step:step};
+   gd.appendChild(wrap);
+  });
+ });
+ // style selects
+ const sg=document.createElement("div");sg.className="group";sg.innerHTML="<h3>Style enums</h3>";host.appendChild(sg);
+ function selRow(labelTxt,opts,val,cb){
+  const w=document.createElement("div");w.className="ctl";
+  w.innerHTML='<div class="row"><label>'+labelTxt+'</label></div>';
+  const s2=document.createElement("select");opts.forEach(function(o){const op=document.createElement("option");op.value=o;op.textContent=o;if(o===val)op.selected=true;s2.appendChild(op);});
+  s2.addEventListener("change",function(){cb(s2.value);});w.appendChild(s2);sg.appendChild(w);return s2;}
+ ctlRefs.archetype=selRow("archetype",["humanoid","beast","blob"],spec.archetype,function(v){spec.archetype=v;specChanged("archetype");setZoomPreset(ui.zoom,false);});
+ ctlRefs.earVariant=selRow("ear / horn variant",["round","point","horn","fin"],spec.earVariant,function(v){spec.earVariant=v;specChanged("earSize");});
+ ctlRefs.style=selRow("style preset",["flat","ink","papercut"],spec.style,function(v){spec.style=v;specChanged();});
+}
+function refreshControls(){
+ Object.keys(ctlRefs).forEach(function(k){
+  const r=ctlRefs[k];if(!r||!r.inp)return;
+  if(r.inp.tagName==="SELECT"){r.inp.value=spec[k];}
+  else{r.inp.value=spec[k];r.out.textContent=(+spec[k]).toFixed(r.step>=1?0:2);}});
+ el("seedIn").value=spec.seed;el("hudSeed").textContent="seed "+spec.seed;
+}
+function specChanged(key){el("hudSeed").textContent="seed "+spec.seed;
+ const GEO={height:1,torsoW:1,headSize:1,legLen:1,neckLen:1,archetype:1,armLen:1,belly:1,tailLen:1,earSize:1,snout:1};
+ if(key&&GEO[key]&&ui.zoom!=="Full"&&!ui.target){ui.view=frameFor(ui.zoom,spec);applyView();}
+ saveSoon();}
+
+/* ---------- rail ---------- */
+const tileSVGs={};
+function buildRail(){
+ const rail=el("rail");rail.innerHTML="";
+ const sel=el("clipSel");sel.innerHTML="";
+ ALL_CLIPS.forEach(function(c){
+  const op=document.createElement("option");op.value=c;op.textContent=c+(LOOPDEF[c]?" · loop":" · once");sel.appendChild(op);
+  const b=document.createElement("button");b.className="tile";b.setAttribute("aria-selected",c===ui.clip?"true":"false");
+  b.innerHTML='<svg viewBox="'+(c.indexOf("expr_")===0?faceVB(): "0 0 512 512")+'" aria-label="'+c+'"><g></g></svg>'+
+   '<span class="cap"><b>'+c+'</b><span class="badge">'+(LOOPDEF[c]?"loop":"1-shot")+'</span></span>';
+  b.addEventListener("click",function(){selectClip(c);});
+  rail.appendChild(b);tileSVGs[c]={btn:b,svg:b.querySelector("svg"),g:b.querySelector("g")};
+ });
+ sel.value=ui.clip;
+ sel.addEventListener("change",function(){selectClip(sel.value);});
+}
+function faceVB(){const h=headInfo(spec);const sz=clamp(h.r*4.1,120,220);return (h.x-sz/2).toFixed(1)+" "+(h.y-sz/2-10).toFixed(1)+" "+sz.toFixed(1)+" "+sz.toFixed(1);}
+function selectClip(c){ui.clip=c;ui.time=0;el("clipSel").value=c;el("hudClip").textContent=c;
+ Object.keys(tileSVGs).forEach(function(k){tileSVGs[k].btn.setAttribute("aria-selected",k===c?"true":"false");});
+ saveSoon();}
+
+/* ---------- main loop ---------- */
+let lastT=performance.now(), fpsEMA=60, galT={}, stageClock=0;
+ALL_CLIPS.forEach(function(c){galT[c]=(fnv1a(c).charCodeAt(0)%100)/100*DUR[c];});
+function isExpr(c){return c.indexOf("expr_")===0;}
+function poseFor(c,t){if(isExpr(c))return evalBody("idle",t%1,spec);return evalBody(c,((t%1)+1)%1,spec);}
+function exprFor(c,t){
+ if(!isExpr(c)){
+  // subtle idle face on body clips
+  return{brow:0,lid:0.05*Math.sin(t*Math.PI*2),pupil:0,mouth:0,open:0.08,accent:"none",mx:0};
+ }
+ return evalExpr(c,((t%1)+1)%1);
+}
+function renderStage(){
+ currentExpr=ui.clip;
+ const t=ui.time;
+ const pose=poseFor(ui.clip,t), ex=exprFor(ui.clip,t);
+ const inner=charContent(spec,pose,ex,{bones:ui.bones,ground:ui.ground,clip:ui.clip});
+ el("stageG").innerHTML=inner;
+}
+let tileFlip=false;
+function renderTiles(dt){
+ tileFlip=!tileFlip;
+ ALL_CLIPS.forEach(function(c,idx){
+  if(ui.galPaused)return;
+  galT[c]+=dt;
+  if((idx%2===0)!==tileFlip)return; // halve per-tick cost: each tile ~10fps, still live
+  const clipT=(galT[c]%DUR[c])/DUR[c];
+  currentExpr=c;
+  const pose=poseFor(c,clipT), ex=exprFor(c,clipT);
+  // reduced internal detail on small screens: skip decor every other frame (still live)
+  const inner=charContent(spec,pose,ex,{bones:false,ground:true,clip:c});
+  tileSVGs[c].g.innerHTML=inner;
+  if(isExpr(c))tileSVGs[c].svg.setAttribute("viewBox",faceVB());
+ });
+}
+function uiScale(c){return DUR[c];}
+function loop(now){
+ const dt=Math.min(0.1,(now-lastT)/1000);lastT=now;
+ fpsEMA=lerp(fpsEMA,1/Math.max(1e-4,dt),0.06);
+ // stage time
+ if(ui.playing){
+  const d=DUR[ui.clip];
+  ui.time+=dt*ui.speed/d;
+  const loopOn=ui.loop&&LOOPDEF[ui.clip]!==0 ? true : (ui.loop&&LOOPDEF[ui.clip]===1);
+  // loop toggle: if off, one-shots hold; loops still loop? Spec: loop toggle. Honor: if unchecked, never loop.
+  if(ui.time>=1){if(ui.loop&&LOOPDEF[ui.clip])ui.time%=1;else ui.time=1;}
+  if(ui.time<0)ui.time=0;
+ }
+ // view animation
+ if(ui.target){const u=(now-ui.target.t0)/ui.target.dur;
+  if(u>=1){ui.view=ui.target.to;ui.target=null;}
+  else{const e2=u*u*(3-2*u);ui.view={x:lerp(ui.target.from.x,ui.target.to.x,e2),y:lerp(ui.target.from.y,ui.target.to.y,e2),w:lerp(ui.target.from.w,ui.target.to.w,e2),h:lerp(ui.target.from.h,ui.target.to.h,e2)};}
+  applyView();}
+ renderStage();
+ // gallery at ~30fps
+ if(!loop._acc)loop._acc=0;loop._acc+=dt;
+ if(loop._acc>0.05){renderTiles(loop._acc);loop._acc=0;
+  el("fps").textContent=Math.round(fpsEMA)+"";
+  el("hudT").textContent=Math.round(ui.time*100)+"%";
+  if(document.activeElement!==el("scrub"))el("scrub").value=(ui.time*100).toFixed(1);
+ }
+ requestAnimationFrame(loop);
+}
+
+/* ---------- standalone frame SVG (export) ---------- */
+function standaloneSVG(c,tNorm,cell,shadowOn){
+ const pose=poseFor(c,tNorm), ex=exprFor(c,tNorm);
+ const vb=isExpr(c)?faceVB():"0 0 512 512";
+ const inner=charContent(spec,pose,ex,{bones:false,ground:shadowOn,clip:c,forExport:true});
+ return '<svg xmlns="http://www.w3.org/2000/svg" width="'+cell+'" height="'+cell+'" viewBox="'+vb+'"><g>'+inner+"</g></svg>";
+}
+
+/* ---------- bake ---------- */
+function estDims(){const cols=ui.bodyFrames, rows=15;return{w:cols*ui.cell,h:rows*ui.cell,n:cols*9+6*4};}
+function pickSafe(requested,cols,rows){
+ const coarse=window.matchMedia&&window.matchMedia("(pointer: coarse)").matches;
+ const small=window.innerWidth<=900;
+ const maxDim=(coarse||small)?4096:8192;
+ const maxArea=(coarse||small)?16777216:33554432;
+ const order=[256,128,64];
+ let start=order.indexOf(requested);if(start<0)start=2;
+ for(let i=start;i<order.length;i++){const c=order[i];
+  if(cols*c<=maxDim&&rows*c<=maxDim&&cols*c*rows*c<=maxArea)return{c:c,reduced:c!==requested};}
+ return{c:64,reduced:true};
+}
+let baking=false;
+function loadImg(svgStr){
+ return new Promise(function(res,rej){
+  const url=URL.createObjectURL(new Blob([svgStr],{type:"image/svg+xml;charset=utf-8"}));
+  const img=new Image();
+  img.onload=function(){URL.revokeObjectURL(url);res(img);};
+  img.onerror=function(e){URL.revokeObjectURL(url);rej(new Error("rasterize"));};
+  img.src=url;
+ });
+}
+async function bake(){
+ if(baking)return;baking=true;
+ const cols=ui.bodyFrames, rows=ALL_CLIPS.length;
+ const pick=pickSafe(ui.cell,cols,rows);
+ const cell=pick.c;
+ el("bakeNote").textContent=pick.reduced?("Cell auto-reduced to "+cell+"px to stay within this device's canvas limit ("+cols*cell+"×"+rows*cell+")."):"";
+ const W=cols*cell,H=rows*cell;
+ const cv=el("atlasCanvas");cv.width=W;cv.height=H;
+ const ctx=cv.getContext("2d");ctx.clearRect(0,0,W,H);
+ const frames=[],anims=[];
+ let done=0;const total=cols*9+6*4;
+ el("bakeProg").textContent="Baking 0/"+total;
+ const t0=performance.now();
+ try{
+  for(let r=0;r<ALL_CLIPS.length;r++){
+   const c=ALL_CLIPS[r];
+   const nf=isExpr(c)?4:cols;
+   const fnames=[];
+   for(let f=0;f<nf;f++){
+    const tn=nf===1?0:f/nf;
+    const svg=standaloneSVG(c,tn,cell,ui.shadow);
+    const hash=fnv1a(svg);
+    const img=await loadImg(svg);
+    ctx.drawImage(img, f*cell, r*cell, cell, cell);
+    const nm=c+"_"+(f<10?"0"+f:""+f);
+    fnames.push(nm);
+    frames.push({filename:nm,frame:{x:f*cell,y:r*cell,w:cell,h:cell},rotated:false,trimmed:false,
+     spriteSourceSize:{x:0,y:0,w:cell,h:cell},sourceSize:{w:cell,h:cell},
+     pivot:isExpr(c)?{x:0.5,y:0.5}:{x:0.5,y:0.875},sourceHash:hash});
+    done++;el("bakeProg").textContent="Baking "+done+"/"+total;
+    if(done%2===0)await new Promise(function(q){return setTimeout(q,0);});
+   }
+   const fps=Math.round((nf/DUR[c])*10)/10;
+   anims.push({name:c,fps:fps,loop:!!LOOPDEF[c],frames:fnames});
+   await new Promise(function(q){return setTimeout(q,0);});
+  }
+ }catch(e){el("bakeProg").textContent="Bake failed: "+e.message;baking=false;return;}
+ const ms=Math.round(performance.now()-t0);
+ const meta={app:"Rigsmith Character Factory",version:"1.0.0",image:"rigsmith-"+spec.seed+"-atlas.png",
+  size:{w:W,h:H},scale:"1",seed:spec.seed,generatedAt:new Date().toISOString(),generator:GENERATOR,spec:JSON.parse(JSON.stringify(spec))};
+ ui.atlasJSON={frames:frames,animations:anims,meta:meta};
+ el("bakeProg").textContent="Done "+total+" frames in "+(ms/1000).toFixed(1)+"s";
+ el("atlasInfo").textContent=W+"×"+H+" · "+total+" frames";
+ // preview
+ try{const url=cv.toDataURL("image/png");const pv=el("atlasPreview");pv.src=url;pv.style.display="block";}catch(e){}
+ saveSoon();baking=false;
+}
+function dl(href,name,mime,isText){
+ const a=document.createElement("a");
+ const supportsDl=("download" in a);
+ if(supportsDl){a.href=href;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(href);},60000);}
+ else{window.open(href,"_blank");el("saveHint").textContent="Download attribute blocked — opened in a new tab. Long-press / right-click to save.";}
+}
+function downloadPNG(){
+ const cv=el("atlasCanvas");if(!cv.width){el("saveHint").textContent="Bake first.";return;}
+ cv.toBlob(function(b){if(!b){el("saveHint").textContent="Export blocked.";return;}
+  const u=URL.createObjectURL(b);dl(u,"rigsmith-"+spec.seed+"-atlas.png");el("saveHint").textContent="PNG saved · URL revoked after 60s.";},"image/png");
+}
+function downloadJSON(){
+ if(!ui.atlasJSON){el("saveHint").textContent="Bake first.";return;}
+ const s=JSON.stringify(ui.atlasJSON,null,1);
+ const u=URL.createObjectURL(new Blob([s],{type:"application/json"}));
+ dl(u,"rigsmith-"+spec.seed+"-atlas.json");el("saveHint").textContent="JSON saved · valid TexturePacker JSON Array.";
+}
+
+/* ---------- events ---------- */
+function bind(){
+ el("seedIn").addEventListener("change",function(){spec.seed=parseInt(el("seedIn").value||"1337",10)||1337;specChanged();});
+ el("bDice").addEventListener("click",function(){spec.seed=freshSeed();refreshControls();specChanged();});
+ el("clipSel").addEventListener("change",function(){});
+ el("bPlay").addEventListener("click",togglePlay);
+ el("scrub").addEventListener("input",function(){ui.time=(+el("scrub").value)/100;el("hudT").textContent=el("scrub").value+"%";});
+ el("speed").addEventListener("change",function(){ui.speed=+el("speed").value;});
+ el("loopChk").addEventListener("change",function(){ui.loop=el("loopChk").checked;});
+ el("zFull").addEventListener("click",function(){setZoomPreset("Full");});
+ el("zBody").addEventListener("click",function(){setZoomPreset("Body");});
+ el("zFace").addEventListener("click",function(){setZoomPreset("Face");});
+ el("zIn").addEventListener("click",function(){zoomBy(0.8);});
+ el("zOut").addEventListener("click",function(){zoomBy(1.25);});
+ el("zReset").addEventListener("click",function(){setZoomPreset(ui.zoom);});
+ el("bBones").addEventListener("click",function(){ui.bones=!ui.bones;el("bBones").setAttribute("aria-pressed",ui.bones?"true":"false");});
+ el("bGround").addEventListener("click",function(){ui.ground=!ui.ground;el("bGround").setAttribute("aria-pressed",ui.ground?"true":"false");});
+ el("bGal").addEventListener("click",function(){ui.galPaused=!ui.galPaused;el("bGal").textContent=ui.galPaused?"Resume gallery":"Pause gallery";el("bGal").setAttribute("aria-pressed",ui.galPaused?"true":"false");});
+ el("cellSel").addEventListener("change",function(){ui.cell=+el("cellSel").value;updEst();});
+ el("framesIn").addEventListener("input",function(){ui.bodyFrames=+el("framesIn").value;el("framesOut").textContent=ui.bodyFrames;updEst();});
+ el("shadowChk").addEventListener("change",function(){ui.shadow=el("shadowChk").checked;});
+ el("bBake").addEventListener("click",bake);
+ el("dlPng").addEventListener("click",downloadPNG);
+ el("dlJson").addEventListener("click",downloadJSON);
+ el("pPip").addEventListener("click",function(){applyPreset("Pip");});
+ el("pMoss").addEventListener("click",function(){applyPreset("Moss");});
+ el("pGloop").addEventListener("click",function(){applyPreset("Gloop");});
+ el("bRand").addEventListener("click",randomize);
+ el("bReset").addEventListener("click",function(){spec=Object.assign({},DEFAULTS);refreshControls();syncSelects();specChanged();setZoomPreset(ui.zoom,false);});
+ el("bClear").addEventListener("click",function(){try{localStorage.removeItem("rigsmith-v1");}catch(e){}spec=Object.assign({},DEFAULTS);ui.clip="idle";selectClip("idle");refreshControls();syncSelects();specChanged();});
+ document.querySelectorAll(".mobiletabs button").forEach(function(b){b.addEventListener("click",function(){document.body.dataset.mtab=b.dataset.tab;});});
+ // stage pan/zoom: pointer + wheel + pinch
+ const st=el("stage");
+ let drag=null,pinch=null;
+ st.addEventListener("pointerdown",function(e){try{st.setPointerCapture(e.pointerId);}catch(_){}
+  if(pinch)return;
+  drag={x:e.clientX,y:e.clientY,vx:ui.view.x,vy:ui.view.y,moved:false};});
+ st.addEventListener("pointermove",function(e){
+  if(pinch)return; // two-finger gestures owned by touch handlers
+  if(drag){const r=st.getBoundingClientRect();const sc=ui.view.w/r.width;
+   ui.view.x=drag.vx-(e.clientX-drag.x)*sc;ui.view.y=drag.vy-(e.clientY-drag.y)*sc;
+   ui.target=null;applyView();drag.moved=true;}
+ });
+ function up(e){drag=null;}
+ st.addEventListener("pointerup",up);st.addEventListener("pointercancel",up);
+ // two-finger pinch owns the gesture while active (touch); single-finger pan via pointer events
+ const wrap=el("stageWrap");
+ wrap.addEventListener("touchstart",function(e){if(e.touches.length===2){pinch={pts:{},d0:0,n:2};e.preventDefault();}},{passive:false});
+ wrap.addEventListener("touchmove",function(e){if(e.touches.length===2&&pinch){e.preventDefault();
+   const a={x:e.touches[0].clientX,y:e.touches[0].clientY},b={x:e.touches[1].clientX,y:e.touches[1].clientY};
+   const d=Math.hypot(a.x-b.x,a.y-b.y);
+   if(pinch.d0){const r=st.getBoundingClientRect();zoomBy(pinch.d0/d,(a.x+b.x)/2,(a.y+b.y)/2);}
+   pinch.d0=d;}},{passive:false});
+ wrap.addEventListener("touchend",function(){pinch=null;drag=null;});
+ st.addEventListener("wheel",function(e){e.preventDefault();zoomBy(e.deltaY>0?1.12:0.89,e.clientX,e.clientY);},{passive:false});
+ document.addEventListener("keydown",function(e){
+  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement&&document.activeElement.tagName||""))return;
+  if(e.code==="Space"){e.preventDefault();togglePlay();}
+  else if(e.key==="1")setZoomPreset("Full");
+  else if(e.key==="2")setZoomPreset("Body");
+  else if(e.key==="3")setZoomPreset("Face");
+  else if(e.key==="["){const i=ALL_CLIPS.indexOf(ui.clip);selectClip(ALL_CLIPS[(i+ALL_CLIPS.length-1)%ALL_CLIPS.length]);}
+  else if(e.key==="]"){const i=ALL_CLIPS.indexOf(ui.clip);selectClip(ALL_CLIPS[(i+1)%ALL_CLIPS.length]);}
+  else if(e.key==="b"||e.key==="B")el("bBones").click();
+  else if(e.key==="e"||e.key==="E")bake();
+ });
+ window.addEventListener("resize",function(){/* preserve spec/clip/zoom, layout refits via CSS */applyView();});
+ window.addEventListener("orientationchange",function(){setTimeout(applyView,60);});
+}
+function togglePlay(){if(!ui.playing&&ui.time>=1)ui.time=0;ui.playing=!ui.playing;el("bPlay").textContent=ui.playing?"⏸ Pause":"▶ Play";}
+function applyPreset(name){
+ const p=PRESETS[name];spec=Object.assign({},DEFAULTS,p);
+ refreshControls();syncSelects();specChanged();setZoomPreset(ui.zoom,false);
+}
+function syncSelects(){if(ctlRefs.archetype)ctlRefs.archetype.value=spec.archetype;
+ if(ctlRefs.earVariant)ctlRefs.earVariant.value=spec.earVariant;
+ if(ctlRefs.style)ctlRefs.style.value=spec.style;}
+function randomize(){
+ const r=mulberry32((Date.now()%2147483647)^0x9e37);
+ spec.seed=1000+Math.floor(r()*99000);
+ ["height","torsoW","headSize","belly","armLen","legLen","neckLen","earSize","snout","tailLen",
+  "eyeSize","eyeSpacing","pupilSize","browAngle","mouthCurve","blush","hue","sat","outline","pattern"].forEach(function(k){
+  const d=CTLDEF.filter(function(q){return q.k===k;})[0];if(!d)return;
+  const v=d.min+r()*(d.max-d.min);spec[k]=Math.round(v*100)/100;});
+ const arch=["humanoid","beast","blob"];spec.archetype=arch[Math.floor(r()*3)];
+ const ev=["round","point","horn","fin"];spec.earVariant=ev[Math.floor(r()*4)];
+ const st2=["flat","ink","papercut"];spec.style=st2[Math.floor(r()*3)];
+ refreshControls();syncSelects();specChanged();setZoomPreset(ui.zoom,false);
+}
+function updEst(){const e=estDims();el("bakeProg").textContent="idle · "+e.n+" frames → "+e.w+"×"+e.h;}
+
+/* ---------- init ---------- */
+buildControls();buildRail();bind();
+refreshControls();syncSelects();
+el("clipSel").value=ui.clip;el("hudClip").textContent=ui.clip;
+el("seedIn").value=spec.seed;
+el("signDate").textContent="2026-11-15 12:00 UTC";el("signWho").textContent="Muse Spark 1.3 Contributor (OpenCode)";
+updEst();setZoomPreset(ui.zoom||"Full",false);
+el("bGround").setAttribute("aria-pressed","true");
+requestAnimationFrame(loop);
+window.addEventListener("unhandledrejection",function(e){e.preventDefault();el("bakeNote").textContent="Notice: "+(e.reason&&e.reason.message||e.reason);});
+</script>
+</body>
+</html>
