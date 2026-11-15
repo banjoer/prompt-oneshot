@@ -1,6 +1,6 @@
 # Rigsmith — SVG Character Factory with Engine-Ready Sprite Sheets
 
-**Difficulty:** extreme  |  **Stack:** HTML/CSS/JS (single file, SVG + Canvas 2D export)  |  **Estimated time:** 10–16 hours
+**Difficulty:** extreme  |  **Stack:** HTML/CSS/JS (single file, SVG + Canvas 2D export)  |  **Estimated time:** 12–18 hours
 
 ## The Problem
 
@@ -19,10 +19,15 @@ drops into Phaser/PixiJS without post-processing.
 
 1. **Single-file app.** Deliver one `index.html` with embedded `<style>` and
    `<script>`. It must run by double-clicking the file (`file://`), with no server,
-   build step, package manager, or network access. The workbench is a three-pane
-   layout: control rack on the left, character stage in the center, animation rail
-   and export panel on the right/bottom. It must remain usable at 1280×800 without
-   elements overlapping or being unreachable.
+   build step, package manager, or network access. On desktop the workbench is a
+   three-pane layout: control rack on the left, character stage in the center,
+   animation rail and export panel on the right/bottom. At 1280×800 nothing may
+   overlap or become unreachable. At ≤ 900 px width the layout switches to mobile:
+   the stage stays pinned and at least 50 dvh tall, while controls, animation rail,
+   and export live in tabbed or swipeable panels below; at 360×640 there must be no
+   horizontal page scrolling and every control must be reachable by vertical scroll
+   or swipe. Use a responsive `viewport` meta tag with `viewport-fit=cover` and
+   respect safe-area insets so nothing sits under a notch or home indicator.
 
 2. **Deterministic character spec.** All character appearance flows from one
    serializable `spec` object (numeric parameters + enum choices + a numeric
@@ -70,8 +75,11 @@ drops into Phaser/PixiJS without post-processing.
    animates the viewBox (≤ 300 ms) and recomputes framing from current
    proportions; `Face` must center on the head even after head-size, neck-length,
    or archetype changes. Mouse wheel zooms 0.5–6× about the cursor, drag pans,
-   and `Reset view` restores the active preset. All of this must work while the
-   selected clip is playing.
+   and `Reset view` restores the active preset. Touch must match: one-finger drag
+   pans, two-finger pinch zooms 0.5–6×, and `touch-action: none` is scoped to the
+   stage so the rest of the page still scrolls. Visible `+` / `−` / reset buttons
+   mirror wheel zoom. All of this must work while the selected clip is playing and
+   after an orientation change.
 
 7. **Rig, IK, and secondary motion.** Clips are keyframes over normalized time
    (0–1) with easing, driving bone rotations, translations, and scales. Legs in
@@ -114,8 +122,11 @@ drops into Phaser/PixiJS without post-processing.
     simultaneously playing tiles, each rendering the current character and spec
     at small size, with a name label and loop/one-shot badge. Clicking a tile
     selects it on the main stage. Add a `Pause gallery` toggle and a live FPS
-    readout for stage+gallery. At default spec with the gallery playing, the app
-    must hold ≥ 45 FPS on a modern laptop and ≥ 55 FPS with the gallery paused.
+    readout for stage+gallery. On narrow screens the rail scrolls/swipes
+    horizontally and all 15 tiles stay reachable and live (tiles may render at
+    reduced internal resolution). Targets: desktop ≥ 45 FPS with the gallery
+    playing and ≥ 55 FPS paused; a mid-range phone (or DevTools mobile emulation)
+    ≥ 30 FPS with the gallery playing and ≥ 45 FPS paused, at default spec.
 
 11. **Sprite-sheet baking.** An export panel offers cell size `64 | 128 | 256`
     (default 256), frames per body clip `4–16` (default 8), and expressions fixed
@@ -128,13 +139,18 @@ drops into Phaser/PixiJS without post-processing.
     After baking, show an atlas preview on a checkerboard with its pixel
     dimensions and frame count, plus **Download PNG** and **Download JSON**
     buttons. File names are `rigsmith-<seed>-atlas.png` and
-    `rigsmith-<seed>-atlas.json`; object URLs must be revoked after use.
+    `rigsmith-<seed>-atlas.json`; object URLs must be revoked after use. Before
+    baking, detect the device's safe canvas limit; if the chosen cell size would
+    exceed it, automatically bake at the largest safe size ≤ the choice and say
+    so in the UI. Downloads must work on mobile browsers: when the `download`
+    attribute is unsupported or blocked, open the asset in a new tab with a
+    long-press-to-save hint instead of failing silently.
 
 12. **Engine-ready atlas contract.** The JSON must be a valid TexturePacker
     "JSON Array" atlas that Phaser 3 and PixiJS load without edits:
     - `meta`: `app`, `version`, `image` (matching the PNG file name),
       `size {w,h}`, `scale: "1"`, `seed`, `generatedAt` (ISO 8601), `generator`
-      (see requirement 16), and `spec` (the full parameter object).
+      (see requirement 17), and `spec` (the full parameter object).
     - `frames[]`: unique `filename` `"<clip>_<NN>"` (zero-padded), `frame
       {x,y,w,h}`, `rotated: false`, `trimmed: false`, `spriteSourceSize
       {x,y,w,h}`, `sourceSize {w,h}`, `pivot` (`0.5, 0.875` for body clips so
@@ -166,13 +182,24 @@ drops into Phaser/PixiJS without post-processing.
     previous/next clip, `B` bone overlay, `E` bake export. Shortcut hints are
     visible in the UI.
 
-15. **Robustness.** No console errors or unhandled promise rejections in a current
-    Chrome, Firefox, or Safari. Exporting at 256 px with 16 body frames (168
-    frames total) must complete in under 30 s with continuous progress. The page
-    must never lock up during baking, and the atlas canvas must stay within
-    browser limits at every offered setting.
+15. **Mobile parity — no desktop-only leftovers.** On a touch device every
+    feature must be usable without a keyboard or hover: on-screen transport
+    (play/pause, scrub, speed, loop), zoom presets plus `+`/`−`, clip selection,
+    archetype/style pickers, and export. Interactive controls have at least
+    44×44 px touch targets and visible labels (a label may wrap, but may not rely
+    on a hover tooltip alone). Sliders must be draggable by touch across their
+    full range without the page scrolling underneath. Rotating the device or
+    resizing the window preserves spec, seed, selected clip, and zoom state and
+    refits the layout without reload.
 
-16. **Sign-off:** the finished app must show, in an always-visible footer, the
+16. **Robustness.** No console errors or unhandled promise rejections in a current
+    Chrome, Firefox, or Safari on desktop or mobile. Exporting at 256 px with 16
+    body frames (168 frames total) must complete in under 30 s with continuous
+    progress, including under mobile emulation. The page must never lock up during
+    baking, and the atlas canvas must stay within browser limits at every offered
+    setting.
+
+17. **Sign-off:** the finished app must show, in an always-visible footer, the
     date and time it was produced and the model/author that produced it; repeat
     the same sign-off as a header comment at the top of `index.html`; and stamp it
     into the exported JSON as `meta.generator` (author/model) and
@@ -189,7 +216,11 @@ drops into Phaser/PixiJS without post-processing.
 - Storage is `localStorage` only; no cookies, no IndexedDB requirement.
 - One skeleton, one clip library, three archetypes: no per-archetype clip
   duplication (retarget through bone mapping instead).
-- Must run from `file://` in current Chrome, Firefox, and Safari.
+- Touch and pointer are both first-class: no hover-only affordances, no page
+  horizontal scroll at 360×640, and the stage must not trap page scrolling.
+- Must run from `file://` in current Chrome, Firefox, and Safari on desktop; on a
+  phone it must also work when the single file is served by any static file
+  server (the app itself still makes zero network requests).
 
 ## Sample Data / Inputs
 
@@ -239,27 +270,42 @@ Manual test script — expected observations:
 8. Open the PNG in an image viewer → rows are clips, unused cells transparent,
    colors/outlines match the stage. Inspect the JSON → `frames`, `animations`,
    `meta`, and `sourceHash` present; bake again → hashes unchanged.
+9. Open DevTools responsive mode at 360×640 with touch emulation → the layout
+   stacks with no horizontal page scroll; the stage stays visible above the
+   tabbed controls; play/pause, zoom, clip selection, and export are all
+   reachable by scrolling/swiping. One-finger pan and two-finger pinch work
+   inside the stage, while dragging a slider changes its value instead of
+   scrolling the page.
+10. On a phone (or emulation), export at the default size → the app auto-reduces
+    the cell size only if needed, progress stays visible, and the PNG/JSON save
+    or open in a new tab with a save hint. Rotate the device → spec, seed, clip,
+    and zoom survive, and the layout refits without a reload.
 
 ## Deliverable
 
 - `index.html` — the complete character factory, animation previews, and export
   pipeline.
 - Run: open `index.html` in a current browser (double-click; no server needed).
+  For a real phone, optionally serve just this folder
+  (`python3 -m http.server 8000`) and open the computer's LAN URL; the app still
+  makes no network requests.
 
 ## Done When
 
-- [ ] `index.html` opens offline from `file://` with a three-pane workbench, visible footer sign-off, and no console errors.
+- [ ] `index.html` opens offline from `file://` with a three-pane workbench on desktop, visible footer sign-off, and no console errors.
+- [ ] At 360×640 (touch emulation or a phone) the layout stacks with no horizontal page scroll, safe-area padding, and every control reachable by scrolling or swiping.
+- [ ] A real touch device or emulation can pan, pinch-zoom, drag every slider, switch clips, and rotate the screen without losing spec, seed, clip, or zoom state.
 - [ ] Three archetypes are visibly distinct yet share one skeleton and all nine body clips.
 - [ ] At least 18 sliders/pickers update the stage and all 15 tiles within a frame, with numeric readouts.
-- [ ] `Full`/`Body`/`Face` zoom presets animate smoothly, track head position as proportions change, and wheel/drag zoom-pan works during playback.
+- [ ] `Full`/`Body`/`Face` zoom presets animate smoothly, track head position as proportions change, and wheel/drag/pinch zoom-pan works during playback.
 - [ ] Bone overlay shows a coherent skeleton for each archetype; ground-line mode proves stance feet stay planted within ±2 px.
 - [ ] All nine body clips read as specified, with jump/taunt ending on their final pose and run showing airborne frames.
 - [ ] Six expression clips are visually distinct and layer correctly over the face sliders.
-- [ ] The 15-tile gallery plays live, selecting tiles drives the stage, and FPS targets are met.
-- [ ] Baking shows frame progress, keeps the UI responsive, and produces a transparent atlas preview at the chosen cell size.
-- [ ] Downloads yield `rigsmith-<seed>-atlas.png` and a valid TexturePacker JSON atlas with correct rects, pivots, animations, spec, and stable `sourceHash` values.
+- [ ] The 15-tile gallery plays live, selecting tiles drives the stage, and the desktop and mobile FPS targets are met.
+- [ ] Baking shows frame progress, keeps the UI responsive, auto-reduces the cell size when the device canvas limit requires it, and produces a transparent atlas preview.
+- [ ] Downloads yield `rigsmith-<seed>-atlas.png` and a valid TexturePacker JSON atlas with correct rects, pivots, animations, spec, and stable `sourceHash` values — including on a phone or its emulation.
 - [ ] Presets Pip/Moss/Gloop reproduce exactly, and spec + seed survive a reload via `localStorage`.
-- [ ] Keyboard shortcuts, reset, and randomize work without producing invalid geometry.
+- [ ] Keyboard shortcuts, on-screen equivalents, reset, and randomize work without producing invalid geometry.
 
 ## Stretch Goals (optional)
 
