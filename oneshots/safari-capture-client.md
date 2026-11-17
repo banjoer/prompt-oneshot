@@ -11,7 +11,7 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 ## Requirements
 
 1. Produce an Xcode project with an iOS/iPadOS app target (SwiftUI) plus a Safari Web Extension target, targeting iOS 17+ and iPadOS 17+. It must build and run in the iOS Simulator without third-party packages, Swift packages, or npm dependencies.
-2. The extension popup contains: an Arm/Disarm control, a live countdown while armed, an "Extend 10 min" action, an endpoint URL field, a bearer-token field, a "Flush queue" button and a capture log.
+2. The extension popup contains: an Arm/Disarm control, a live countdown while armed, an "Extend 10 min" action, a sync endpoint field (full URL — scheme, host, port and path), a bearer-token field, a "Flush queue" button and a capture log. The endpoint is editable at runtime and persisted across launches: pointing the client at a different domain or port must require neither a rebuild nor a source edit.
 3. Arming stores an absolute deadline (`armedUntil = Date.now() + 10 * 60 * 1000`) in shared extension storage; the popup renders the remaining time from that value every second. The countdown survives tab switches and Safari backgrounding, and expires on its own with no background timer required. Disarming clears the deadline immediately.
 4. A content script runs in every top-level page and, on `document.readyState === "complete"`, captures the page only if all of these hold: the deadline is in the future, `window.top === window` , the page's host equals the host that was armed, and the document content type is HTML.
 5. SPA navigation is captured: `history.pushState`, `history.replaceState` and `popstate` are observed, the capture waits until the DOM has been mutation-quiet for 500 ms, and the resulting URL is captured under the same rules as a full load.
@@ -19,7 +19,7 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 7. Every capture produces YAML frontmatter with exactly these keys: `url`, `title`, `host`, `captured_at` (ISO 8601, UTC, second precision), `content_hash` (SHA-256 hex of the Markdown body that follows the frontmatter, excluding the frontmatter block itself), and `captured_by` (the sign-off string from requirement 16).
 8. Images referenced by `<img>` inside the extracted content are fetched and inlined as `![alt](data:<mime>;base64,<data>)`; when a fetch fails (CORS, 404, non-image), the original absolute URL is kept and the popup log entry records an `images_failed` count greater than zero.
 9. Links inside the Markdown stay absolute and unmodified. A separate `links` array containing every distinct same-host URL found in the extracted content (including query strings, excluding fragment-only and `mailto:`/`javascript:` targets) is sent with the upload.
-10. Upload is `POST <endpoint>` with `Authorization: Bearer <token>` and `multipart/form-data`, containing the parts `url`, `captured_at`, `content_hash`, `links` (a JSON array serialised into a text part) and `markdown` (a file part named `page-<content_hash>.md`). Any 2xx response counts as success; any other status, timeout or network error queues the capture.
+10. Upload is `POST <endpoint>` with `Authorization: Bearer <token>` and `multipart/form-data`, containing the parts `url`, `captured_at`, `content_hash`, `links` (a JSON array serialised into a text part) and `markdown` (a file part named `page-<content_hash>.md`). `<endpoint>` is read from settings at request time, so a changed endpoint applies to the next upload and to every queued retry; no host, port or path may be compiled into the extension. Any 2xx response counts as success; any other status, timeout or network error queues the capture.
 11. A failed upload is persisted in IndexedDB and retried automatically on the next successful capture, when the popup opens, and on "Flush queue". Successful retries are removed from the queue; the queue count is visible in the popup at all times.
 12. Within one armed window, a capture whose `url` and `content_hash` both match an earlier successful upload is skipped without a request and logged as `skipped: duplicate`. Re-arming the extension clears that in-memory dedupe state, so a manual re-arm always re-sends.
 13. The capture log keeps the 20 most recent entries, each showing: time, URL (truncated), status (`uploaded` | `queued` | `skipped` | `failed`), payload size in bytes, and a reason. Entries survive a popup close and reopen.
@@ -30,7 +30,7 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 ## Constraints
 
 - Standard library only on the extension side: no npm, no Swift packages, no CocoaPods; the Xcode project and its generated scaffolding are the only allowed "framework".
-- The only network destination for the extension is the configured endpoint; page images may be fetched from their own origins. No analytics, no telemetry, no remote script loading.
+- The sync destination is configuration, not code. No host, port, path or scheme is hardcoded anywhere in the Swift or JavaScript sources; `http://localhost:8787/api/capture` is only a demo value entered through the popup, and the stub must be able to run on any port. Page images may be fetched from their own origins. No analytics, no telemetry, no remote script loading.
 - The bearer token lives in extension storage and is entered through the popup. It must never appear in source, in a committed file, in the capture log, or in the uploaded Markdown.
 - No login or paywall bypass, no cookie access beyond what the rendered page already shows, and no transmission of cookies or credentials.
 - Capture only what the page currently renders. No headless rendering, no server-side fetch, no scraping of URLs the user did not visit.
@@ -115,7 +115,7 @@ On device or simulator, enable the extension once: Settings → Safari → Exten
 - [ ] Re-opening the same page inside the same armed window produces a `skipped: duplicate` log entry and no second upload.
 - [ ] Navigating to a different host while armed stops uploads but the countdown keeps running; returning to the armed host before expiry resumes capture.
 - [ ] Stopping the stub, capturing a page, restarting the stub and pressing "Flush queue" delivers the queued capture and empties the queue counter.
-- [ ] A wrong token in the popup yields `401` at the stub, a `queued` log entry in the popup, and no token text visible anywhere in the UI or in `captures/`.
+- [ ] Pointing the popup at a second stub instance on a different port (e.g. `8788`) sends the next capture and any queued retry there without rebuilding, and the queue survives the endpoint change.
 - [ ] Letting the deadline expire prevents any further upload even with the page still open and the queue non-empty.
 - [ ] The popup footer shows the sign-off line.
 
