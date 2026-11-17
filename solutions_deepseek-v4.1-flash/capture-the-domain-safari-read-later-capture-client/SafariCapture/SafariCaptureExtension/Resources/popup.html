@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capture the Domain</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="titleBlock">
+          <h1>Capture the Domain</h1>
+          <p id="hostLine" class="sub">Arm from the page you want to watch.</p>
+        </div>
+        <span id="statusPill" class="pill off">DISARMED</span>
+      </header>
+
+      <section class="timerPanel" aria-live="polite">
+        <div class="timerTop">
+          <span id="countdown" class="countdown">00:00</span>
+          <span id="timerHint" class="timerHint">No armed window</span>
+        </div>
+        <div class="buttonRow">
+          <button id="armBtn" class="btn primary" type="button">Arm 10 min</button>
+          <button id="extendBtn" class="btn secondary" type="button" disabled>Extend 10 min</button>
+          <button id="disarmBtn" class="btn ghost" type="button" disabled>Disarm</button>
+        </div>
+      </section>
+
+      <section class="settings">
+        <label class="field">
+          <span>Sync endpoint</span>
+          <input
+            id="endpoint"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="scheme://host:port/path"
+          />
+        </label>
+        <label class="field">
+          <span>Bearer token</span>
+          <input
+            id="token"
+            type="password"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="Token from your receiver"
+          />
+        </label>
+        <div class="settingsFoot">
+          <span id="saveState" class="hint">Stored locally in Safari.</span>
+          <button id="saveBtn" class="btn tiny" type="button">Save</button>
+        </div>
+      </section>
+
+      <section class="queueRow">
+        <div class="queueLabel">
+          <span class="dot"></span>
+          Queue <strong id="queueCount">0</strong>
+          <span id="queueHint" class="hint"></span>
+        </div>
+        <button id="flushBtn" class="btn tiny" type="button">Flush queue</button>
+      </section>
+
+      <section class="logSection">
+        <div class="logHead">
+          <h2>Capture log</h2>
+          <span id="logCount" class="hint">0 / 20</span>
+        </div>
+        <ul id="logList" class="logList" aria-live="polite"></ul>
+        <p id="emptyLog" class="empty">No captures yet.</p>
+      </section>
+
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <footer id="signoff" class="signoff"></footer>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

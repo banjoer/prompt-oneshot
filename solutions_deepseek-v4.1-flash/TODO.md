@@ -53,3 +53,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Repo Apps | 🔴 Extreme | ✅ Done |
 | Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |
 | Rigsmith — SVG Character Factory | 🔴 Extreme | ✅ Done |
+| Capture the Domain — Safari Read-Later Capture Client | 🟠 Hard | ✅ Done |

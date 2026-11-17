@@ -1,0 +1,92 @@
+name: iOS build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, package and upload unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 35
+    env:
+      PROJECT: SafariCapture/SafariCapture.xcodeproj
+      SCHEME: SafariCapture
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Ensure an iPhone 15 simulator exists
+        run: |
+          set -euo pipefail
+          if ! xcrun simctl list devices available | grep 'iPhone 15 (' >/dev/null; then
+            xcrun simctl create 'iPhone 15' 'com.apple.CoreSimulator.SimDeviceType.iPhone-15' >/dev/null
+          fi
+
+      - name: Build for iOS Simulator (iPhone 15)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -derivedDataPath build/simulator \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Build for generic iOS device (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package Payload/SafariCapture.app as an unsigned IPA
+        run: |
+          set -euo pipefail
+          APP=""
+          for candidate in build/device/Build/Products/Release-iphoneos/*.app; do
+            if [ -d "$candidate" ]; then
+              APP="$candidate"
+              break
+            fi
+          done
+          if [ -z "$APP" ]; then
+            echo "No .app product found" >&2
+            exit 1
+          fi
+          rm -rf Payload SafariCapture-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          APP_NAME="$(basename "$APP")"
+          test -d "Payload/${APP_NAME}/PlugIns/SafariCaptureExtension.appex"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload SafariCapture-unsigned.ipa
+          unzip -l SafariCapture-unsigned.ipa | sed -n '1,20p'
+          ls -lh SafariCapture-unsigned.ipa
+
+      - name: Upload SafariCapture-unsigned artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SafariCapture-unsigned
+          path: SafariCapture-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
