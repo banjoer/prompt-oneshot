@@ -1,6 +1,6 @@
 # Capture the Domain — Safari Read-Later Capture Client
 
-**Difficulty:** hard  |  **Stack:** Swift + Safari Web Extension (JS)  |  **Estimated time:** 5–8 h
+**Difficulty:** hard  |  **Stack:** Swift + Safari Web Extension (JS)  |  **Estimated time:** 6–9 h
 
 ## The Problem
 
@@ -16,7 +16,7 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 4. A content script runs in every top-level page and, on `document.readyState === "complete"`, captures the page only if all of these hold: the deadline is in the future, `window.top === window` , the page's host equals the host that was armed, and the document content type is HTML.
 5. SPA navigation is captured: `history.pushState`, `history.replaceState` and `popstate` are observed, the capture waits until the DOM has been mutation-quiet for 500 ms, and the resulting URL is captured under the same rules as a full load.
 6. Content extraction produces article Markdown using a readability-style heuristic (largest text-dense subtree, stripping `nav`, `header`, `footer`, `aside`, `script`, `style`, `form`, `noscript`), falling back to `document.body` when no candidate reaches 200 characters of text. Headings, paragraphs, ordered/unordered lists, blockquotes, fenced code blocks and tables survive the conversion.
-7. Every capture produces YAML frontmatter with exactly these keys: `url`, `title`, `host`, `captured_at` (ISO 8601, UTC, second precision), `content_hash` (SHA-256 hex of the Markdown body that follows the frontmatter, excluding the frontmatter block itself), and `captured_by` (the sign-off string from requirement 16).
+7. Every capture produces YAML frontmatter with exactly these keys: `url`, `title`, `host`, `captured_at` (ISO 8601, UTC, second precision), `content_hash` (SHA-256 hex of the Markdown body that follows the frontmatter, excluding the frontmatter block itself), and `captured_by` (the sign-off string from requirement 17).
 8. Images referenced by `<img>` inside the extracted content are fetched and inlined as `![alt](data:<mime>;base64,<data>)`; when a fetch fails (CORS, 404, non-image), the original absolute URL is kept and the popup log entry records an `images_failed` count greater than zero.
 9. Links inside the Markdown stay absolute and unmodified. A separate `links` array containing every distinct same-host URL found in the extracted content (including query strings, excluding fragment-only and `mailto:`/`javascript:` targets) is sent with the upload.
 10. Upload is `POST <endpoint>` with `Authorization: Bearer <token>` and `multipart/form-data`, containing the parts `url`, `captured_at`, `content_hash`, `links` (a JSON array serialised into a text part) and `markdown` (a file part named `page-<content_hash>.md`). `<endpoint>` is read from settings at request time, so a changed endpoint applies to the next upload and to every queued retry; no host, port or path may be compiled into the extension. Any 2xx response counts as success; any other status, timeout or network error queues the capture.
@@ -25,7 +25,8 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 13. The capture log keeps the 20 most recent entries, each showing: time, URL (truncated), status (`uploaded` | `queued` | `skipped` | `failed`), payload size in bytes, and a reason. Entries survive a popup close and reopen.
 14. Nothing is uploaded while disarmed or after the deadline passes, including queued items — the queue only drains while armed and inside the window.
 15. A dependency-free Node stub receiver is included: it serves two demo pages, accepts the multipart upload, writes each successful capture to `captures/<host>/<content_hash>.md` with the original multipart parts stored alongside in `captures/<host>/<content_hash>.json`, and prints one line per request (`201 <host> <bytes>` or `401`). It must reject requests with a wrong or missing bearer token using status 401.
-16. **Sign-off:** the finished solution must display, somewhere easy to spot, the date and time it was produced and the model/author that produced it. Put it in the popup footer (visible without scrolling) and repeat it as the `captured_by` value in every uploaded snapshot's frontmatter.
+16. The project builds with no Mac in the loop. A GitHub Actions workflow at `.github/workflows/ios-build.yml` runs on `macos-latest` for every push and for `workflow_dispatch`, and executes `xcodebuild` twice: once against a simulator destination (`-destination 'platform=iOS Simulator,name=iPhone 15'`) and once against `-destination 'generic/platform=iOS'` with `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO` for the device architecture. It then packages the device `.app` into `Payload/`, zips that directory as `SafariCapture-unsigned.ipa`, and uploads it as a workflow artifact named `SafariCapture-unsigned`. The job must fail if either build fails, and must require no certificates, secrets or Apple account.
+17. **Sign-off:** the finished solution must display, somewhere easy to spot, the date and time it was produced and the model/author that produced it. Put it in the popup footer (visible without scrolling) and repeat it as the `captured_by` value in every uploaded snapshot's frontmatter.
 
 ## Constraints
 
@@ -36,6 +37,7 @@ Build the capture half of that system: a native Safari Web Extension for iOS and
 - Capture only what the page currently renders. No headless rendering, no server-side fetch, no scraping of URLs the user did not visit.
 - A 200 KB article must be extracted, inlined and handed to the uploader within 10 seconds of the triggering event; otherwise log `failed: timeout` and continue watching.
 - The stub must start with one command and must not require an internet connection.
+- macOS is not assumed on the solver's machine. Every build step that matters must run inside the committed GitHub Actions workflow; no step may require opening Xcode, a signing identity, or a physical Mac. A signing/TestFlight path may be added on top, but it must be additive, optional and guarded by secrets that are absent by default.
 
 ## Sample Data / Inputs
 
@@ -92,14 +94,22 @@ iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAA
 ## Deliverable
 
 - `SafariCapture/` — the Xcode project (app target + Safari Web Extension target, manifests included).
+- `.github/workflows/ios-build.yml` — the macOS CI build that emits `SafariCapture-unsigned.ipa`.
 - `stub/server.js` — the Node stub receiver (stdlib only, no `npm install`).
-- `README.md` — build, signing, install and verification steps, with the sign-off line at the top.
+- `SIDELOADING.md` — how to get the artifact onto a real iPhone/iPad from an Ubuntu-only workstation: download the artifact, install with Sideloadly/AltStore using an Apple ID, enable the extension in Settings → Safari → Extensions, and the 7-day re-sideload cycle.
+- `README.md` — build, install and verification steps, with the sign-off line at the top.
 
 Run commands:
 
 ```bash
 node stub/server.js 8787
-open SafariCapture/SafariCapture.xcodeproj    # select an iOS 17 simulator, Run
+
+# No Mac: build in CI and take the artifact to a sideloader
+gh workflow run ios-build.yml
+gh run download --name SafariCapture-unsigned   # then follow SIDELOADING.md
+
+# With a Mac:
+open SafariCapture/SafariCapture.xcodeproj      # select an iOS 17 simulator, Run
 ```
 
 On device or simulator, enable the extension once: Settings → Safari → Extensions → Capture the Domain → Allow. Then open `http://localhost:8787/demo` in Safari, arm the extension, and navigate.
@@ -107,6 +117,8 @@ On device or simulator, enable the extension once: Settings → Safari → Exten
 ## Done When
 
 - [ ] The project builds and runs for an iOS 17 simulator with zero package managers involved.
+- [ ] Pushing to the branch turns the `iOS build` workflow green, and the `SafariCapture-unsigned` artifact downloads containing a valid `Payload/SafariCapture.app` with the extension bundle inside it.
+- [ ] `SIDELOADING.md` is followed end-to-end on a real iPhone or iPad from an Ubuntu-only machine, with no Xcode opened and no macOS host involved, and the extension appears in Settings → Safari → Extensions.
 - [ ] Arming shows a 10:00 countdown that ticks down while the popup is closed and reopened, and disarming stops all uploads immediately.
 - [ ] Loading `/demo` while armed produces one `201` line in the stub and one `captures/localhost/<hash>.md`.
 - [ ] That file opens as readable Markdown: frontmatter with all six keys, headings, the list, the fenced code block and the table intact, and an inline `data:image/png;base64,` image.
@@ -124,3 +136,4 @@ On device or simulator, enable the extension once: Settings → Safari → Exten
 - Persist the dedupe state per host so re-arming a minute later does not re-send unchanged pages, while a changed `content_hash` still uploads.
 - Add a "capture selection only" mode that snapshots the current text selection instead of the article.
 - Emit a per-page `image_report` in the JSON sidecar listing inlined and failed image URLs, so the server can re-fetch only what is missing.
+- Add an optional, secret-gated second workflow job that signs the build and uploads it to TestFlight when `APPLE_ID`, `TEAM_ID` and a distribution certificate are present, leaving the default unsigned job untouched.
