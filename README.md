@@ -108,6 +108,7 @@ effort, if known).
 | Crumb Club — Muffin Match Bakery | HTML/CSS/JS (single file, canvas) | 🟡 Medium | [prompt](oneshots/crumb-club-muffin-match-bakery.md) | DeepSeek V4.1 Flash · thinking: high |
 | Human-in-the-Loop Outbox Service | Python (Flask + SQLite) + vanilla SPA | 🔴 Extreme | [prompt](oneshots/human-in-the-loop-outbox-service.md) | DeepSeek V4.1 Flash · thinking: high · adapted from new.md |
 | Rigsmith — SVG Character Factory | HTML/CSS/JS (single file, SVG) | 🔴 Extreme | [prompt](oneshots/rigsmith-svg-character-factory.md) | DeepSeek V4.1 Flash 1017 |
+| Capture the Domain — Safari Read-Later Capture Client | Swift + Safari Web Extension (JS) | 🟠 Hard | [prompt](oneshots/safari-capture-client.md) | DeepSeek V4.1 Flash · thinking: off |
 
 <!-- Row template:
 | <Title> | <e.g. Python, SQLite> | <🟢/🟡/🟠/🔴> <Easy/Medium/Hard/Extreme> | [prompt](oneshots/<file>.md) | <model name> · thinking: <effort, if known> |
