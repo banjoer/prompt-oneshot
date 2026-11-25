@@ -52,3 +52,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Repo Apps | 🔴 Extreme | ✅ Done |
 | Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |
 | Rigsmith — SVG Character Factory | 🔴 Extreme | ✅ Done |
+| Balamba — tmux Agent Workspace | 🔴 Extreme | ✅ Done |

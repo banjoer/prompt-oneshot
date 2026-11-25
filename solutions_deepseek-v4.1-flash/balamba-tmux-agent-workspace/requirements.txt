@@ -1,0 +1,3 @@
+# The Textual twist: the whole interface is Textual + Rich.
+# tmux, git and (optionally) opencode are system prerequisites.
+textual>=8.0

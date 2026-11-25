@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+# bin/balamba — entry point: attach / build-and-attach, and subcommands.
+#
+# ============================================================================
+#  balamba — tmux Projects → Worktrees → Terminals workspace
+#  TEXTUAL RE-IMPLEMENTATION (the "textualize" twist):
+#  the entire interface (chrome, three-column layout, tree pane, git pane,
+#  status bar, tabs, dialogs, key bindings, mouse clicks & wheel) is built
+#  with Python + Textual; plain PTY sessions host terminal content.
+#  No tmux-driven chrome, no tmux mouse bindings. See README.md.
+#
+#  Produced: 2026-11-25
+#  Model / author: Qwen 3.8 Flash (thinking effort: xhigh)
+#  ============================================================================
+"""balamba CLI.
+
+Usage:
+  balamba                     start the Textual workspace UI
+                              (spec: "attach or build-and-attach"; in this
+                              build a live instance is refused — see README)
+  balamba project add PATH    add a git main checkout as a project
+  balamba project remove PATH remove a project from balamba (folder untouched)
+  balamba task list           show projects, tasks, terminals
+  balamba save                reconcile + rewrite the state file
+  balamba doctor              health check (state, worktrees, tools, server)
+  balamba version             print version + sign-off line
+"""
+
+import argparse
+import os
+import sys
+
+# Make the package importable straight from the repo layout (no install).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, os.pardir, "lib"))
+
+from balamba import __version__, cli, common  # noqa: E402
+
+
+def run_ui() -> int:
+    common.ensure_config_file()
+    fd = common.acquire_instance_lock()
+    if fd is None:
+        print("balamba: a balamba UI is already running (instance lock held).\n"
+              "The original spec would attach to the live tmux server here;\n"
+              "this Textual build cannot share another process's screen — "
+              "see README.md ('Server & attach reinterpretation').")
+        return 2
+    cfg = common.load_config()
+    state = common.load_state()
+    notes = _reconcile_inplace(state)
+    from balamba.app import BalambaApp
+    app = BalambaApp(cfg, state, hold_lock=fd)
+    for note in notes:
+        # printed into the app via notification once mounted; keep stderr too
+        print(f"reconcile: {note}", file=sys.stderr)
+    app.run()
+    return 0
+
+
+def _reconcile_inplace(state: dict) -> list[str]:
+    from balamba import task as task_mod
+    notes = task_mod.reconcile(state)
+    if notes:
+        common.save_state(state)
+    return notes
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="balamba",
+        description="tmux-style projects→worktrees→terminals workspace, "
+                    "rebuilt entirely in Python + Textual.",
+    )
+    sub = parser.add_subparsers(dest="cmd")
+
+    p_proj = sub.add_parser("project", help="manage projects")
+    p_proj.add_argument("action", choices=["add", "remove"])
+    p_proj.add_argument("path")
+
+    sub.add_parser("task", help="task commands")
+    sub.add_parser("save", help="reconcile and rewrite state.json")
+    sub.add_parser("doctor", help="health check")
+    sub.add_parser("version", help="print version + sign-off")
+
+    # `balamba task list` shape: parse manually for the two-word subcommand
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:2] == ["task", "list"]:
+        return cli.cmd_task_list()
+
+    ns = parser.parse_args(argv)
+    if ns.cmd is None:
+        return run_ui()
+    if ns.cmd == "project":
+        if ns.action == "add":
+            return cli.cmd_project_add(ns.path)
+        return cli.cmd_project_remove(ns.path)
+    if ns.cmd == "save":
+        return cli.cmd_save()
+    if ns.cmd == "doctor":
+        return cli.cmd_doctor()
+    if ns.cmd == "version":
+        print(cli.version_line())
+        return 0
+    parser.print_help()
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

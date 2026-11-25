@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# balamba — entry point (attach / subcommands).
+# Sign-off: produced 2026-11-25 by Muse Spark 1.3 Contributor (opencode-go).
+# Textual reinterpretation: `balamba` (no args) launches the Textual UI in
+# app/main.py. tmux is used underneath only to host terminal content.
+set -u
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091
+. "$HERE/lib/common.sh"
+# shellcheck disable=SC1091
+. "$HERE/lib/git.sh"
+
+cmd="${1:-attach}"
+shift || true
+
+case "$cmd" in
+  attach|"")
+    balamba_load_config
+    balamba_ensure_state
+    balamba_ensure_state
+    # ensure backend tmux.conf installed
+    if [ ! -f "$BALAMBA_CONFIG_HOME/tmux.conf" ]; then
+      cp "$HERE/tmux.conf" "$BALAMBA_CONFIG_HOME/tmux.conf"
+    fi
+    if ! command -v python3 >/dev/null; then
+      echo "balamba: python3 required" >&2; exit 1
+    fi
+    if ! python3 -c "import textual" 2>/dev/null; then
+      echo "balamba: python package 'textual' required (pip install textual)" >&2
+      exit 1
+    fi
+    exec python3 "$HERE/app/main.py" "$@"
+    ;;
+  project)
+    sub="${1:-}"; shift || true
+    balamba_load_config
+    balamba_ensure_state
+    case "$sub" in
+      add)
+        path="${1:-}"; [ -n "$path" ] || { echo "usage: balamba project add <path>" >&2; exit 1; }
+        top="$(git_validate_project "$path")" || exit 1
+        # shellcheck disable=SC1091
+        STATE_FILE="$BALAMBA_STATE_FILE" PROJ="$top" python3 -c '
+import json, os
+sf = os.environ["STATE_FILE"]; proj = os.environ["PROJ"]
+with open(sf) as f: st = json.load(f)
+if any(p["path"] == proj for p in st["projects"]):
+    print("project already added")
+else:
+    st["projects"].append({"path": proj, "expanded": True, "scratch": [], "tasks": []})
+    with open(sf, "w") as f: json.dump(st, f, indent=2)
+    print("added " + proj)
+'
+        ;;
+      remove)
+        path="${1:-}"; [ -n "$path" ] || { echo "usage: balamba project remove <path>" >&2; exit 1; }
+        resolved="$(realpath -m "$path")"
+        STATE_FILE="$BALAMBA_STATE_FILE" PROJ="$resolved" python3 -c '
+import json, os
+sf = os.environ["STATE_FILE"]
+with open(sf) as f: st = json.load(f)
+st["projects"] = [p for p in st["projects"] if p["path"] != os.environ["PROJ"]]
+with open(sf, "w") as f: json.dump(st, f, indent=2)
+print("removed (balamba only; folder untouched)")
+'
+        ;;
+      *) echo "usage: balamba project add|remove <path>" >&2; exit 1 ;;
+    esac
+    ;;
+  task)
+    sub="${1:-list}"; shift || true
+    balamba_load_config
+    balamba_ensure_state
+    case "$sub" in
+      list)
+        STATE_FILE="$BALAMBA_STATE_FILE" python3 -c '
+import json, os
+with open(os.environ["STATE_FILE"]) as f: st = json.load(f)
+for p in st.get("projects", []):
+    print("## " + p["path"])
+    for t in p.get("tasks", []):
+        print("  - %s [%s] base=%s terms=%d" % (t.get("name"), t.get("slug"), t.get("base"), len(t.get("windows", []))))
+'
+        ;;
+      *) echo "usage: balamba task list" >&2; exit 1 ;;
+    esac
+    ;;
+  save)
+    # state is saved continuously by the UI; also snapshot backend cwd/layout info
+    balamba_load_config
+    balamba_ensure_state
+    if balamba_server_running; then
+      STATE_FILE="$BALAMBA_STATE_FILE" python3 - "$BALAMBA_SOCKET" <<'EOF'
+import fcntl, json, os, subprocess, sys
+sock = sys.argv[1]
+sf = os.environ["STATE_FILE"]
+lock = open(sf + ".lock", "a+")
+fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+with open(sf) as f: st = json.load(f)
+def tmux(*a):
+    try:
+        r = subprocess.run(["tmux", "-L", sock] + list(a), capture_output=True, text=True, timeout=10)
+        return r.stdout if r.returncode == 0 else ""
+    except Exception:
+        return ""
+for p in st.get("projects", []):
+    for pool in [p.get("scratch", [])] + [t.get("windows", []) for t in p.get("tasks", [])]:
+        for w in pool:
+            panes = tmux("list-panes", "-t", "balamba:" + w.get("id", ""), "-F", "#{pane_current_path}")
+            if panes.strip():
+                w["cwd"] = panes.strip().splitlines()[0]
+            lay = tmux("display-message", "-p", "-t", "balamba:" + w.get("id", ""), "#{window_layout}")
+            if lay.strip():
+                w["window_layout"] = lay.strip()
+with open(sf, "w") as f: json.dump(st, f, indent=2)
+fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+print("saved " + sf)
+EOF
+    else
+      echo "saved $BALAMBA_STATE_FILE (server not running)"
+    fi
+    ;;
+  doctor)
+    balamba_load_config
+    balamba_ensure_state
+    echo "balamba 1.0.0-textual (2026-11-25 by Muse Spark 1.3 Contributor)"
+    if balamba_server_running; then
+      echo "server/socket: OK (tmux -L balamba, session balamba)"
+    else
+      echo "server/socket: not running (will rebuild on next 'balamba' launch)"
+    fi
+    if STATE_FILE="$BALAMBA_STATE_FILE" python3 -c 'import json,os; json.load(open(os.environ["STATE_FILE"]))' 2>/dev/null; then
+      echo "state: OK ($BALAMBA_STATE_FILE)"
+    else
+      echo "state: MISSING/INVALID ($BALAMBA_STATE_FILE)"
+    fi
+    STATE_FILE="$BALAMBA_STATE_FILE" python3 -c '
+import json, os, subprocess
+sf = os.environ["STATE_FILE"]
+try:
+    st = json.load(open(sf))
+except Exception as e:
+    print("state: invalid (%s)" % e); raise SystemExit
+for p in st.get("projects", []):
+    try:
+        r = subprocess.run(["git", "-C", p["path"], "worktree", "list", "--porcelain"],
+                           capture_output=True, text=True, timeout=10)
+        known = {l.split(" ", 1)[1] for l in r.stdout.splitlines() if l.startswith("worktree ")} if r.returncode == 0 else set()
+    except Exception:
+        known = set()
+    for t in p.get("tasks", []):
+        if t.get("path") not in known and not os.path.exists(t.get("path", "")):
+            print("missing worktree: %s (task %s)" % (t.get("path"), t.get("slug")))
+print("worktrees: checked %d project(s)" % len(st.get("projects", [])))
+'
+    if command -v opencode >/dev/null 2>&1; then
+      echo "opencode: OK ($(command -v opencode))"
+    else
+      echo "opencode: not on PATH (agent tabs will fail to launch)"
+    fi
+    if python3 -c "import textual" 2>/dev/null; then
+      echo "textual: OK ($(python3 -c 'import textual; print(textual.__version__)'))"
+    else
+      echo "textual: MISSING (pip install textual)"
+    fi
+    ;;
+  *)
+    echo "usage: balamba [attach] | balamba project add|remove <path> | balamba task list | balamba save | balamba doctor" >&2
+    exit 1
+    ;;
+esac

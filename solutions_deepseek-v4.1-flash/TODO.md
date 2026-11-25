@@ -54,3 +54,4 @@ Status legend: ⏳ Pending · 🚧 In progress · ✅ Done · ❌ Failed
 | Human-in-the-Loop Outbox Service | 🔴 Extreme | ✅ Done |
 | Rigsmith — SVG Character Factory | 🔴 Extreme | ✅ Done |
 | Capture the Domain — Safari Read-Later Capture Client | 🟠 Hard | ✅ Done |
+| Balamba — tmux Agent Workspace | 🔴 Extreme | ✅ Done |
